@@ -1,0 +1,76 @@
+{
+  "name": "ai_program_typescript",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint && eslint . --ext .js,.jsx,.ts,.tsx && stylelint '**/*.{css,scss}'",
+    "format": "prettier --write . && stylelint '**/*.{css,scss}' --fix"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "@nextui-org/react": "^2.3.6",
+    "axios": "^1.7.2",
+    "babel-plugin-styled-components": "^2.1.4",
+    "cookie": "^0.6.0",
+    "diff2html": "^3.4.48",
+    "framer-motion": "^11.2.4",
+    "install": "^0.13.0",
+    "js-cookie": "^3.0.5",
+    "next": "14.2.2",
+    "npm": "^10.8.0",
+    "react": "^18",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-diff-view": "^3.2.1",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-dom": "^18",
+    "react-hot-toast": "^2.4.1",
+    "react-loading-skeleton": "^3.4.0",
+    "react-syntax-highlighter": "^15.5.0",
+    "react-transition-group": "^4.4.5",
+    "sharp": "^0.33.4",
+    "socket.io-client": "^2.5.0",
+    "styled-components": "^6.1.11"
+  },
+  "devDependencies": {
+    "@types/cookie": "^0.6.0",
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-beautiful-dnd": "^13.1.8",
+    "@types/react-dom": "^18",
+    "@types/react-transition-group": "^4.4.10",
+    "@types/socket.io-client": "^3.0.0",
+    "@types/styled-components": "^5.1.34",
+    "@typescript-eslint/eslint-plugin": "^6",
+    "@typescript-eslint/parser": "^6",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.3",
+    "eslint-config-prettier": "^8",
+    "eslint-plugin-prettier": "^4",
+    "eslint-plugin-tailwindcss": "^3.9.1",
+    "lint-staged": "^13",
+    "postcss": "^8",
+    "prettier": "^2",
+    "prettier-plugin-tailwindcss": "^0.2.8",
+    "stylelint": "^14.16.1",
+    "stylelint-config-prettier": "^9.0.5",
+    "stylelint-config-standard": "^29.0.0",
+    "stylelint-config-tailwindcss": "^0.0.7",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,scss}": [
+      "stylelint --fix",
+      "prettier --write"
+    ]
+  }
+}

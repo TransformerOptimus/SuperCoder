@@ -1,0 +1,83 @@
+.deletion_line_color {
+    background: rgb(104 38 38 / 50%);
+}
+
+.deletion_index_color {
+    background: #682626;
+}
+
+.deletion_changes {
+    border-radius: 4px;
+    background: #b44646;
+    mix-blend-mode: plus-lighter;
+}
+
+.insertion_line_color {
+    background: rgb(48 93 27 / 50%);
+}
+
+.insertion_index_color {
+    background: #305d1b;
+}
+
+.code_diff_container {
+    border: 1px solid var(--white-opacity-12);
+    border-radius: 8px;
+    padding: 10px 0;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.snippet {
+    white-space: pre-wrap; /* Handle word wrap */
+    word-wrap: break-word; /* Handle word wrap */
+}
+
+.syntaxHighlight {
+    color: white;
+}
+
+.syntaxHighlight .keyword {
+    color: blue;
+}
+
+.syntaxHighlight .string {
+    color: #d19a66;
+}
+
+.syntaxHighlight .function {
+    color: #61afef;
+}
+
+.syntaxHighlight .variable {
+    color: #e06c75;
+}
+
+.syntaxHighlight .comment {
+    color: #7f848e;
+}
+
+.syntaxHighlight .number {
+    color: #d19a66;
+}
+
+.sideDiff {
+    width: 50%; /* Ensure each side takes up 50% of the width */
+}
+
+.indexContainer {
+    width: 60px; /* Fixed width for index container */
+}
+
+.snippetContainer {
+    flex: 1; /* Ensure the snippet container takes the remaining space */
+}
+
+@media (max-width: 768px) {
+    .code_diff_container {
+        grid-template-columns: 1fr; /* Make it responsive */
+    }
+    .sideDiff {
+        width: 100%; /* Make each side take full width on small screens */
+    }
+}

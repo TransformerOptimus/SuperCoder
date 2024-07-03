@@ -1,0 +1,49 @@
+.container {
+    display: flex;
+}
+
+.sidebar {
+    width: 250px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sidebar_title {
+    font-family: "Proxima Nova", sans-serif;
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: normal;
+    color: var(--foreground-rgb);
+}
+
+.option {
+    display: flex;
+    padding: 8px;
+    align-items: center;
+    gap: 4px;
+    align-self: stretch;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #FFF;
+    font-family: "Proxima Nova", sans-serif;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.option:hover {
+    background-color: var(--white-opacity-12);
+}
+
+.active {
+    background-color: var(--white-opacity-12);
+}
+
+.content {
+    flex-grow: 1;
+    padding: 10px;
+}

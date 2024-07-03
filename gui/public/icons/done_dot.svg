@@ -1,0 +1,10 @@
+<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="fiber_manual_record">
+<mask id="mask0_320_10518" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="14" height="14">
+<rect id="Bounding box" width="14" height="14" fill="#D9D9D9"/>
+</mask>
+<g mask="url(#mask0_320_10518)">
+<path id="fiber_manual_record_2" d="M7.00108 11C5.88713 11 4.9418 10.612 4.16508 9.836C3.38836 9.0601 3 8.11513 3 7.00108C3 5.88713 3.388 4.94179 4.164 4.16508C4.9399 3.38836 5.88487 3 6.99892 3C8.11287 3 9.05821 3.388 9.83492 4.164C10.6116 4.9399 11 5.88487 11 6.99892C11 8.11287 10.612 9.05821 9.836 9.83492C9.0601 10.6116 8.11513 11 7.00108 11Z" fill="#4BAC1C"/>
+</g>
+</g>
+</svg>

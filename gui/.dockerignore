@@ -1,0 +1,9 @@
+Dockerfile
+docker-compose.yaml
+gui
+ide
+workspace-service
+*.iml
+.idea/
+node_modules/
+.next

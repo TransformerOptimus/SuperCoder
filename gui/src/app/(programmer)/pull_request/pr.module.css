@@ -1,0 +1,36 @@
+.pr_list_container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  align-self: stretch;
+  padding: 12px 8px;
+  border-bottom: 1px solid rgb(255 255 255 / 12%);
+  cursor: pointer;
+}
+
+.pr_list_container:hover,
+.pr_list_container.active {
+  background: rgb(255 255 255 / 8%);
+}
+
+.pr_details_header_container {
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  width: 100%;
+  border-bottom: 1px solid rgb(255 255 255 / 12%);
+}
+
+.commit_log_card_container {
+  display: flex;
+  padding: 8px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  flex: 1 0 0;
+  border-radius: 8px;
+  background: var(--white-opacity-8);
+}

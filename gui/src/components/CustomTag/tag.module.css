@@ -1,0 +1,37 @@
+.grey_tag,
+.purple_tag,
+.yellow_tag,
+.green_tag {
+  display: flex;
+  padding: 6px 8px;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  font-family: 'Proxima Nova', sans-serif;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  border-radius: 24px;
+}
+
+.grey_tag {
+  /* To Do Tag */
+  background: #474747;
+}
+
+.purple_tag {
+  /* In Progress Tag */
+  background: #A05BD5;
+}
+
+.yellow_tag {
+  /* In Review */
+  background: #AA7C23;
+}
+
+.green_tag {
+  /* Done Tag */
+  background: linear-gradient(0deg, rgb(0 0 0 / 40%) 0%, rgb(0 0 0 / 40%) 100%),
+    #4bac1c;
+}

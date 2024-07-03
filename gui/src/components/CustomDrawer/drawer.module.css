@@ -1,0 +1,126 @@
+.drawer_container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  z-index: 1000;
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s linear 0.3s, opacity 0.3s linear,
+    transform 0.3s ease-in-out;
+}
+
+.drawer_container.open {
+  visibility: visible;
+  opacity: 1;
+  transition: visibility 0s, opacity 0.3s linear, transform 0.3s ease-in-out;
+}
+
+.drawer_backdrop {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: rgb(0 0 0 / 50%);
+  cursor: pointer;
+}
+
+.drawer_content {
+  position: absolute;
+  z-index: 2;
+  overflow-x: hidden;
+  border-radius: 10px 0 0 10px;
+  background: linear-gradient(
+      0deg,
+      rgb(255 255 255 / 2%) 0%,
+      rgb(255 255 255 / 2%) 100%
+    ),
+    rgb(19 19 21 / 60%);
+  box-shadow: -10px 10px 100px 0 rgb(0 0 0 / 40%);
+  backdrop-filter: blur(50px);
+}
+
+/* Top drawer */
+
+.drawer_container.top {
+  align-items: flex-start;
+}
+
+.drawer_container.top .drawer_content {
+  width: 100%;
+  transform: translateY(-100%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.drawer_container.top.open .drawer_content {
+  transform: translateY(0);
+}
+
+.drawer_container.top.closed .drawer_content {
+  transform: translateY(-100%);
+}
+
+/* Bottom drawer */
+
+.drawer_container.bottom {
+  align-items: flex-end;
+}
+
+.drawer_container.bottom .drawer_content {
+  width: 100%;
+  transform: translateY(100%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.drawer_container.bottom.open .drawer_content {
+  transform: translateY(0);
+}
+
+.drawer_container.bottom.closed .drawer_content {
+  transform: translateY(100%);
+}
+
+/* Left drawer */
+
+.drawer_container.left {
+  justify-content: flex-start;
+}
+
+.drawer_container.left .drawer_content {
+  height: 100%;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.drawer_container.left.open .drawer_content {
+  transform: translateX(0);
+}
+
+.drawer_container.left.closed .drawer_content {
+  transform: translateX(-100%);
+}
+
+/* Right drawer */
+
+.drawer_container.right {
+  justify-content: flex-end;
+}
+
+.drawer_container.right .drawer_content {
+  height: 100%;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.drawer_container.right.open .drawer_content {
+  transform: translateX(0);
+}
+
+.drawer_container.right.closed .drawer_content {
+  transform: translateX(100%);
+}
+
+.word_break {
+  word-break: break-word;
+}

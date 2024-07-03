@@ -1,0 +1,250 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Proxima Nova';
+  src: url('/fonts/proxima-nova-2/Mark-Simonson-Proxima-Nova-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Proxima Nova';
+  src: url('/fonts/proxima-nova-2/Mark-Simonson-Proxima-Nova-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;     /* Firefox */
+}
+
+:root {
+  --foreground-rgb: #fff;
+  --background-color: #000;
+  --secondary-color: #888;
+  --text-color: #fff;
+  --error-color: #FF3E2D;
+  --layout-bg-color: #131315;
+  --landing-page-gradient-color: linear-gradient(
+    180deg,
+    rgb(123 61 235 / 40%) 16.5%,
+    rgb(255 255 255 / 40%) 100%
+  );
+  --sidebar-item-selected: rgb(255 255 255 / 12%);
+  --primary-button-bg-color: #fff;
+  --primary-button-fg-color: #000;
+  --secondary-button-bg-color: rgb(255 255 255 / 8%);
+  --secondary-button-fg-color: #fff;
+  --white-opacity-2: rgb(255 255 255 / 2%);
+  --white-opacity-4: rgb(255 255 255 / 4%);
+  --white-opacity-8: rgb(255 255 255 / 8%);
+  --white-opacity-12: rgb(255 255 255 / 12%);
+  --white-opacity-20: rgb(255 255 255 / 20%);
+  --white-opacity-60: rgb(255 255 255 / 60%);
+  --color-666: #666;
+  --project-bg-color: rgb(0 0 0 / 24%);
+  --selected-image-border-color: rgb(255 255 255 / 80%);
+  --github-button-border-color: #d1d5da;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: var(--background-color);
+  font-family: 'Proxima Nova', sans-serif;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  width: 100vw;
+}
+
+.main_content {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  background-color: var(--layout-bg-color);
+}
+
+.content {
+  border-radius: 8px 0 0;
+  flex: 1;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.proxima_nova {
+  font-family: 'Proxima Nova', sans-serif;
+}
+
+.space_mono {
+  font-family: 'Space Mono', sans-serif;
+}
+
+.public_sans {
+  font-family: 'Public Sans', sans-serif;
+}
+
+.secondary_color {
+  color: var(--secondary-color);
+}
+
+.color_666 {
+  color: var(--color-666);
+}
+
+.primary_medium {
+  display: flex;
+  flex-direction: row;
+  height: 34px;
+  gap: 4px;
+  border-radius: 8px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  background: var(--primary-button-bg-color);
+  color: var(--primary-button-fg-color);
+  font-family: 'Proxima Nova', sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  cursor: pointer;
+}
+
+.primary_medium:disabled {
+  cursor: not-allowed;
+}
+
+.secondary_medium,
+.secondary_small {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  border-radius: 8px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  background: var(--secondary-button-bg-color);
+  color: var(--secondary-button-fg-color);
+  font-family: 'Proxima Nova', sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.secondary_medium {
+  height: 34px;
+}
+
+.secondary_small {
+  height: 28px;
+  padding: 6px;
+}
+
+.input_medium,
+.textarea_medium,
+.textarea_large {
+  border-radius: 8px;
+  border: 1px solid var(--white-opacity-8);
+  display: flex;
+  padding: 8px 12px;
+  align-items: flex-start;
+  gap: 8px;
+  align-self: stretch;
+  color: #fff;
+  font-family: 'Proxima Nova', sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  background: var(--white-opacity-4);
+}
+
+.input_medium::placeholder,
+.textarea_medium::placeholder,
+.textarea_large::placeholder {
+  font-weight: 400;
+  color: var(--white-opacity-20);
+}
+
+.textarea_medium {
+  height: 72px;
+  resize: none;
+}
+
+.textarea_large {
+  height: 142px;
+  resize: none;
+}
+
+.bg-custom-dropdown {
+  background-color: var(--layout-bg-color);
+  color: white;
+}
+
+.card_container {
+  border-radius: 8px;
+  border: 1px solid var(--white-opacity-8);
+}
+
+.task_container, .task_container_skeleton {
+  display: flex;
+  padding: 8px;
+  flex-direction: column;
+  border-radius: 8px;
+  background-color: var(--white-opacity-12);
+}
+
+.task_container {
+  align-items: flex-start;
+  align-self: stretch;
+}
+
+.task_number_tag {
+  display: flex;
+  padding: 0 3px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 12%);
+  color: #fff;
+  font-family: 'Proxima Nova', sans-serif;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.margin-view-overlays, .monaco-editor-background, .diffViewport {
+  background-color: black !important;
+}
+
+.syntax-highlighter {
+  font-family: 'Space Mono', sans-serif;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.custom-skeleton {
+  animation: pulse 1.5s ease-in-out infinite;
+}

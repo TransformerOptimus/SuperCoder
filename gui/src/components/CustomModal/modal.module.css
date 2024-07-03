@@ -1,0 +1,65 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgb(0 0 0 / 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  transform: translateY(-50px);
+  border-radius: 10px;
+  background: linear-gradient(
+      0deg,
+      rgb(255 255 255 / 6%) 0%,
+      rgb(255 255 255 / 6%) 100%
+    ),
+    rgb(0 0 0 / 60%);
+  box-shadow: -10px 10px 100px 0 rgb(0 0 0 / 40%);
+  backdrop-filter: blur(50px);
+}
+
+.modal_enter {
+  transform: translateY(-50px);
+  opacity: 0;
+}
+
+.modal_enter_active {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.modal_exit {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.modal_exit_active {
+  transform: translateY(-50px);
+  opacity: 0;
+}
+
+.modal_header {
+  color: #fff;
+  font-style: normal;
+  line-height: normal;
+  border-bottom: 1px solid var(--white-opacity-8);
+}
+
+.modal_body {
+  max-height: 60vh;
+  overflow-y: scroll;
+}
+
+.modal_footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  border-top: 1px solid var(--white-opacity-8);
+}

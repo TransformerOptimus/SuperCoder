@@ -1,0 +1,15 @@
+.number_tag {
+    color: #FFF;
+    font-family: "Proxima Nova", sans-serif;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+    border-radius: 4px;
+    background: var(--white-opacity-12);
+    display: flex;
+    padding: 0 3px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+}

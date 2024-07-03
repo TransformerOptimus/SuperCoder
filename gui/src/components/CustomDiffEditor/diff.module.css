@@ -1,0 +1,29 @@
+.diff_container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: stretch;
+  border-radius: 8px;
+  border: 1px solid var(--white-opacity-8);
+  margin-bottom: 20px;
+}
+
+.diff_header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 10px;
+  background: var(--white-opacity-8);
+  color: #fff;
+  width: 100%;
+  font-family: 'Space Mono', sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.border_radius_top {
+  border-radius: 7px 7px 0 0;
+}

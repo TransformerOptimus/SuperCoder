@@ -1,0 +1,38 @@
+.github_icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff;
+  color: #000;
+  font-family: 'Public Sans', sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  border: 1px solid var(--github-button-border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  gap: 8px;
+  height: 38px;
+}
+
+.bg_color {
+  border-radius: 10px;
+  background: var(--layout-bg-color);
+  backdrop-filter: blur(50px);
+}
+
+.card_container {
+  border-radius: 8px;
+  background: var(--white-opacity-4);
+}
+
+.gradient_effect {
+  border-radius: 424px;
+  background: var(--landing-page-gradient-color);
+  filter: blur(300px);
+  width: 300px;
+  height: 160px;
+}

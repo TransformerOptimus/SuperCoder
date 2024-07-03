@@ -1,0 +1,11 @@
+.image_option_selected {
+  border-radius: 12px;
+  border: 2.296px solid var(--selected-image-border-color);
+  cursor: pointer;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.image_option {
+  opacity: 0.4;
+  transition: opacity 0.3s ease-in-out;
+}

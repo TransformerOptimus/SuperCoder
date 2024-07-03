@@ -1,0 +1,62 @@
+.primary_medium,
+.secondary_medium,
+.input_error {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    align-items: flex-start;
+    align-self: stretch;
+}
+
+.primary_medium {
+    border: 1px solid var(--white-opacity-8);
+    background: var(--white-opacity-4);
+    padding: 8px 12px;
+}
+
+.primary_medium_field {
+    background: transparent;
+    color: var(--foreground-rgb);
+    font-family: 'Proxima Nova', sans-serif;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+}
+
+.primary_medium_field::placeholder {
+    font-weight: 400;
+    color: var(--white-opacity-20);
+}
+
+.secondary_medium {
+    border: 1px solid rgb(255 255 255 / 8%);
+    background: var(--primary-button-bg-color);
+    padding: 5px 8px;
+}
+
+.secondary_medium_field {
+    background: var(--primary-button-bg-color);
+    color: var(--primary-button-fg-color);
+    font-family: 'Proxima Nova', sans-serif;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+}
+
+.input_error {
+    border: 1px solid var(--error-color);
+}
+
+.error_message {
+    color: var(--error-color);
+    font-family: "Proxima Nova", sans-serif;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 14px;
+    margin-top: 4px;
+}

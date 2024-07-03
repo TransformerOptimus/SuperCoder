@@ -1,0 +1,15 @@
+.project_content {
+  background-color: var(--project-bg-color);
+  border-radius: 8px 0 0;
+  flex: 1;
+}
+
+.project_container {
+  background-color: var(--white-opacity-2);
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  height: 140px;
+  justify-content: space-between;
+  cursor: pointer;
+}

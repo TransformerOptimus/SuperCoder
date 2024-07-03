@@ -1,0 +1,44 @@
+.navbar {
+  background-color: var(--layout-bg-color);
+  color: white;
+  height: 50px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8px;
+}
+
+.sidebar {
+  background-color: var(--layout-bg-color);
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar_item,
+.sidebar_item_selected {
+  border-radius: 8px;
+  display: flex;
+  padding: 8px 10px;
+  gap: 4px;
+  align-self: stretch;
+  cursor: pointer;
+}
+
+.sidebar_item_selected {
+  background: var(--sidebar-item-selected);
+}
+
+.initial_circle {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  padding: 0 7px;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  border-radius: 50px;
+  background: rgb(255 255 255 / 20%);
+}

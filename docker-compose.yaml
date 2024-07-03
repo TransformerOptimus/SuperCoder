@@ -1,0 +1,202 @@
+services:
+  server:
+    hostname: server
+    restart: always
+    container_name: server
+    entrypoint: ["/startup.sh"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server-development
+    environment:
+      AI_DEVELOPER_DB_HOST: pg
+      AI_DEVELOPER_DB_USER: postgres
+      AI_DEVELOPER_DB_PASSWORD: postgres
+      AI_DEVELOPER_REDIS_HOST: redis
+      AI_DEVELOPER_REDIS_PORT: 6379
+      AI_DEVELOPER_REDIS_DB: 0
+      AI_DEVELOPER_OPENAI_API_KEY: ${AI_DEVELOPER_OPENAI_API_KEY}
+      AI_DEVELOPER_GITNESS_TOKEN: ${AI_DEVELOPER_GITNESS_TOKEN}
+      AI_DEVELOPER_GITNESS_URL: ${AI_DEVELOPER_GITNESS_URL}
+      AI_DEVELOPER_GITNESS_USER: ${AI_DEVELOPER_GITNESS_USER}
+      AI_DEVELOPER_GITNESS_HOST: ${AI_DEVELOPER_GITNESS_HOST}
+      AI_DEVELOPER_GITNESS_PASSWORD: ${GITNESS_PRINCIPAL_ADMIN_PASSWORD:-admin}
+      AI_DEVELOPER_WORKSPACE_SERVICE_ENDPOINT: ${AI_DEVELOPER_WORKSPACE_SERVICE_ENDPOINT}
+      AI_DEVELOPER_APP_URL: ${AI_DEVELOPER_APP_URL}
+      AI_DEVELOPER_GITHUB_CLIENT_SECRET: ${AI_DEVELOPER_GITHUB_CLIENT_SECRET}
+      AI_DEVELOPER_GITHUB_CLIENT_ID: ${AI_DEVELOPER_GITHUB_CLIENT_ID}
+      NEW_RELIC_ENABLED: false
+    volumes:
+      - workspaces:/workspaces
+      - './startup.sh:/startup.sh'
+    depends_on:
+      - pg
+      - redis
+      - worker
+    ports:
+      - 8080:8080
+
+  worker:
+    hostname: worker
+    restart: always
+    container_name: worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker-development
+    environment:
+      AI_DEVELOPER_DB_HOST: pg
+      AI_DEVELOPER_DB_USER: postgres
+      AI_DEVELOPER_DB_PASSWORD: postgres
+      AI_DEVELOPER_REDIS_HOST: redis
+      AI_DEVELOPER_REDIS_PORT: 6379
+      AI_DEVELOPER_REDIS_DB: 0
+      AI_DEVELOPER_GITNESS_TOKEN: ${AI_DEVELOPER_GITNESS_TOKEN}
+      AI_DEVELOPER_GITNESS_URL: ${AI_DEVELOPER_GITNESS_URL}
+      AI_DEVELOPER_GITNESS_USER: ${AI_DEVELOPER_GITNESS_USER}
+      AI_DEVELOPER_OPENAI_API_KEY: ${AI_DEVELOPER_OPENAI_API_KEY}
+      AI_DEVELOPER_GITNESS_HOST: ${AI_DEVELOPER_GITNESS_HOST}
+      AI_DEVELOPER_WORKSPACE_WORKING_DIR: ${AI_DEVELOPER_WORKSPACE_WORKING_DIR}
+      AI_DEVELOPER_WORKSPACE_TEMPLATE_DIR: ${AI_DEVELOPER_WORKSPACE_TEMPLATE_DIR}
+      AI_DEVELOPER_WORKSPACE_SERVICE_ENDPOINT: ${AI_DEVELOPER_WORKSPACE_SERVICE_ENDPOINT}
+      AI_DEVELOPER_APP_URL: ${AI_DEVELOPER_APP_URL}
+      AI_DEVELOPER_GITHUB_CLIENT_SECRET: ${AI_DEVELOPER_GITHUB_CLIENT_SECRET}
+      AI_DEVELOPER_GITHUB_CLIENT_ID: ${AI_DEVELOPER_GITHUB_CLIENT_ID}
+      NEW_RELIC_ENABLED: false
+    volumes:
+      - workspaces:/workspaces
+
+  migrations:
+    hostname: migrations
+    container_name: migrations
+    depends_on:
+      - pg
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrations
+    environment:
+      AI_DEVELOPER_DB_HOST: pg
+      AI_DEVELOPER_DB_USER: postgres
+      AI_DEVELOPER_DB_PASSWORD: postgres
+      AI_DEVELOPER_ENV: development
+    volumes:
+      - workspaces:/workspaces
+
+  executor:
+    restart: no
+    hostname: executor
+    container_name: executor
+    image: python-executor:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: executor
+
+  ws:
+    hostname: ws
+    restart: always
+    container_name: ws
+    build:
+      context: ./workspace-service
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      WORKSPACES_GITNESS_USER: ${WORKSPACES_GITNESS_USER}
+      WORKSPACES_GITNESS_TOKEN: ${WORKSPACES_GITNESS_TOKEN}
+      NEW_RELIC_ENABLED: false
+    volumes:
+      - workspaces:/workspaces
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 8082:8080
+
+  pg:
+    hostname: pg
+    restart: always
+    container_name: pg
+    image: "postgres:latest"
+    volumes:
+      - pg_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "ai-developer"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  nginx:
+    hostname: nginx
+    restart: always
+    container_name: nginx
+    image: "nginx:latest"
+    ports:
+      - "8083:80"
+    volumes:
+      - workspaces:/workspaces
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - server
+      - frontend
+
+  redis:
+    hostname: redis
+    restart: always
+    container_name: redis
+    image: "redis:latest"
+    volumes:
+      - redis_data:/data
+
+  python-ide:
+    build:
+      context: ide/python
+      dockerfile: Dockerfile
+    container_name: supercoder-python-ide
+    hostname: supercoder-python-ide
+    restart: always
+    working_dir: /workspaces
+    ports:
+      - 8081:8080
+      - 5000:5000
+    volumes:
+      - workspaces:/workspaces
+  frontend:
+    container_name: frontend
+    build:
+      context: ./gui
+      dockerfile: Dockerfile
+    ports:
+      - 3000:3000
+    volumes:
+      - ./gui:/app
+      - /app/node_modules/
+      - /app/.next/
+    depends_on:
+      - server
+    environment:
+      - NEXT_PUBLIC_DOCKER=true
+    restart: always
+    command: [ "npm", "run", "dev" ]
+
+  gitness:
+    container_name: gitness
+    image: harness/gitness
+    volumes:
+      - gitness:/data
+    restart: always
+    environment:
+      - GITNESS_PRINCIPAL_ADMIN_PASSWORD=${GITNESS_PRINCIPAL_ADMIN_PASSWORD:-admin}
+      - GITNESS_PRINCIPAL_ADMIN_EMAIL=${GITNESS_PRINCIPAL_ADMIN_USER:-admin}
+    ports:
+      - 8085:3000
+
+volumes:
+  pg_data:
+  redis_data:
+  workspaces:
+  gitness:

@@ -1,0 +1,5 @@
+-- +migrate Up
+ALTER TABLE projects ADD COLUMN hash_id VARCHAR(100) NOT NULL UNIQUE;
+ALTER TABLE projects ADD COLUMN url VARCHAR(100);
+ALTER TABLE projects ADD COLUMN frontend_url VARCHAR(100);
+ALTER TABLE projects ADD COLUMN backend_url VARCHAR(100);

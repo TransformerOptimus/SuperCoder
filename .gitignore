@@ -1,0 +1,35 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below if you use vendoring)
+vendor/
+
+# Go workspace file
+go.work
+
+# IDE and editor directories and files
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+
+# Mac OS specific
+.DS_Store
+
+# Windows specific
+Thumbs.db
+
+#workspace virtual environment
+workspace/venv/
+.env
+.envrc
+gui/.husky/pre-commit

@@ -1,0 +1,26 @@
+{
+  "security.workspace.trust.startupPrompt": "never",
+  "security.workspace.trust.enabled": false,
+  "security.workspace.trust.banner": "never",
+  "workbench.activityBar.location": "hidden",
+  "workbench.colorTheme": "Default Dark Modern",
+  "workbench.statusBar.visible": false,
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.fontWeight": "normal",
+  "terminal.integrated.hideOnStartup": "never",
+  "workbench.startupEditor": "terminal",
+  "workbench.colorCustomizations": {
+    "sideBar.background": "#131315",
+    "sideBarSectionHeader.background": "#131315",
+    "editor.background": "#151518",
+    "activityBar.activeBorder": "#7c87e6",
+    "activityBar.background": "#151518",
+    "menu.background": "#131315",
+    "titleBar.activeBackground": "#131315",
+    "terminal.background": "#131315",
+    "tab.activeBorderTop": "#7c87e6",
+    "tab.activeBackground": "#151518",
+    "tab.inactiveBackground": "#131315",
+    "panelTitle.activeBorder": "#7c87e6"
+  }
+}

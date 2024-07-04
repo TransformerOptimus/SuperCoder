@@ -1,0 +1,31 @@
+pipeline {
+    agent {
+        kubernetes {
+            inheritFrom 'default'
+            defaultContainer 'docker'
+        }
+    }
+    stages {
+        stage('Build & Push') {
+            steps {
+                script {
+                    dockerBuildX(
+                            repository = "workspace-service",
+                            customArgs = "",
+                            path = "./workspace-service",
+                            dockerFile = "./workspace-service/Dockerfile",
+                            accountId = "767397669303",
+                            region = "us-west-2",
+                    )
+                }
+            }
+        }
+
+        stage('Update Tag') {
+            steps {
+                updateTag("supercoder/workspace-service", "${env.GIT_COMMIT}")
+            }
+        }
+    }
+
+}

@@ -1,0 +1,31 @@
+pipeline {
+    agent {
+        kubernetes {
+            inheritFrom 'default'
+            defaultContainer 'docker'
+        }
+    }
+    stages {
+        stage('Build & Push') {
+                    steps {
+                        script {
+                            dockerBuildX(
+                                    repository = "ai-developer-frontend",
+                                    customArgs = " ",
+                                    path = "./gui",
+                                    dockerFile = "./gui/prod.Dockerfile",
+                                    accountId = "767397669303",
+                                    region = "us-west-2",
+                            )
+                        }
+                    }
+        }
+
+
+        stage('Update Tag') {
+            steps {
+                updateTag("supercoder/frontend", "${env.GIT_COMMIT}")
+            }
+        }
+    }
+}

@@ -9,13 +9,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/goccy/go-json"
-	"gorm.io/gorm"
 	"strings"
 
-	"ai-developer/app/client/workspace"
+	"github.com/goccy/go-json"
+	"gorm.io/gorm"
+
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
+
+	"ai-developer/app/client/workspace"
 )
 
 type CreateExecutionJobTaskHandler struct {
@@ -149,6 +151,7 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	createJobRequest.WithIsReExecution(payload.ReExecute)
 	createJobRequest.WithExecutionId(int64(execution.ID))
 	createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.Framework))
+
 	job, err := h.workspaceServiceClient.CreateJob(createJobRequest)
 	if err != nil {
 		tx.Rollback()

@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import Loader from '@/components/CustomLoaders/Loader';
@@ -28,12 +29,29 @@ export default function Code() {
     };
 
     const checkIframeLoaded = () => {
-      if (!isIframeLoaded && iframeRef.current) {
-        iframeRef.current.src = projectURL;
+      if (iframeRef.current) {
+        try {
+          const iframeDocument =
+            iframeRef.current.contentDocument ||
+            iframeRef.current.contentWindow?.document;
+          if (iframeDocument && iframeDocument.readyState === 'complete') {
+            setIsIframeLoaded(true);
+          } else {
+            setIsIframeLoaded(false);
+            iframeRef.current.src = projectURL;
+          }
+        } catch (e) {
+          setIsIframeLoaded(false);
+          iframeRef.current.src = projectURL;
+        }
       }
     };
 
-    const intervalId = setInterval(checkIframeLoaded, 10000);
+    const intervalId = setInterval(() => {
+      if (!isIframeLoaded) {
+        checkIframeLoaded();
+      }
+    }, 10000);
 
     if (iframeRef.current) {
       iframeRef.current.addEventListener('load', handleIframeLoad);

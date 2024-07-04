@@ -3,7 +3,7 @@ services:
     hostname: server
     restart: always
     container_name: server
-    entrypoint: ["/startup.sh"]
+    entrypoint: [ "/startup.sh" ]
     build:
       context: .
       dockerfile: Dockerfile
@@ -85,15 +85,25 @@ services:
     volumes:
       - workspaces:/workspaces
 
-  executor:
+  python-executor:
     restart: no
-    hostname: executor
-    container_name: executor
+    hostname: python-executor
+    container_name: python-executor
     image: python-executor:latest
     build:
       context: .
       dockerfile: Dockerfile
-      target: executor
+      target: python-executor
+
+  node-executor:
+    restart: no
+    hostname: node-executor
+    container_name: node-executor
+    image: node-executor:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: node-executor
 
   ws:
     hostname: ws

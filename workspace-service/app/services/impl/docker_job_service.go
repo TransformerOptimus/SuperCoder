@@ -52,7 +52,7 @@ func (js DockerJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Cre
 		},
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
-				"ai-developer_default": {},
+				js.config.DockerNetwork(): {},
 			},
 		},
 		nil,

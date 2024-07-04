@@ -10,6 +10,10 @@ func (c *WorkspaceJobs) ContainerImage() string {
 	return c.config.String("jobs.image")
 }
 
+func (c *WorkspaceJobs) DockerNetwork() string {
+	return c.config.String("jobs.docker.network")
+}
+
 func (c *WorkspaceJobs) LocalContainerImage() string {
 	return c.config.String("jobs.local.image")
 }

@@ -2,6 +2,7 @@ package impl
 
 import (
 	"ai-developer/app/config"
+	"ai-developer/app/constants"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
 	"ai-developer/app/utils"
@@ -36,7 +37,12 @@ func (e GitPushExecutor) Execute(step steps.GitPushStep) error {
 	}
 	organisation, err := e.organisationService.GetOrganisationByID(step.Project.OrganisationID)
 	spaceOrProjectName := e.gitnessService.GetSpaceOrProjectName(organisation)
-	origin := fmt.Sprintf("https://%s:%s@%s/git/%s/%s.git", config.GitnessUser(), config.GitnessToken(),
+	httpPrefix := "https"
+
+	if config.AppEnv() == constants.Development {
+		httpPrefix = "http"
+	}
+	origin := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(),
 		config.GitnessHost(), spaceOrProjectName, step.Project.Name)
 	branch := step.Execution.BranchName
 	projectDir := config.WorkspaceWorkingDirectory() + "/" + step.Project.HashID

@@ -205,7 +205,7 @@ func (openAICodeGenerator OpenAICodeGenerator) Execute(step steps.GenerateCodeSt
 	}
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API_KEY_________", apiKey)
-	
+
 	framework := project.Framework
 	fmt.Println("_________FRAMEWORK_________", framework)
 	// Generate code using the final instruction

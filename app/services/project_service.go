@@ -109,7 +109,13 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 		s.logger.Error("Error creating repository", zap.Error(err))
 		return nil, err
 	}
-	remoteGitURL := fmt.Sprintf("https://%s:%s@%s/git/%s/%s.git", config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
+	httpPrefix := "https"
+
+	if config.AppEnv() == constants.Development {
+		httpPrefix = "http"
+	}
+
+	remoteGitURL := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
 	backendService := requestData.Framework
 	//Making Call to Workspace Service to create workspace on project level
 	_, err = s.workspaceServiceClient.CreateWorkspace(
@@ -117,7 +123,9 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 			WorkspaceId:     hashID,
 			BackendTemplate: &backendService,
 			//FrontendTemplate: &backendService,
-			RemoteURL: remoteGitURL,
+			RemoteURL:       remoteGitURL,
+			GitnessUserName: config.GitnessUser(),
+			GitnessToken:    config.GitnessToken(),
 		},
 	)
 
@@ -145,14 +153,21 @@ func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate s
 
 	organisation, err := s.organisationRepository.GetOrganisationByID(uint(int(project.OrganisationID)))
 	spaceOrProjectName := s.gitnessService.GetSpaceOrProjectName(organisation)
-	remoteGitURL := fmt.Sprintf("https://%s:%s@%s/git/%s/%s.git", config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
+	httpPrefix := "https"
+
+	if config.AppEnv() == constants.Development {
+		httpPrefix = "http"
+	}
+	remoteGitURL := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
 	s.logger.Info("Active count is less than 1, creating workspace....")
 	_, err = s.workspaceServiceClient.CreateWorkspace(
 		&request.CreateWorkspaceRequest{
 			WorkspaceId:     project.HashID,
 			BackendTemplate: &backendTemplate,
 			//FrontendTemplate: &backendService,
-			RemoteURL: remoteGitURL,
+			RemoteURL:       remoteGitURL,
+			GitnessUserName: config.GitnessUser(),
+			GitnessToken:    config.GitnessToken(),
 		})
 	if err != nil {
 		s.logger.Error("Failed to create workspace", zap.Error(err))

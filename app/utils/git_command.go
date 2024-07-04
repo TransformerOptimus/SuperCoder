@@ -2,6 +2,7 @@ package utils
 
 import (
 	"ai-developer/app/config"
+	"ai-developer/app/constants"
 	"ai-developer/app/models"
 	"fmt"
 	"os/exec"
@@ -106,7 +107,12 @@ func PullBranch(workingDir string, origin string, branchName string) error {
 
 func PullOriginBranch(workingDir string, project *models.Project, GitnessSpaceOrProjectName string) error {
 	branchName := "main"
-	origin := fmt.Sprintf("https://%s:%s@%s/git/%s/%s.git", config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), GitnessSpaceOrProjectName, project.Name)
+	httpPrefix := "https"
+
+	if config.AppEnv() == constants.Development {
+		httpPrefix = "http"
+	}
+	origin := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), GitnessSpaceOrProjectName, project.Name)
 	fmt.Printf("User: %s, Token: %s, Host: %s, Space/Project: %s, Project: %s\n", config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), GitnessSpaceOrProjectName, project.Name)
 	fmt.Printf("Origin: %s\n", origin)
 	err := PullBranch(workingDir, origin, branchName)

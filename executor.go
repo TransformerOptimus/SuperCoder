@@ -16,14 +16,14 @@ import (
 	"ai-developer/app/workflow_executors/step_executors/steps"
 	"context"
 	"fmt"
-	"log"
-	"net/http"
-	"os"
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"log"
+	"net/http"
+	"os"
 )
 
 func main() {
@@ -329,7 +329,7 @@ func main() {
 			return err
 		}
 		log.Println(fmt.Sprintf("Going to execute AI Developer Workflow Execution For %s", template))
-		if template=="FLASK"{
+		if template == "FLASK" {
 			err = executor.Execute(
 				workflow_executors.FlaskWorkflowConfig,
 				&workflow_executors.WorkflowExecutionArgs{
@@ -341,7 +341,7 @@ func main() {
 				},
 			)
 			return err
-		} else if template=="DJANGO" {
+		} else if template == "DJANGO" {
 			err = executor.Execute(
 				workflow_executors.DjangoWorkflowConfig,
 				&workflow_executors.WorkflowExecutionArgs{
@@ -355,7 +355,7 @@ func main() {
 			return err
 		}
 		fmt.Println("_____Invalid template_____", template)
-		return  nil
+		return nil
 	})
 
 	if err != nil {

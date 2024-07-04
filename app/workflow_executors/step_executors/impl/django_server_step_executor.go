@@ -147,7 +147,7 @@ func (e *DjangoServerStartTestExecutor) serverRunTest(step steps.ServerStartTest
 	}
 
 	server_status, err_msg, response_body := e.checkServerStatus(serverURL, timeout)
-	if server_status{
+	if server_status {
 		fmt.Println("Server is running!")
 		if serverProcess != nil && serverProcess.Process != nil {
 			err := serverProcess.Process.Kill()
@@ -160,99 +160,98 @@ func (e *DjangoServerStartTestExecutor) serverRunTest(step steps.ServerStartTest
 		return "Passed", ""
 	} else {
 		e.cleanupPort(5000)
-		return "Failed", err_msg+string(response_body)
+		return "Failed", err_msg + string(response_body)
 	}
 }
 
 func (e *DjangoServerStartTestExecutor) startDjangoServer(appPath string, workDir string) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer, error) {
-    venvPath := filepath.Join(workDir, ".venv") // Assuming the virtual environment directory is named .venv
-    venvBin := filepath.Join(venvPath, "bin")
-    pythonPath := filepath.Join(venvBin, "python") // This should point to the Python executable in the virtual environment
+	venvPath := filepath.Join(workDir, ".venv") // Assuming the virtual environment directory is named .venv
+	venvBin := filepath.Join(venvPath, "bin")
+	pythonPath := filepath.Join(venvBin, "python") // This should point to the Python executable in the virtual environment
 
-    // Create the PATH environment variable to use the virtual environment.
-    newPath := fmt.Sprintf("PATH=%s:%s", venvBin, os.Getenv("PATH"))
+	// Create the PATH environment variable to use the virtual environment.
+	newPath := fmt.Sprintf("PATH=%s:%s", venvBin, os.Getenv("PATH"))
 
-    var stderrBuf bytes.Buffer
-    var stdOutputBuf bytes.Buffer
-    fmt.Printf("Starting Django server using command: %s %s\n", pythonPath, appPath)
+	var stderrBuf bytes.Buffer
+	var stdOutputBuf bytes.Buffer
+	fmt.Printf("Starting Django server using command: %s %s\n", pythonPath, appPath)
 
-    stdout := e.CheckPythonVersion(workDir, newPath)
-    fmt.Println("Which Python Output: ", string(stdout))
+	stdout := e.CheckPythonVersion(workDir, newPath)
+	fmt.Println("Which Python Output: ", string(stdout))
 
-    cmd, err := RunDjangoServer(appPath, workDir, pythonPath, newPath, &stdOutputBuf, &stderrBuf)
-    fmt.Println("Error: ", err)
-    if err != nil {
-        errorMessage := fmt.Sprintf("Error starting Django server: %s\n", stderrBuf.String())
-        fmt.Print(errorMessage)
-        return nil, nil, &stderrBuf, err
-    }
-    fmt.Println("Here waiting for server to start...")
-    time.Sleep(20 * time.Second)
-    fmt.Println("Here after waiting for server to start...")
+	cmd, err := RunDjangoServer(appPath, workDir, pythonPath, newPath, &stdOutputBuf, &stderrBuf)
+	fmt.Println("Error: ", err)
+	if err != nil {
+		errorMessage := fmt.Sprintf("Error starting Django server: %s\n", stderrBuf.String())
+		fmt.Print(errorMessage)
+		return nil, nil, &stderrBuf, err
+	}
+	fmt.Println("Here waiting for server to start...")
+	time.Sleep(20 * time.Second)
+	fmt.Println("Here after waiting for server to start...")
 
-    fmt.Println("STDOUT: ______________ ")
-    fmt.Println(stdOutputBuf.String())
-    fmt.Println("STDERR: __________ ")
-    fmt.Println(stderrBuf.String())
-    fmt.Println("Cmd.Err : ", cmd.Err)
-    return cmd, &stdOutputBuf, &stderrBuf, nil
+	fmt.Println("STDOUT: ______________ ")
+	fmt.Println(stdOutputBuf.String())
+	fmt.Println("STDERR: __________ ")
+	fmt.Println(stderrBuf.String())
+	fmt.Println("Cmd.Err : ", cmd.Err)
+	return cmd, &stdOutputBuf, &stderrBuf, nil
 }
 
 func RunDjangoServer(appPath string, workDir string, pythonPath string, newPath string, stdOutputBuf *bytes.Buffer, stderrBuf *bytes.Buffer) (*exec.Cmd, error) {
-    commands := []string{
-        fmt.Sprintf("%s %s makemigrations", pythonPath, appPath),
-        fmt.Sprintf("%s %s migrate", pythonPath, appPath),
-        fmt.Sprintf("%s %s runserver 0.0.0.0:5000", pythonPath, appPath),
-    }
+	commands := []string{
+		fmt.Sprintf("%s %s makemigrations", pythonPath, appPath),
+		fmt.Sprintf("%s %s migrate", pythonPath, appPath),
+		fmt.Sprintf("%s %s runserver 0.0.0.0:5000", pythonPath, appPath),
+	}
 
-    for i, command := range commands {
-        cmd := exec.Command("sh", "-c", command)
-        cmd.Dir = workDir
-        cmd.Env = append(os.Environ(), newPath)
-        
-        if i < len(commands)-1 { // For the first two commands
-            var combinedOutput bytes.Buffer
-            cmd.Stdout = &combinedOutput
-            cmd.Stderr = &combinedOutput
-            fmt.Printf("Running: %s\n", command)
-            err := cmd.Start()
-            if err != nil {
-                fmt.Printf("failed to start command: %v\n", err)
-                return cmd, err
-            }
-            err = cmd.Wait()
-            if err != nil {
-                fmt.Printf("command failed: %v\n", err)
-                stderrBuf.Write(combinedOutput.Bytes()) // Capture the error output
-                return cmd, err
-            }
-            stdOutputBuf.Write(combinedOutput.Bytes())
-        } else { // For the last command to run the server
-            cmd.Stdout = stdOutputBuf
-            cmd.Stderr = stderrBuf
-            fmt.Println("Starting Django server...")
-            err := cmd.Start()
-            if err != nil {
-                fmt.Printf("failed to start Django server: %v\n", err)
-                return cmd, err
-            }
-            return cmd, nil
-        }
-    }
-    return nil, nil
+	for i, command := range commands {
+		cmd := exec.Command("sh", "-c", command)
+		cmd.Dir = workDir
+		cmd.Env = append(os.Environ(), newPath)
+
+		if i < len(commands)-1 { // For the first two commands
+			var combinedOutput bytes.Buffer
+			cmd.Stdout = &combinedOutput
+			cmd.Stderr = &combinedOutput
+			fmt.Printf("Running: %s\n", command)
+			err := cmd.Start()
+			if err != nil {
+				fmt.Printf("failed to start command: %v\n", err)
+				return cmd, err
+			}
+			err = cmd.Wait()
+			if err != nil {
+				fmt.Printf("command failed: %v\n", err)
+				stderrBuf.Write(combinedOutput.Bytes()) // Capture the error output
+				return cmd, err
+			}
+			stdOutputBuf.Write(combinedOutput.Bytes())
+		} else { // For the last command to run the server
+			cmd.Stdout = stdOutputBuf
+			cmd.Stderr = stderrBuf
+			fmt.Println("Starting Django server...")
+			err := cmd.Start()
+			if err != nil {
+				fmt.Printf("failed to start Django server: %v\n", err)
+				return cmd, err
+			}
+			return cmd, nil
+		}
+	}
+	return nil, nil
 }
 
 func (e *DjangoServerStartTestExecutor) cleanupPort(port int) {
-    fmt.Printf("Cleaning up any processes using port %d\n", port)
-    cmd := exec.Command("sh", "-c", fmt.Sprintf("fuser -k %d/tcp", port))
-    err := cmd.Run()
-    if err != nil {
-        fmt.Printf("Error cleaning up port %d: %v\n", port, err)
-    } else {
-        fmt.Printf("Successfully cleaned up port %d\n", port)
-    }
+	fmt.Printf("Cleaning up any processes using port %d\n", port)
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("fuser -k %d/tcp", port))
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("Error cleaning up port %d: %v\n", port, err)
+	} else {
+		fmt.Printf("Successfully cleaned up port %d\n", port)
+	}
 }
-
 
 func (e *DjangoServerStartTestExecutor) CheckPythonVersion(workDir string, newPath string) []byte {
 	// Prepare the command to check the Python path
@@ -271,36 +270,36 @@ func (e *DjangoServerStartTestExecutor) CheckPythonVersion(workDir string, newPa
 
 // checkServerStatus checks if the server is running.
 func (e *DjangoServerStartTestExecutor) checkServerStatus(url string, timeout time.Duration) (bool, string, []byte) {
-    fmt.Println("Checking server status...")
-    client := &http.Client{Timeout: timeout}
-    
-    for start := time.Now(); time.Since(start) < timeout; {
-        resp, err := client.Get(url)
-        fmt.Println("_______________________________________________________")
-        fmt.Println("Response: ", resp)
-        
-        if err != nil {
-            fmt.Println("Error occurred:", err)
-            return false, "Error occurred: " + err.Error(), nil
-        }
-        
-        if resp.StatusCode == http.StatusOK {
-            fmt.Println("Server is running!")
-            return true, "", nil
-        }
-        
-        if resp.Body != nil {
-            defer resp.Body.Close()
-            body, err := io.ReadAll(resp.Body)
-            if err != nil {
-                fmt.Println("Error reading response body:", err)
-                return false, "Error reading response body: " + err.Error(), nil
-            }
-            return false, "Server responded with status code: " + strconv.Itoa(resp.StatusCode), body
-        }
-        time.Sleep(1 * time.Second)
-    }
-    return false, "Request timed out", nil
+	fmt.Println("Checking server status...")
+	client := &http.Client{Timeout: timeout}
+
+	for start := time.Now(); time.Since(start) < timeout; {
+		resp, err := client.Get(url)
+		fmt.Println("_______________________________________________________")
+		fmt.Println("Response: ", resp)
+
+		if err != nil {
+			fmt.Println("Error occurred:", err)
+			return false, "Error occurred: " + err.Error(), nil
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			fmt.Println("Server is running!")
+			return true, "", nil
+		}
+
+		if resp.Body != nil {
+			defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				fmt.Println("Error reading response body:", err)
+				return false, "Error reading response body: " + err.Error(), nil
+			}
+			return false, "Server responded with status code: " + strconv.Itoa(resp.StatusCode), body
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return false, "Request timed out", nil
 }
 
 // executeDependencies executes commands from terminal.txt.

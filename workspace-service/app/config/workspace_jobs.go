@@ -6,16 +6,16 @@ type WorkspaceJobs struct {
 	config *koanf.Koanf
 }
 
-func (c *WorkspaceJobs) ContainerImage() string {
-	return c.config.String("jobs.image")
+func (c *WorkspaceJobs) ContainerImage(imageName string) string {
+	return c.config.String("jobs.images." + imageName)
+}
+
+func (c *WorkspaceJobs) LocalContainerImage(imageName string) string {
+	return c.config.String("jobs.local.images." + imageName)
 }
 
 func (c *WorkspaceJobs) DockerNetwork() string {
 	return c.config.String("jobs.docker.network")
-}
-
-func (c *WorkspaceJobs) LocalContainerImage() string {
-	return c.config.String("jobs.local.image")
 }
 
 func (c *WorkspaceJobs) AutoRemoveJobContainer() bool {

@@ -116,7 +116,7 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 	}
 
 	remoteGitURL := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
-	backendService := "python"
+	backendService := requestData.Framework
 	//Making Call to Workspace Service to create workspace on project level
 	_, err = s.workspaceServiceClient.CreateWorkspace(
 		&request.CreateWorkspaceRequest{

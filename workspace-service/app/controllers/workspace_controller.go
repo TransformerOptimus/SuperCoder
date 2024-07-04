@@ -13,10 +13,7 @@ type WorkspaceController struct {
 }
 
 func (wc *WorkspaceController) CreateWorkspace(c *gin.Context) {
-	python := "python"
-	body := dto.CreateWorkspace{
-		BackendTemplate: &python,
-	}
+	body := dto.CreateWorkspace{}
 	if err := c.BindJSON(&body); err != nil {
 		wc.logger.Error("Failed to bind json", zap.Error(err))
 		c.AbortWithStatusJSON(400, gin.H{

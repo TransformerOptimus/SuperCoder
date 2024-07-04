@@ -5,28 +5,13 @@ import (
 	"ai-developer/app/workflow_executors/step_executors/steps"
 )
 
-var FlaskWorkflowConfig = &WorkflowConfig{
-	WorkflowName: "Flask Workflow",
+var DjangoWorkflowConfig = &WorkflowConfig{
+	WorkflowName: "Django Workflow",
 	StepGraph: &graph.StepGraph{
 		StartingNode: steps.GIT_CREATE_BRANCH_STEP,
 		Nodes: map[steps.StepName]*graph.StepNode{
 			steps.GIT_CREATE_BRANCH_STEP: {
 				Step: &steps.GitMakeBranchStep{},
-				Transitions: map[graph.ExecutionState]*steps.StepName{
-					graph.ExecutionSuccessState: &steps.PACKAGE_INSTALL_STEP,
-					graph.ExecutionErrorState:   nil,
-				},
-			},
-			steps.PACKAGE_INSTALL_STEP: {
-				Step: &steps.PackageInstallStep{},
-				Transitions: map[graph.ExecutionState]*steps.StepName{
-					graph.ExecutionSuccessState: &steps.RESET_DB_STEP,
-					graph.ExecutionErrorState:   nil,
-				},
-			},
-
-			steps.RESET_DB_STEP: {
-				Step: &steps.ResetDBStep{},
 				Transitions: map[graph.ExecutionState]*steps.StepName{
 					graph.ExecutionSuccessState: &steps.CODE_GENERATE_STEP,
 					graph.ExecutionErrorState:   nil,

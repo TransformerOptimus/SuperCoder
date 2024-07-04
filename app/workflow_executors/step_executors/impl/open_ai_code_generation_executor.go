@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-type OpenAIFlaskCodeGenerator struct {
+type OpenAICodeGenerator struct {
 	openAIClient              *llms.OpenAiClient
 	projectService            *services.ProjectService
 	executionStepService      *services.ExecutionStepService
@@ -28,7 +28,7 @@ type OpenAIFlaskCodeGenerator struct {
 	slackAlert                *monitoring.SlackAlert
 }
 
-func NewOpenAIFlaskCodeGenerator(
+func NewOpenAICodeGenerator(
 	openAIClient *llms.OpenAiClient,
 	projectService *services.ProjectService,
 	executionStepService *services.ExecutionStepService,
@@ -38,8 +38,8 @@ func NewOpenAIFlaskCodeGenerator(
 	activityLogService *services.ActivityLogService,
 	llmAPIKeyService *services.LLMAPIKeyService,
 	slackAlert *monitoring.SlackAlert,
-) *OpenAIFlaskCodeGenerator {
-	return &OpenAIFlaskCodeGenerator{
+) *OpenAICodeGenerator {
+	return &OpenAICodeGenerator{
 		openAIClient:              openAIClient,
 		projectService:            projectService,
 		executionStepService:      executionStepService,
@@ -50,15 +50,16 @@ func NewOpenAIFlaskCodeGenerator(
 		llmAPIKeyService:          llmAPIKeyService,
 		slackAlert:                slackAlert,
 	}
+
 }
 
-func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.GenerateCodeStep) error {
+func (openAICodeGenerator OpenAICodeGenerator) Execute(step steps.GenerateCodeStep) error {
 	fmt.Printf("Executing GenerateCodeStep: %s\n", step.StepName())
 	fmt.Printf("Working on project details: %v\n", step.Project)
 	fmt.Printf("Working on pull request ID: %d\n", step.PullRequestID)
 	fmt.Printf("Max loop iterations: %d\n", step.MaxLoopIterations)
 	fmt.Printf("Is re-execution: %v\n", step.Execution.ReExecution)
-	err := openAIFlaskCodeGenerator.activityLogService.CreateActivityLog(
+	err := openAICodeGenerator.activityLogService.CreateActivityLog(
 		step.Execution.ID,
 		step.ExecutionStep.ID,
 		"INFO",
@@ -71,7 +72,7 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 	projectDir := config.WorkspaceWorkingDirectory() + "/" + step.Project.HashID
 	fmt.Println("____________Project Directory: ", projectDir)
 	fmt.Println("___________Checking for Max Retry______________")
-	count, err := openAIFlaskCodeGenerator.executionStepService.CountExecutionStepsOfName(step.Execution.ID, steps.CODE_GENERATE_STEP.String())
+	count, err := openAICodeGenerator.executionStepService.CountExecutionStepsOfName(step.Execution.ID, steps.CODE_GENERATE_STEP.String())
 	if err != nil {
 		fmt.Printf("Error checking max retry for generation: %s\n", err.Error())
 		return err
@@ -80,12 +81,12 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 	if count > step.MaxLoopIterations {
 		fmt.Println("Max retry limit reached for LLM steps")
 		//Update story status to MAX_LOOP_ITERATION_REACHED
-		if err := openAIFlaskCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), "MAX_LOOP_ITERATION_REACHED"); err != nil {
+		if err := openAICodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), "MAX_LOOP_ITERATION_REACHED"); err != nil {
 			fmt.Printf("Error updating story status: %s\n", err.Error())
 			return err
 		}
 		//Update execution status to MAX_LOOP_ITERATION_REACHED
-		if err := openAIFlaskCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, "MAX_LOOP_ITERATION_REACHED"); err != nil {
+		if err := openAICodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, "MAX_LOOP_ITERATION_REACHED"); err != nil {
 			fmt.Printf("Error updating execution step: %s\n", err.Error())
 			return err
 		}
@@ -109,7 +110,7 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 			return err
 		}
 
-		err = openAIFlaskCodeGenerator.activityLogService.CreateActivityLog(
+		err = openAICodeGenerator.activityLogService.CreateActivityLog(
 			step.Execution.ID,
 			step.ExecutionStep.ID,
 			"ERROR",
@@ -120,7 +121,7 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 			return err
 		}
 
-		err = openAIFlaskCodeGenerator.slackAlert.SendAlert(
+		err = openAICodeGenerator.slackAlert.SendAlert(
 			"Max retry limit reached for code generation!",
 			map[string]string{
 				"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
@@ -137,7 +138,7 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 		return fmt.Errorf("max retry limit reached for LLM steps")
 	}
 
-	finalInstructionForGeneration, err := openAIFlaskCodeGenerator.buildFinalInstructionForGeneration(step)
+	finalInstructionForGeneration, err := openAICodeGenerator.buildFinalInstructionForGeneration(step)
 	if err != nil {
 		fmt.Printf("Error building final instruction for generation: %s\n", err.Error())
 		return err
@@ -145,28 +146,24 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 	fmt.Printf("_________Final Instruction for Generation__________: %s\n", finalInstructionForGeneration)
 
 	//extracting api_key from executionId
-	story, err := openAIFlaskCodeGenerator.storyService.GetStoryByExecutionID(step.Execution.ID)
+	story, err := openAICodeGenerator.storyService.GetStoryByExecutionID(step.Execution.ID)
 	if err != nil {
 		fmt.Println("Error getting story by execution ID: ", err)
 	}
 	projectId := story.ProjectID
-	project, err := openAIFlaskCodeGenerator.projectService.GetProjectById(projectId)
+	project, err := openAICodeGenerator.projectService.GetProjectById(projectId)
 	if err != nil {
 		fmt.Println("Error getting project by ID: ", err)
 	}
 	organisationId := project.OrganisationID
-	fmt.Println("_________ORGANISATION ID_________", organisationId)
-	if openAIFlaskCodeGenerator.llmAPIKeyService == nil {
-		fmt.Println("_____NULL_____")
-	}
-	llmAPIKey, err := openAIFlaskCodeGenerator.llmAPIKeyService.GetLLMAPIKeyByModelName(constants.GPT_4O, uint(organisationId))
+	llmAPIKey, err := openAICodeGenerator.llmAPIKeyService.GetLLMAPIKeyByModelName(constants.GPT_4O, uint(organisationId))
 	if err != nil {
 		fmt.Println("Error getting openai api key: ", err)
 	}
 	if llmAPIKey == nil || llmAPIKey.LLMAPIKey == "" {
 		fmt.Println("______API Key not found in database_____")
 		settingsUrl := config.Get("app.url").(string) + "/settings"
-		err := openAIFlaskCodeGenerator.activityLogService.CreateActivityLog(
+		err := openAICodeGenerator.activityLogService.CreateActivityLog(
 			step.Execution.ID,
 			step.ExecutionStep.ID,
 			"INFO",
@@ -177,12 +174,12 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 			return err
 		}
 		//Update Execution Status and Story Status
-		if err := openAIFlaskCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
+		if err := openAICodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
 			fmt.Printf("Error updating story status: %s\n", err.Error())
 			return err
 		}
 		//Update execution status to MAX_LOOP_ITERATION_REACHED
-		if err := openAIFlaskCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
+		if err := openAICodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
 			fmt.Printf("Error updating execution step: %s\n", err.Error())
 			return err
 		}
@@ -207,9 +204,12 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 		return errors.New("LLM API Key not found in database")
 	}
 	apiKey := llmAPIKey.LLMAPIKey
-	fmt.Println("_________API KEY_________", apiKey)
+	fmt.Println("_________API_KEY_________", apiKey)
+
+	framework := project.Framework
+	fmt.Println("_________FRAMEWORK_________", framework)
 	// Generate code using the final instruction
-	code, err := openAIFlaskCodeGenerator.GenerateCode(apiKey, finalInstructionForGeneration, step.ExecutionStep, projectDir, step)
+	code, err := openAICodeGenerator.GenerateCode(apiKey, framework, finalInstructionForGeneration, step.ExecutionStep, projectDir, step)
 	if err != nil {
 		fmt.Printf("Error generating code: %s\n", err.Error())
 		return err
@@ -217,7 +217,7 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 	fmt.Printf("_________Generated Code__________: %s\n", code)
 
 	// Update execution step with response
-	if err := openAIFlaskCodeGenerator.executionStepService.UpdateExecutionStepResponse(
+	if err := openAICodeGenerator.executionStepService.UpdateExecutionStepResponse(
 		step.ExecutionStep,
 		map[string]interface{}{
 			"llm_response": code,
@@ -227,7 +227,7 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 		return err
 	}
 
-	err = openAIFlaskCodeGenerator.activityLogService.CreateActivityLog(
+	err = openAICodeGenerator.activityLogService.CreateActivityLog(
 		step.Execution.ID,
 		step.ExecutionStep.ID,
 		"INFO",
@@ -242,9 +242,9 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 }
 
 // GenerateCode uses OpenAI API to generate code based on the instruction.
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) GenerateCode(api_key string, instruction string, executionStep *models.ExecutionStep, projectDir string, step steps.GenerateCodeStep) (string, error) {
-	messages := openAIFlaskCodeGenerator.generateMessages(instruction, executionStep.ExecutionID, projectDir)
-	err := openAIFlaskCodeGenerator.executionStepService.UpdateExecutionStepRequest(
+func (openAICodeGenerator *OpenAICodeGenerator) GenerateCode(apiKey string, framework string, instruction string, executionStep *models.ExecutionStep, projectDir string, step steps.GenerateCodeStep) (string, error) {
+	messages := openAICodeGenerator.generateMessages(framework, instruction, executionStep.ExecutionID, projectDir)
+	err := openAICodeGenerator.executionStepService.UpdateExecutionStepRequest(
 		executionStep,
 		map[string]interface{}{
 			"final_instruction": instruction,
@@ -252,11 +252,11 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) GenerateCode(api_key s
 		},
 		"IN_PROGRESS",
 	)
-	openAIFlaskCodeGenerator.openAIClient.WithApiKey(api_key)
-	response, err := openAIFlaskCodeGenerator.openAIClient.ChatCompletion(messages)
+	openAICodeGenerator.openAIClient.WithApiKey(apiKey)
+	response, err := openAICodeGenerator.openAIClient.ChatCompletion(messages)
 	if err != nil {
 		settingsUrl := config.Get("app.url").(string) + "/settings"
-		err := openAIFlaskCodeGenerator.activityLogService.CreateActivityLog(
+		err := openAICodeGenerator.activityLogService.CreateActivityLog(
 			step.Execution.ID,
 			step.ExecutionStep.ID,
 			"INFO",
@@ -267,12 +267,12 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) GenerateCode(api_key s
 			return "", err
 		}
 		//Update Execution Status and Story Status
-		if err := openAIFlaskCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
+		if err := openAICodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
 			fmt.Printf("Error updating story status: %s\n", err.Error())
 			return "", err
 		}
 		//Update execution status to MAX_LOOP_ITERATION_REACHED
-		if err := openAIFlaskCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
+		if err := openAICodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
 			fmt.Printf("Error updating execution step: %s\n", err.Error())
 			return "", err
 		}
@@ -299,19 +299,19 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) GenerateCode(api_key s
 	return response, nil
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) generateMessages(instruction string, executionId uint, projectDir string) []llms.ChatCompletionMessage {
-	inputContext, err := openAIFlaskCodeGenerator.createInputContext(projectDir)
+func (openAICodeGenerator *OpenAICodeGenerator) generateMessages(framework string, instruction string, executionId uint, projectDir string) []llms.ChatCompletionMessage {
+	inputContext, err := openAICodeGenerator.createInputContext(projectDir)
 	if err != nil {
 		fmt.Printf("Failed to create input context: %v\n", err)
 	}
 	messages := []llms.ChatCompletionMessage{
-		{Role: "system", Content: openAIFlaskCodeGenerator.getSystemPrompt(projectDir)},
+		{Role: "system", Content: openAICodeGenerator.getSystemPrompt(framework, projectDir)},
 		{Role: "user", Content: "The current codebase is:\n" + inputContext},
 		{Role: "user", Content: instruction},
 	}
 
 	// Fetch the last execution step
-	previousExecutionSteps, err := openAIFlaskCodeGenerator.executionStepService.FetchExecutionSteps(
+	previousExecutionSteps, err := openAICodeGenerator.executionStepService.FetchExecutionSteps(
 		executionId,
 		steps.CODE_GENERATE_STEP.String(),
 		steps.LLM.String(),
@@ -334,13 +334,13 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) generateMessages(instr
 	return messages
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) createInputContext(projectDir string) (string, error) {
+func (openAICodeGenerator *OpenAICodeGenerator) createInputContext(projectDir string) (string, error) {
 	outputFile := projectDir + "/input_context.txt"
 	allowedExtensions := []string{".py", ".html", ".css", ".txt", ".ini", ".jpg", ".png"}
-	if err := openAIFlaskCodeGenerator.ensureDirectoryExists(projectDir); err != nil {
+	if err := openAICodeGenerator.ensureDirectoryExists(projectDir); err != nil {
 		return "", err
 	}
-	err := openAIFlaskCodeGenerator.generateFileListForInputContext(projectDir, outputFile, allowedExtensions)
+	err := openAICodeGenerator.generateFileListForInputContext(projectDir, outputFile, allowedExtensions)
 	if err != nil {
 		return "", err
 	}
@@ -356,7 +356,7 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) createInputContext(pro
 	return string(content), nil
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) generateFileListForInputContext(directory, outputFile string, allowedExtensions []string) error {
+func (openAICodeGenerator *OpenAICodeGenerator) generateFileListForInputContext(directory, outputFile string, allowedExtensions []string) error {
 	outFile, err := os.Create(outputFile)
 	if err != nil {
 		return err
@@ -373,8 +373,8 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) generateFileListForInp
 			return filepath.SkipDir
 		}
 
-		if !info.IsDir() && openAIFlaskCodeGenerator.fileExtensionAllowed(path, allowedExtensions) {
-			if err := openAIFlaskCodeGenerator.writeFileContent(path, directory, outFile); err != nil {
+		if !info.IsDir() && openAICodeGenerator.fileExtensionAllowed(path, allowedExtensions) {
+			if err := openAICodeGenerator.writeFileContent(path, directory, outFile); err != nil {
 				return err
 			}
 		}
@@ -383,7 +383,7 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) generateFileListForInp
 	})
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) fileExtensionAllowed(file string, allowedExtensions []string) bool {
+func (openAICodeGenerator *OpenAICodeGenerator) fileExtensionAllowed(file string, allowedExtensions []string) bool {
 	for _, ext := range allowedExtensions {
 		if strings.HasSuffix(file, ext) {
 			return true
@@ -392,7 +392,7 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) fileExtensionAllowed(f
 	return false
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) writeFileContent(filePath string, basePath string, outFile *os.File) error {
+func (openAICodeGenerator *OpenAICodeGenerator) writeFileContent(filePath string, basePath string, outFile *os.File) error {
 	absolutePath, err := filepath.Abs(filePath)
 	if err != nil {
 		return err
@@ -413,16 +413,28 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) writeFileContent(fileP
 	return err
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) getSystemPrompt(projectDir string) string {
-	content, err := os.ReadFile("/go/prompts/ai_developer.txt")
-	modifiedContent := strings.Replace(string(content), "{project_workspace_id}", projectDir, -1)
-	if err != nil {
-		panic(fmt.Sprintf("failed to read system prompt: %v", err))
+func (openAICodeGenerator *OpenAICodeGenerator) getSystemPrompt(framework string, projectDir string) string {
+	var filePath string
+	switch framework {
+	case "flask":
+		filePath = "/go/prompts/python/ai_developer_flask.txt"
+	case "django":
+		filePath = "/go/prompts/python/ai_developer_django.txt"
+	default:
+		filePath = ""
 	}
+
+	fmt.Println("______FILEPATH: _______" + filePath)
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		panic(fmt.Sprintf("failed to read system prompt from %s: %v", filePath, err))
+	}
+
+	modifiedContent := strings.Replace(string(content), "{project_workspace_id}", projectDir, -1)
 	return modifiedContent
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) ensureDirectoryExists(dirPath string) error {
+func (openAICodeGenerator *OpenAICodeGenerator) ensureDirectoryExists(dirPath string) error {
 	_, err := os.Stat(dirPath)
 	if os.IsNotExist(err) {
 		fmt.Printf("Directory does not exist: %s\n", dirPath)
@@ -431,18 +443,18 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) ensureDirectoryExists(
 	return err
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) buildFinalInstructionForGeneration(
+func (openAICodeGenerator *OpenAICodeGenerator) buildFinalInstructionForGeneration(
 	step steps.GenerateCodeStep) (string, error) {
 	// Initialize the final instruction string
-	finalInstruction, err := openAIFlaskCodeGenerator.buildInstructionForFirstExecution(step)
+	finalInstruction, err := openAICodeGenerator.buildInstructionForFirstExecution(step)
 	if step.Retry {
-		finalInstruction, err = openAIFlaskCodeGenerator.buildInstructionOnRetry(step)
+		finalInstruction, err = openAICodeGenerator.buildInstructionOnRetry(step)
 		if err != nil {
 			fmt.Printf("Error building instruction on retry: %s\n", err.Error())
 			return "", err
 		}
 	} else if step.Execution.ReExecution {
-		finalInstruction, err = openAIFlaskCodeGenerator.buildInstructionOnReExecutionWithComments(step)
+		finalInstruction, err = openAICodeGenerator.buildInstructionOnReExecutionWithComments(step)
 		if err != nil {
 			fmt.Printf("Error building instruction on re-execution: %s\n", err.Error())
 			return "", err
@@ -455,10 +467,10 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) buildFinalInstructionF
 	return finalInstruction, nil
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) buildInstructionOnReExecutionWithComments(step steps.GenerateCodeStep) (string, error) {
+func (openAICodeGenerator *OpenAICodeGenerator) buildInstructionOnReExecutionWithComments(step steps.GenerateCodeStep) (string, error) {
 	fmt.Printf("Building instruction on re-execution with comments for step: %s\n", step.StepName())
 	fmt.Printf("Pull Request ID is %d\n", step.PullRequestID)
-	comments, err := openAIFlaskCodeGenerator.pullRequestCommentService.GetAllCommentsByPullRequestID(step.PullRequestID)
+	comments, err := openAICodeGenerator.pullRequestCommentService.GetAllCommentsByPullRequestID(step.PullRequestID)
 	if err != nil {
 		fmt.Printf("Error fetching comments: %s\n", err.Error())
 		return "", err
@@ -470,13 +482,13 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) buildInstructionOnReEx
 	return finalInstruction, nil
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) buildInstructionForFirstExecution(step steps.GenerateCodeStep) (string, error) {
-	instructions, err := openAIFlaskCodeGenerator.storyService.GetStoryInstructionByStoryId(int(step.Story.ID))
+func (openAICodeGenerator *OpenAICodeGenerator) buildInstructionForFirstExecution(step steps.GenerateCodeStep) (string, error) {
+	instructions, err := openAICodeGenerator.storyService.GetStoryInstructionByStoryId(int(step.Story.ID))
 	if err != nil {
 		fmt.Printf("Error fetching instructions: %s\n", err.Error())
 		return "", err
 	}
-	testCases, err := openAIFlaskCodeGenerator.storyService.GetStoryTestCaseByStoryId(int(step.Story.ID))
+	testCases, err := openAICodeGenerator.storyService.GetStoryTestCaseByStoryId(int(step.Story.ID))
 	if err != nil {
 		fmt.Printf("Error fetching test cases: %s\n", err.Error())
 		return "", err
@@ -499,9 +511,9 @@ func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) buildInstructionForFir
 	return sb.String(), nil
 }
 
-func (openAIFlaskCodeGenerator *OpenAIFlaskCodeGenerator) buildInstructionOnRetry(step steps.GenerateCodeStep) (string, error) {
+func (openAICodeGenerator *OpenAICodeGenerator) buildInstructionOnRetry(step steps.GenerateCodeStep) (string, error) {
 	fmt.Printf("Building instruction on retry for step: %s\n", step.StepName())
-	previousServerTestExecutionStep, err := openAIFlaskCodeGenerator.executionStepService.FetchExecutionSteps(
+	previousServerTestExecutionStep, err := openAICodeGenerator.executionStepService.FetchExecutionSteps(
 		step.Execution.ID,
 		steps.SERVER_START_STEP.String(),
 		steps.CODE_TEST.String(),

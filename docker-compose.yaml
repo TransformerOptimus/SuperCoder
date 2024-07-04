@@ -115,7 +115,7 @@ services:
     hostname: pg
     restart: always
     container_name: pg
-    image: "postgres:latest"
+    image: "postgres:16.3-alpine3.20"
     volumes:
       - pg_data:/var/lib/postgresql/data/
     environment:
@@ -134,7 +134,7 @@ services:
     hostname: nginx
     restart: always
     container_name: nginx
-    image: "nginx:latest"
+    image: "nginx:1.27.0-alpine3.19-slim"
     ports:
       - "8083:80"
     volumes:
@@ -148,14 +148,12 @@ services:
     hostname: redis
     restart: always
     container_name: redis
-    image: "redis:latest"
+    image: "redis:7.2-alpine"
     volumes:
       - redis_data:/data
 
   python-ide:
-    build:
-      context: ide/python
-      dockerfile: Dockerfile
+    image: superagidev/supercoder-python-ide:latest
     container_name: supercoder-python-ide
     hostname: supercoder-python-ide
     restart: always

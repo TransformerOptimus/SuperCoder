@@ -1,6 +1,6 @@
 FROM public.ecr.aws/docker/library/golang:1.22.3-bookworm AS build-base
 
-RUN apt-get update && apt-get install -y jq && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y jq postgresql-client && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR $GOPATH/src/packages/ai-developer/
 
@@ -13,11 +13,6 @@ COPY *.go .
 COPY app app
 
 FROM build-base AS migrations
-
-RUN apt-get update &&  \
-    apt-get install -y postgresql-client && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
 
 RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
@@ -42,22 +37,17 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/server server
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/worker worker.go
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/executor executor.go
 
-FROM superagidev/supercoder-python-ide:latest AS worker-development
 
-RUN git config --global user.email "supercoder@superagi.com"
-RUN git config --global user.name "SuperCoder"
+FROM build-base AS executor-base
 
-RUN sudo mkdir -p /opt/venv && sudo chown coder:coder /opt/venv
+WORKDIR $GOPATH/src/packages/ai-developer/
 
-ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m venv $VIRTUAL_ENV
-ENV PATH="$PATH:$VIRTUAL_ENV/bin"
-RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/executor executor.go
 
-COPY --from=production-base /go/worker /go/worker
-COPY ./app/prompts /go/prompts
 
-ENTRYPOINT ["bash", "-c", "/go/worker"]
+FROM build-base AS worker-development
+
+ENTRYPOINT ["go", "run", "worker.go"]
 
 FROM superagidev/supercoder-python-ide:latest AS executor
 
@@ -68,7 +58,7 @@ RUN sudo mkdir -p /opt/venv && sudo chown coder:coder /opt/venv
 
 ENV HOME /home/coder
 
-COPY --from=production-base /go/executor /go/executor
+COPY --from=executor-base /go/executor /go/executor
 COPY ./app/prompts /go/prompts
 
 ENTRYPOINT ["bash", "-c", "/entrypoint.d/initialise.sh && /go/executor"]

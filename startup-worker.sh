@@ -27,4 +27,4 @@ else
   echo "AI_DEVELOPER_GITNESS_TOKEN is set"
 fi
 
-bash -c /go/worker
+go run worker.go

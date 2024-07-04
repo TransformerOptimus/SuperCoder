@@ -15,23 +15,23 @@ import (
 )
 
 func main() {
-	logger, err := zap.NewProduction()
-	if err != nil {
-		log.Printf("Failed to provide logger: %v", err)
-		panic(err)
-	}
-	logger.Info("Starting workspace service")
-
 	devContainer := dig.New()
 	prodContainer := dig.New()
 
 	appConfig, err := config.LoadConfig()
 	if err != nil {
-		logger.Error("Failed to load config", zap.Error(err))
-		panic(err)
+		log.Fatalln("Failed to load config", err)
 	}
 
 	envConfig := config.NewEnvConfig(appConfig)
+
+	var logger *zap.Logger
+
+	if envConfig.IsDev() {
+		logger, _ = zap.NewDevelopment()
+	} else {
+		logger, _ = zap.NewProduction()
+	}
 
 	var container *dig.Container
 	if envConfig.IsDev() {

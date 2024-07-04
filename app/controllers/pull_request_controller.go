@@ -13,10 +13,11 @@ type PullRequestController struct {
 	pullRequestService     *services.PullRequestService
 	userService            *services.UserService
 	executionOutputService *services.ExecutionOutputService
+	storyService           *services.StoryService
 }
 
 func NewPullRequestController(service *services.PullRequestService, userService *services.UserService,
-	executionOutputService *services.ExecutionOutputService) *PullRequestController {
+	executionOutputService *services.ExecutionOutputService, storyService *services.StoryService) *PullRequestController {
 	return &PullRequestController{
 		pullRequestService:     service,
 		userService:            userService,

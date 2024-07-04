@@ -67,6 +67,27 @@ func (we *WorkflowExecutor) Execute(workflowConfig *WorkflowConfig, args *Workfl
 			generateCodeStep.WithExecutionStep(executionStep)
 			generateCodeStep.WithPullRequestID(uint(args.PullRequestId))
 			return executor.(executors.CodeGenerationExecutor).Execute(*generateCodeStep)
+		case steps.CODE_GENERATE_CSS_STEP:
+			generateCodeStep := step.(*steps.GenerateCodeStep)
+			generateCodeStep.WithStory(story)
+			generateCodeStep.WithProject(project)
+			generateCodeStep.WithExecution(execution)
+			generateCodeStep.WithExecutionStep(executionStep)
+			return executor.(executors.CodeGenerationExecutor).Execute(*generateCodeStep)
+		case steps.CODE_GENERATE_PAGE_STEP:
+			generateCodeStep := step.(*steps.GenerateCodeStep)
+			generateCodeStep.WithStory(story)
+			generateCodeStep.WithProject(project)
+			generateCodeStep.WithExecution(execution)
+			generateCodeStep.WithExecutionStep(executionStep)
+			return executor.(executors.CodeGenerationExecutor).Execute(*generateCodeStep)
+		case steps.CODE_GENERATE_LAYOUT_STEP:
+			generateCodeStep := step.(*steps.GenerateCodeStep)
+			generateCodeStep.WithStory(story)
+			generateCodeStep.WithProject(project)
+			generateCodeStep.WithExecution(execution)
+			generateCodeStep.WithExecutionStep(executionStep)
+			return executor.(executors.CodeGenerationExecutor).Execute(*generateCodeStep)
 		case steps.RETRY_CODE_GENERATE_STEP:
 			retryCodeGenerateStep := step.(*steps.GenerateCodeStep)
 			retryCodeGenerateStep.WithStory(story)
@@ -76,6 +97,27 @@ func (we *WorkflowExecutor) Execute(workflowConfig *WorkflowConfig, args *Workfl
 			retryCodeGenerateStep.WithPullRequestID(uint(args.PullRequestId))
 			return executor.(executors.CodeGenerationExecutor).Execute(*retryCodeGenerateStep)
 		case steps.UPDATE_CODE_FILE_STEP:
+			updateCodeFileStep := step.(*steps.UpdateCodeFileStep)
+			updateCodeFileStep.WithStory(story)
+			updateCodeFileStep.WithProject(project)
+			updateCodeFileStep.WithExecution(execution)
+			updateCodeFileStep.WithExecutionStep(executionStep)
+			return executor.(executors.UpdateCodeFileExecutor).Execute(*updateCodeFileStep)
+		case steps.UPDATE_CODE_CSS_FILE_STEP:
+			updateCodeFileStep := step.(*steps.UpdateCodeFileStep)
+			updateCodeFileStep.WithStory(story)
+			updateCodeFileStep.WithProject(project)
+			updateCodeFileStep.WithExecution(execution)
+			updateCodeFileStep.WithExecutionStep(executionStep)
+			return executor.(executors.UpdateCodeFileExecutor).Execute(*updateCodeFileStep)
+		case steps.UPDATE_CODE_LAYOUT_FILE_STEP:
+			updateCodeFileStep := step.(*steps.UpdateCodeFileStep)
+			updateCodeFileStep.WithStory(story)
+			updateCodeFileStep.WithProject(project)
+			updateCodeFileStep.WithExecution(execution)
+			updateCodeFileStep.WithExecutionStep(executionStep)
+			return executor.(executors.UpdateCodeFileExecutor).Execute(*updateCodeFileStep)
+		case steps.UPDATE_CODE_PAGE_FILE_STEP:
 			updateCodeFileStep := step.(*steps.UpdateCodeFileStep)
 			updateCodeFileStep.WithStory(story)
 			updateCodeFileStep.WithProject(project)
@@ -124,16 +166,8 @@ func (we *WorkflowExecutor) Execute(workflowConfig *WorkflowConfig, args *Workfl
 			resetDBStep.WithProject(project)
 			resetDBStep.WithExecution(execution)
 			resetDBStep.WithExecutionStep(executionStep)
-			return executor.(executors.ResetDBStepExecutor).Execute(*resetDBStep)
-		case steps.PACKAGE_INSTALL_STEP:
-			resetDBStep := step.(*steps.PackageInstallStep)
-			resetDBStep.WithStory(story)
-			resetDBStep.WithProject(project)
-			resetDBStep.WithExecution(execution)
-			resetDBStep.WithExecutionStep(executionStep)
-			return executor.(executors.PackageInstallStepExecutor).Execute(*resetDBStep)
+			return executor.(executors.ResetDBStep).Execute(*resetDBStep)
 		}
-
 		return errors.New("step not found")
 	})
 	return nil

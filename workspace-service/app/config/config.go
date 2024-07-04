@@ -19,7 +19,7 @@ func LoadConfig() (config *koanf.Koanf, err error) {
 		"project":     "workspace",
 		"jobs": map[string]interface{}{
 			"docker": map[string]interface{}{
-				"network": "SuperCoder_default",
+				"network": "ai-developer_default",
 			},
 			"local": map[string]interface{}{
 				"image":      "python-executor:latest",

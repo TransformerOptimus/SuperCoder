@@ -37,7 +37,7 @@ func (js DockerJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Cre
 	cont, err := js.dockerClient.ContainerCreate(
 		context.Background(),
 		&container.Config{
-			Image: js.config.LocalContainerImage(),
+			Image: js.config.LocalContainerImage(request.ExecutorImage),
 			Env:   getDockerEnvVars(request),
 		},
 		&container.HostConfig{

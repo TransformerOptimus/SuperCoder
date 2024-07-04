@@ -5,7 +5,7 @@ on:
     inputs:
       environment:
         type: choice
-        description: 'The branch for chart to update'
+        description: 'The ide to build'
         options:
           - python
           - node

@@ -1,8 +1,12 @@
 
 <p align="center">
   <a href="https://superagi.com//#gh-light-mode-only">
-    <img src="https://superagi.com/wp-content/uploads/2024/07/SuperCoder-Banner.png" width="450px" alt="SuperAGI logo" />
+    <img src="https://superagi.com/wp-content/uploads/2024/07/SuperCoder-dark.png" width="318px" alt="SuperCoder Dark logo" />
   </a>
+  <a href="https://superagi.com//#gh-dark-mode-only">
+    <img src="https://superagi.com/wp-content/uploads/2024/07/SuperCoder-light.png" width="318px" alt="SuperCoder Light logo" />
+  </a>
+
 </p>
 
 <p align="center"><i>Open Source Autonomous Software Development System</i></p>

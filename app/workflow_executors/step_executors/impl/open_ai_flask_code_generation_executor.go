@@ -208,7 +208,6 @@ func (openAIFlaskCodeGenerator OpenAIFlaskCodeGenerator) Execute(step steps.Gene
 	}
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API KEY_________", apiKey)
-
 	// Generate code using the final instruction
 	code, err := openAIFlaskCodeGenerator.GenerateCode(apiKey, finalInstructionForGeneration, step.ExecutionStep, projectDir, step)
 	if err != nil {

@@ -5,4 +5,6 @@ type CreateWorkspace struct {
 	RemoteURL        string  `json:"remoteURL"`
 	FrontendTemplate *string `json:"frontendTemplate,omitempty"`
 	BackendTemplate  *string `json:"backendTemplate,omitempty"`
+	GitnessUserName  string  `json:"gitnessUserName"`
+	GitnessToken     string  `json:"gitnessToken"`
 }

@@ -20,10 +20,11 @@ if [ -z "$AI_DEVELOPER_GITNESS_TOKEN" ]; then
   current_date=$(date +%s)
   data=$(jq -n --arg identifier "$current_date" '{identifier: $identifier, lifetime: 604800000000000}')
 
+
   access_token=$(curl -X 'POST' 'http://gitness:3000/api/v1/user/tokens' -H 'accept: application/json' -H 'Content-Type: application/json' -H "Cookie: token=$login_token" -d "$data" | jq -r '.access_token')
   export AI_DEVELOPER_GITNESS_TOKEN=$access_token
 else
   echo "AI_DEVELOPER_GITNESS_TOKEN is set"
 fi
 
-go run server.go
+bash -c /go/worker

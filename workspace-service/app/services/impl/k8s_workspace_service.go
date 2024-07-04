@@ -32,8 +32,8 @@ type K8sWorkspaceService struct {
 	logger                 *zap.Logger
 }
 
-func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplate string, remoteURL string, gitnessUser string, gitnessToken string) (*dto.WorkspaceDetails, error) {
-	err := ws.checkAndCreateWorkspaceFromTemplate(workspaceId, backendTemplate, remoteURL, gitnessUser, gitnessToken)
+func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplate string, remoteURL string) (*dto.WorkspaceDetails, error) {
+	err := ws.checkAndCreateWorkspaceFromTemplate(workspaceId, backendTemplate, remoteURL)
 	if err != nil {
 		ws.logger.Error("Failed to check and create workspace from template", zap.Error(err))
 		return nil, err
@@ -115,6 +115,35 @@ func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplat
 	return response, nil
 }
 
+func (ws K8sWorkspaceService) CreateFrontendWorkspace(workspaceId string, frontendTemplate string, remoteUrl string) (*dto.WorkspaceDetails, error) {
+	err := ws.checkAndCreateFrontendWorkspaceFromTemplate(workspaceId, frontendTemplate, remoteUrl)
+	if err != nil {
+		ws.logger.Error("Failed to check and create workspace from template", zap.Error(err))
+		return nil, err
+	}
+
+	err = ws.checkAndCreateWorkspacePVC(workspaceId)
+	if err != nil {
+		ws.logger.Error("Failed to check and create workspace PVC", zap.Error(err))
+		return nil, err
+	}
+
+	workspaceHost := ws.workspaceServiceConfig.WorkspaceHostName()
+	workspaceUrl := fmt.Sprintf("https://%s.%s/?folder=/workspaces/%s", workspaceId, workspaceHost, workspaceId)
+	frontendUrl := fmt.Sprintf("https://fe-%s.%s", workspaceId, workspaceHost)
+
+	response := &dto.WorkspaceDetails{
+		WorkspaceId:      workspaceId,
+		BackendTemplate:  nil,
+		FrontendTemplate: &frontendTemplate,
+		WorkspaceUrl:     &workspaceUrl,
+		BackendUrl:       nil,
+		FrontendUrl:      &frontendUrl,
+	}
+
+	return response, nil
+}
+
 func (ws K8sWorkspaceService) checkAndCreateWorkspacePVC(workspaceId string) (err error) {
 	pvc, err := ws.clientset.CoreV1().PersistentVolumeClaims(ws.workspaceServiceConfig.WorkspaceNamespace()).Get(context.Background(), workspaceId, v12.GetOptions{})
 	if err != nil || pvc == nil {
@@ -175,7 +204,7 @@ func (ws K8sWorkspaceService) checkIfWorkspaceExists(workspaceId string) bool {
 	return true
 }
 
-func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId string, backendTemplate string, remoteURL string, gitnessUser string, gitnessToken string) error {
+func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId string, backendTemplate string, remoteURL string) error {
 	exists, err := utils.CheckIfWorkspaceExists(workspaceId)
 	if err != nil {
 		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
@@ -267,8 +296,8 @@ func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId st
 
 			// Push to the remote repository
 			auth := &http.BasicAuth{
-				Username: gitnessUser,
-				Password: gitnessToken,
+				Username: ws.workspaceServiceConfig.GitnessAuthUsername(),
+				Password: ws.workspaceServiceConfig.GitnessAuthToken(),
 			}
 			err = repo.Push(&git.PushOptions{
 				RemoteName: "origin",
@@ -289,12 +318,34 @@ func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId st
 		}
 	}
 
-	err = utils.ChownRWorkspace(workspaceId, "1000", "1000")
+	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))
 		return err
 	}
 
+	return nil
+}
+
+func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyHashId string, workspaceId string, frontendTemplate string) error {
+	exists, err := utils.CheckIfFrontendWorkspaceExists(storyHashId, workspaceId)
+	if err != nil {
+		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
+		return err
+	}
+	if !exists {
+		err = utils.RsyncFolders("/templates/"+frontendTemplate+"/", "/workspaces/"+workspaceId+"/"+storyHashId)
+		if err != nil {
+			ws.logger.Error("Failed to rsync folders", zap.Error(err))
+			return err
+		}
+	}
+	workspacePath := "/workspaces/" + workspaceId + "/" + storyHashId
+	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
+	if err != nil {
+		ws.logger.Error("Failed to chown workspace", zap.Error(err))
+		return err
+	}
 	return nil
 }
 

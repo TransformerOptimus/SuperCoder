@@ -169,6 +169,7 @@ func main() {
 		})
 		r.Handle("GET", "/api/health", healthController.Health)
 		r.Handle("POST", "/api/v1/workspaces", wsController.CreateWorkspace)
+		r.Handle("POST", "/api/v1/frontend/workspaces", wsController.CreateFrontendWorkspace)
 		r.Handle("DELETE", "/api/v1/workspaces/:workspaceId", wsController.DeleteWorkspace)
 
 		r.Handle("POST", "/api/v1/jobs", jobsController.CreateWorkspace)

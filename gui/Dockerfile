@@ -11,7 +11,7 @@ ENV NEXT_PUBLIC_DOCKER=$NEXT_PUBLIC_DOCKER
 COPY package*.json next.config.mjs ./
 
 # Install dependencies
-RUN npm install
+RUN yarn install
 
 # Copy the rest of your Next.js application
 COPY . .
@@ -20,5 +20,5 @@ COPY . .
 #RUN npm run build
 
 # Start the Next.js application
-#CMD ["npm", "start"]
-CMD ["npm", "run", "dev"]
+#CMD ["yarn", "start"]
+CMD ["yarn", "dev"]

@@ -3,7 +3,7 @@
 First, run the development server:
 
 ```bash
-npm install
+yarn install
 
 npx husky install
 
@@ -13,8 +13,6 @@ npx husky add .husky/pre-commit "npx lint-staged"
 then
 
 ```bash
-npm run dev
-# or
 yarn dev
 # or
 pnpm dev

@@ -175,6 +175,7 @@ services:
       - 5000:5000
     volumes:
       - workspaces:/workspaces
+
   frontend:
     container_name: frontend
     build:

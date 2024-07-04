@@ -20,7 +20,7 @@ func LoadConfig() (config *koanf.Koanf, err error) {
 		"jobs": map[string]interface{}{
 			"images": map[string]interface{}{},
 			"docker": map[string]interface{}{
-				"network": "SuperCoder_default",
+				"network": "supercoder_default",
 			},
 			"local": map[string]interface{}{
 				"images": map[string]interface{}{
@@ -29,7 +29,7 @@ func LoadConfig() (config *koanf.Koanf, err error) {
 				},
 				"autoremove": "false",
 				"volume": map[string]interface{}{
-					"source": "ai-developer_workspaces",
+					"source": "supercoder_workspaces",
 					"target": "/workspaces",
 				},
 			},

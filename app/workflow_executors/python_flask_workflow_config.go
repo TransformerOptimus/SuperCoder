@@ -13,10 +13,18 @@ var FlaskWorkflowConfig = &WorkflowConfig{
 			steps.GIT_CREATE_BRANCH_STEP: {
 				Step: &steps.GitMakeBranchStep{},
 				Transitions: map[graph.ExecutionState]*steps.StepName{
+					graph.ExecutionSuccessState: &steps.PACKAGE_INSTALL_STEP,
+					graph.ExecutionErrorState:   nil,
+				},
+			},
+			steps.PACKAGE_INSTALL_STEP: {
+				Step: &steps.PackageInstallStep{},
+				Transitions: map[graph.ExecutionState]*steps.StepName{
 					graph.ExecutionSuccessState: &steps.RESET_DB_STEP,
 					graph.ExecutionErrorState:   nil,
 				},
 			},
+
 			steps.RESET_DB_STEP: {
 				Step: &steps.ResetDBStep{},
 				Transitions: map[graph.ExecutionState]*steps.StepName{

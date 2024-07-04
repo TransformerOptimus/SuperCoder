@@ -14,6 +14,10 @@ func (c *WorkspaceJobs) LocalContainerImage(imageName string) string {
 	return c.config.String("jobs.local.images." + imageName)
 }
 
+func (c *WorkspaceJobs) DockerNetwork() string {
+	return c.config.String("jobs.docker.network")
+}
+
 func (c *WorkspaceJobs) AutoRemoveJobContainer() bool {
 	return c.config.String("jobs.local.autoremove") == "true"
 }

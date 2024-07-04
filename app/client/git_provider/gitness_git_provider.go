@@ -50,9 +50,7 @@ func (c *GitnessClient) CreateProject(name, description string) (*gitness.Projec
 		"Authorization": "Bearer " + c.authToken,
 	}
 
-	fmt.Printf("Making Request to create Project : ", url, "Payload: ", payload, "Headers: ", headers)
 	response, err := c.httpClient.Post(url, payload, headers)
-	fmt.Println("Response: ", response)
 	if err != nil {
 		return nil, err
 	}

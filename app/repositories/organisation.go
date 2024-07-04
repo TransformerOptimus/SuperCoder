@@ -26,6 +26,15 @@ func (receiver OrganisationRepository) GetOrganisationByID(organisationID uint) 
 	return organisation, nil
 }
 
+func (receiver OrganisationRepository) GetOrganisationByName(organisationName string) (*models.Organisation, error) {
+	var organisation *models.Organisation
+	err := receiver.db.Where("name = ?", organisationName).First(&organisation).Error
+	if err != nil {
+		return nil, err
+	}
+	return organisation, nil
+}
+
 func NewOrganisationRepository(db *gorm.DB) *OrganisationRepository {
 	return &OrganisationRepository{
 		db: db,

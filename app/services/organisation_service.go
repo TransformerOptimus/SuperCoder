@@ -48,6 +48,10 @@ func (s *OrganisationService) GetOrganisationByID(organisationID uint) (*models.
 	return s.organisationRepo.GetOrganisationByID(organisationID)
 }
 
+func (s *OrganisationService) GetOrganisationByName(organisationName string) (*models.Organisation, error) {
+	return s.organisationRepo.GetOrganisationByName(organisationName)
+}
+
 func NewOrganisationService(organisationRepo *repositories.OrganisationRepository, gitnessService *git_providers.GitnessService) *OrganisationService {
 	return &OrganisationService{
 		organisationRepo: organisationRepo,

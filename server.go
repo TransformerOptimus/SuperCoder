@@ -5,14 +5,17 @@ import (
 	gitness_git_provider "ai-developer/app/client/git_provider"
 	"ai-developer/app/client/workspace"
 	"ai-developer/app/config"
+	"ai-developer/app/constants"
 	"ai-developer/app/controllers"
 	"ai-developer/app/gateways"
 	"ai-developer/app/middleware"
+	"ai-developer/app/models"
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
@@ -382,6 +385,8 @@ func main() {
 		storyAuthMiddleware *middleware.StoryAuthorizationMiddleware,
 		orgAuthMiddleware *middleware.OrganizationAuthorizationMiddleware,
 		pullRequestAuthMiddleware *middleware.PullRequestAuthorizationMiddleware,
+		userService *services.UserService,
+		organisationService *services.OrganisationService,
 		ioServer *socketio.Server,
 		nrApp *newrelic.Application,
 	) error {
@@ -391,6 +396,14 @@ func main() {
 				log.Println("Asynq Client closing error:", err)
 			}
 		}()
+
+		env := config.Get("app.env")
+		if env == constants.Development {
+			err := InitializeSuperCoderData(userService, organisationService)
+			if err != nil {
+				log.Fatalf("Failed to initialize SuperCoder data: %v", err)
+			}
+		}
 
 		r := gin.Default()
 
@@ -503,4 +516,40 @@ func GinMiddleware(allowOrigin string) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func InitializeSuperCoderData(userService *services.UserService, organisationService *services.OrganisationService) error {
+	organisation, err := organisationService.GetOrganisationByName("SuperCoderOrg")
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("error checking organisation: %v", err)
+	}
+
+	if organisation == nil {
+		organisation, err = organisationService.CreateOrganisation(&models.Organisation{
+			Name: "SuperCoderOrg",
+		})
+		if err != nil {
+			return fmt.Errorf("error creating organisation: %v", err)
+		}
+	}
+
+	user, err := userService.GetUserByEmail("supercoder@superagi.com")
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("error checking user: %v", err)
+	}
+	if user != nil {
+		log.Println("User 'supercoder@superagi.com' already exists, skipping creation.")
+		return nil
+	}
+	user = &models.User{
+		Name:           "SuperCoderUser",
+		Email:          "supercoder@superagi.com",
+		OrganisationID: organisation.ID,
+		Password:       "password",
+	}
+	user, err = userService.CreateUser(user)
+	if err != nil {
+		return fmt.Errorf("error creating user: %v", err)
+	}
+	return nil
 }

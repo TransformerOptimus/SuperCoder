@@ -6,7 +6,7 @@ export const frameworkOptions = [
     id: 'django',
     text: 'Django',
     src: imagePath.djangoImage,
-    available: false,
+    available: true,
   },
   {
     id: 'fast_api',

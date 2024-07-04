@@ -32,8 +32,8 @@ type K8sWorkspaceService struct {
 	logger                 *zap.Logger
 }
 
-func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplate string, remoteURL string) (*dto.WorkspaceDetails, error) {
-	err := ws.checkAndCreateWorkspaceFromTemplate(workspaceId, backendTemplate, remoteURL)
+func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplate string, remoteURL string, gitnessUser string, gitnessToken string) (*dto.WorkspaceDetails, error) {
+	err := ws.checkAndCreateWorkspaceFromTemplate(workspaceId, backendTemplate, remoteURL, gitnessUser, gitnessToken)
 	if err != nil {
 		ws.logger.Error("Failed to check and create workspace from template", zap.Error(err))
 		return nil, err
@@ -204,7 +204,7 @@ func (ws K8sWorkspaceService) checkIfWorkspaceExists(workspaceId string) bool {
 	return true
 }
 
-func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId string, backendTemplate string, remoteURL string) error {
+func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId string, backendTemplate string, remoteURL string, gitnessUser string, gitnessToken string) error {
 	exists, err := utils.CheckIfWorkspaceExists(workspaceId)
 	if err != nil {
 		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
@@ -296,8 +296,8 @@ func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId st
 
 			// Push to the remote repository
 			auth := &http.BasicAuth{
-				Username: ws.workspaceServiceConfig.GitnessAuthUsername(),
-				Password: ws.workspaceServiceConfig.GitnessAuthToken(),
+				Username: gitnessUser,
+				Password: gitnessToken,
 			}
 			err = repo.Push(&git.PushOptions{
 				RemoteName: "origin",
@@ -346,6 +346,7 @@ func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyH
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))
 		return err
 	}
+
 	return nil
 }
 

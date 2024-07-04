@@ -208,8 +208,15 @@ func main() {
 		panic(err)
 
 	}
-	//serverStartTestStep
+	//FLASK serverStartTestStep
 	err = c.Provide(impl.NewFlaskServerStartTestExecutor)
+	if err != nil {
+		log.Println("Error providing server start test step:", err)
+		panic(err)
+
+	}
+	//DJANGO serverStartTestStep
+	err = c.Provide(impl.NewDjangoServerStartTestExecutor)
 	if err != nil {
 		log.Println("Error providing server start test step:", err)
 		panic(err)
@@ -236,6 +243,11 @@ func main() {
 	err = c.Provide(impl.NewResetFlaskDBStepExecutor)
 	if err != nil {
 		log.Println("Error providing reset flask db step:", err)
+		panic(err)
+	}
+	err = c.Provide(impl.NewPackageInstallStepExecutor)
+	if err != nil {
+		log.Println("Error providing package install step:", err)
 		panic(err)
 	}
 
@@ -265,6 +277,7 @@ func main() {
 			gitPushExecutor *impl.GitPushExecutor,
 			gitnessMakePullRequestExecutor *impl.GitnessMakePullRequestExecutor,
 			resetFlaskDBStepExecutor *impl.ResetFlaskDBStepExecutor,
+			poetryPackageInstallStepExecutor *impl.PackageInstallStepExecutor,
 		) map[steps.StepName]step_executors.StepExecutor {
 			return map[steps.StepName]step_executors.StepExecutor{
 				steps.CODE_GENERATE_STEP:           *openAIFlaskCodeGenerator,
@@ -276,6 +289,7 @@ func main() {
 				steps.SERVER_START_STEP:            *flaskServerStartTestExecutor,
 				steps.RETRY_CODE_GENERATE_STEP:     *openAIFlaskCodeGenerator,
 				steps.RESET_DB_STEP:                *resetFlaskDBStepExecutor,
+				steps.PACKAGE_INSTALL_STEP:         *poetryPackageInstallStepExecutor,
 			}
 		})
 	}

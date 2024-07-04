@@ -179,7 +179,7 @@ services:
     environment:
       - NEXT_PUBLIC_DOCKER=true
     restart: always
-    command: [ "npm", "run", "dev" ]
+    command: [ "yarn", "dev" ]
 
   gitness:
     container_name: gitness

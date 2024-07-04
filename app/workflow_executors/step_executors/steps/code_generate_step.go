@@ -6,6 +6,7 @@ type GenerateCodeStep struct {
 	Retry             bool
 	MaxLoopIterations int64
 	PullRequestID     uint
+	PromptFilePath string
 }
 
 func (s GenerateCodeStep) StepType() string {

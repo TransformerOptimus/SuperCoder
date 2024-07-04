@@ -36,7 +36,7 @@ func NewFlaskServerStartTestExecutor(
 }
 
 func (e FlaskServerStartTestExecutor) Execute(step steps.ServerStartTestStep) error {
-	fmt.Printf("Executing Server Start Test Step: %s\n", step.StepName())
+	fmt.Printf("Executing Flask Server Start Test Step: %s\n", step.StepName())
 
 	err := e.activityLogService.CreateActivityLog(
 		step.ExecutionStep.ExecutionID,

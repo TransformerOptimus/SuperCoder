@@ -268,12 +268,18 @@ func main() {
 	//Provide ExecutionStepService
 	err = c.Provide(services.NewExecutionStepService)
 
+	//Provide AuthService
+	err = c.Provide(services.NewAuthService)
+	if err != nil {
+		panic(err)
+	}
+
 	// Provide Controllers
-	err = c.Provide(func(githubOauthService *services.GithubOauthService) *controllers.OauthController {
+	err = c.Provide(func(githubOauthService *services.GithubOauthService, authService *services.AuthService) *controllers.OauthController {
 		clientID := config.GithubClientId()
 		clientSecret := config.GithubClientSecret()
 		redirectURL := config.GithubRedirectURL()
-		return controllers.NewOauthController(githubOauthService, clientID, clientSecret, redirectURL)
+		return controllers.NewOauthController(githubOauthService, authService, clientID, clientSecret, redirectURL)
 	})
 	if err != nil {
 		panic(err)

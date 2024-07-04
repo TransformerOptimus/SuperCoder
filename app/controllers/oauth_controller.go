@@ -13,6 +13,7 @@ import (
 )
 
 type OauthController struct {
+	authService        *services.AuthService
 	githubOauthService *services.GithubOauthService
 	clientID           string
 	clientSecret       string
@@ -51,9 +52,16 @@ func (controller *OauthController) GithubCallback(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
 
-func NewOauthController(githubOauthService *services.GithubOauthService, clientID string, clientSecret string, redirectURL string) *OauthController {
+func NewOauthController(
+	githubOauthService *services.GithubOauthService,
+	authService *services.AuthService,
+	clientID string,
+	clientSecret string,
+	redirectURL string,
+) *OauthController {
 	return &OauthController{
 		githubOauthService: githubOauthService,
+		authService:        authService,
 		clientID:           clientID,
 		clientSecret:       clientSecret,
 		redirectURL:        redirectURL,

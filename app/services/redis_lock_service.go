@@ -14,10 +14,7 @@ type RedisLocker struct {
 	client *redis.Client
 }
 
-func NewRedisLocker(redisAddr string) *RedisLocker {
-	client := redis.NewClient(&redis.Options{
-		Addr: redisAddr,
-	})
+func NewRedisLocker(client *redis.Client) *RedisLocker {
 	return &RedisLocker{client: client}
 }
 

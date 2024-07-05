@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
-	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"strconv"
 	"time"
@@ -160,7 +159,7 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 		return nil, err
 	}
 	err = s.inspector.DeleteTask(constants.DefaultQueue, project.HashID)
-	if err != nil && !errors.Is(err, redis.Nil) {
+	if err != nil && !errors.Is(err, asynq.ErrTaskNotFound) {
 		s.logger.Error("Failed to delete task", zap.Error(err))
 		return nil, err
 	}
@@ -239,7 +238,7 @@ func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate s
 		return err
 	}
 	err = s.inspector.DeleteTask(constants.DefaultQueue, project.HashID)
-	if err != nil && !errors.Is(err, redis.Nil) {
+	if err != nil && !errors.Is(err, asynq.ErrTaskNotFound) {
 		s.logger.Error("Failed to delete task", zap.Error(err))
 		return err
 	}

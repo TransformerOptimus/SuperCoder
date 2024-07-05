@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"ai-developer/app/constants"
 	"ai-developer/app/models"
 	"fmt"
 	"gorm.io/gorm"
@@ -95,9 +96,18 @@ func (receiver *StoryRepository) UpdateStoryStatus(story *models.Story, status s
 	return nil
 }
 
+func (receiver *StoryRepository) UpdateReviewViewedStatus(story *models.Story, viewedStatus bool) error {
+	story.ReviewViewed = viewedStatus
+	err := receiver.db.Save(story).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (receiver *StoryRepository) GetInProgressStoriesByProjectId(projectId int) ([]*models.Story, error) {
 	var stories []*models.Story
-	err := receiver.db.Where("project_id = ? AND is_deleted = ?", projectId, false).Find(&stories).Error
+	err := receiver.db.Where("project_id = ? AND is_deleted = ? AND status = ?", projectId, false, constants.InProgress).Find(&stories).Error
 	if err != nil {
 		return nil, err
 	}

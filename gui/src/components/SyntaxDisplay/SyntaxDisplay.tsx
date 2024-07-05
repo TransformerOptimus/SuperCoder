@@ -2,16 +2,17 @@ import React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { rgba } from 'color2k';
+import {ActivityLogType} from "@/app/constants/ActivityLogType";
 
 interface SyntaxDisplayProps {
-  type: 'ERROR' | 'CODE';
+  type: string;
   msg?: string;
 }
 
 const SyntaxDisplay: React.FC<SyntaxDisplayProps> = ({ type, msg }) => {
   return (
     <>
-      {type === 'ERROR' && (
+      {type === ActivityLogType.ERROR && (
         <span className={'text-sm font-normal'}>
           AI Developer has an error in the terminal.
         </span>

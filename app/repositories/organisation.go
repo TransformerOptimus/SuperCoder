@@ -7,7 +7,11 @@ import (
 )
 
 type OrganisationRepository struct {
-	Db *gorm.DB
+	db *gorm.DB
+}
+
+func (receiver OrganisationRepository) GetDB() *gorm.DB {
+	return receiver.db
 }
 
 func (receiver OrganisationRepository) CreateOrganisation(tx *gorm.DB, organisation *models.Organisation) (*models.Organisation, error) {
@@ -23,7 +27,7 @@ func (receiver OrganisationRepository) CreateOrganisation(tx *gorm.DB, organisat
 
 func (receiver OrganisationRepository) GetOrganisationByID(organisationID uint) (*models.Organisation, error) {
 	var organisation *models.Organisation
-	err := receiver.Db.First(&organisation, organisationID).Error
+	err := receiver.db.First(&organisation, organisationID).Error
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +36,7 @@ func (receiver OrganisationRepository) GetOrganisationByID(organisationID uint) 
 
 func (receiver OrganisationRepository) GetOrganisationByName(organisationName string) (*models.Organisation, error) {
 	var organisation *models.Organisation
-	err := receiver.Db.Where("name = ?", organisationName).First(&organisation).Error
+	err := receiver.db.Where("name = ?", organisationName).First(&organisation).Error
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +45,6 @@ func (receiver OrganisationRepository) GetOrganisationByName(organisationName st
 
 func NewOrganisationRepository(db *gorm.DB) *OrganisationRepository {
 	return &OrganisationRepository{
-		Db: db,
+		db: db,
 	}
 }

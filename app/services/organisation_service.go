@@ -31,7 +31,7 @@ func (s *OrganisationService) CreateOrganisationName() string {
 }
 
 func (s *OrganisationService) CreateOrganisation(organisation *models.Organisation) (*models.Organisation, error) {
-	tx := s.organisationRepo.Db.Begin()
+	tx := s.organisationRepo.GetDB().Begin()
 	if tx.Error != nil {
 		return nil, tx.Error
 	}

@@ -182,26 +182,24 @@ const ReviewPage: React.FC = (props) => {
                 >
                   Input
                 </span>
-                <div
-                  className={
-                    'relative flex max-h-[60vh] justify-center overflow-hidden'
-                  }
-                >
-                  <img
-                    className={'object-contain'}
-                    src={story.input_file_url}
-                    alt={'preview_image'}
+                <div className={ 'relative flex h-[40vh] w-full justify-center overflow-hidden'} >
+                  <Image
+                      src={story.input_file_url}
+                      alt={'design_image'}
+                      fill
+                      className="object-contain"
+                      loading="lazy"
                   />
                 </div>
               </div>
               <div
-                className={`${styles.container} flex flex-col rounded-tr-lg`}
+                  className={`${styles.container} flex flex-col rounded-tr-lg`}
               >
                 <CustomTabs
-                  options={tabOptions}
-                  position={'end'}
-                  containerCss={'background'}
-                  tabCss={'my-1 p-2'}
+                    options={tabOptions}
+                    position={'end'}
+                    containerCss={'background'}
+                    tabCss={'my-1 p-2'}
                 >
                   <span className={'space_mono mx-2 text-xs'}>Output</span>
                 </CustomTabs>

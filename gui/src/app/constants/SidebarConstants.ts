@@ -38,3 +38,4 @@ export const sidebarOptions: SidebarOption[] = [
     route: `/pull_request`,
   },
 ];
+

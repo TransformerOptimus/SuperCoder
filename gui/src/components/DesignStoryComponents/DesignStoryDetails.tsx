@@ -1,4 +1,4 @@
-import styles from '@/components/DesignStoryComponents/story.module.css';
+import styles from '@/components/DesignStoryComponents/desingStory.module.css';
 import { DesignStoryDetailsProps } from '../../../types/designStoryTypes';
 import imagePath from '@/app/imagePath';
 import CustomImage from '@/components/ImageComponents/CustomImage';
@@ -6,7 +6,6 @@ import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
 import React from 'react';
 import CustomTag from '@/components/CustomTag/CustomTag';
 import {
-  checkModelNotAdded,
   handleInProgressStoryStatus,
   handleStoryStatus,
 } from '@/app/utils';
@@ -14,7 +13,6 @@ import { useDesignContext } from '@/context/Design';
 import { deleteStory, updateStoryStatus } from '@/api/DashboardService';
 import { storyStatus } from '@/app/constants/BoardConstants';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
 
 const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
   id,
@@ -138,6 +136,7 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
                     iconClass={'size-4'}
                     text={handleStoryStatus(selectedStory.status).text}
                     color={handleStoryStatus(selectedStory.status).color}
+                    className={'rounded-3xl'}
                   />
                 }
                 maxHeight={'400px'}
@@ -171,6 +170,7 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
                 iconClass={'size-4'}
                 text={handleStoryStatus(selectedStory.status).text}
                 color={handleStoryStatus(selectedStory.status).color}
+                className={'rounded-3xl'}
               />
             )}
 

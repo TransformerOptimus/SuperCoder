@@ -29,44 +29,6 @@
     color: var(--white-opacity-60);
 }
 
-.grey_tag,
-.purple_tag,
-.green_tag,
-.yellow_tag {
-    position: absolute;
-    top: 6px;
-    left: 5px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-style: normal;
-    font-weight: 600;
-    line-height: normal;
-    padding: 6px 8px;
-    align-items: center;
-    color: #fff;
-}
-
-.yellow_tag {
-    /* In Review */
-    background: #AA7C23;
-}
-
-.grey_tag {
-    /* To Do Tag */
-    background: #474747;
-}
-
-.purple_tag {
-    /* In Progress Tag */
-    background: #a05bd5;
-}
-
-.green_tag {
-    /* Done Tag */
-    background: linear-gradient(0deg, rgb(0 0 0 / 40%) 0%, rgb(0 0 0 / 40%) 100%),
-    #4bac1c;
-}
-
 .review_item{
     border-bottom: 1px solid var(--white-opacity-8);
 }

@@ -1,12 +1,12 @@
 'use client';
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
-import Image from 'next/image';
 import './style.css';
 import { sidebarOptions } from '@/app/constants/SidebarConstants';
 import { SidebarOption } from '../../../types/sidebarTypes';
 import { usePathname, useRouter } from 'next/navigation';
 import { getProjectTypeFromFramework } from '@/app/utils';
 import { projectTypes } from '@/app/constants/ProjectConstants';
+import CustomImage from "@/components/ImageComponents/CustomImage";
 
 const SideBar: React.FC = () => {
   const router = useRouter();
@@ -14,10 +14,8 @@ const SideBar: React.FC = () => {
   const [projectFramework, setProjectFramework] = useState<string | null>(null);
 
   useEffect(() => {
-    let storedProjectType = null;
     if (typeof window !== undefined) {
-      storedProjectType = localStorage.getItem('projectFramework');
-      setProjectFramework(storedProjectType);
+      setProjectFramework(localStorage.getItem('projectFramework'));
     }
   }, []);
 
@@ -64,10 +62,8 @@ const SideBar: React.FC = () => {
             } flex flex-col items-center justify-center gap-1 text-white`}
             onClick={() => handleOptionClick(option)}
           >
-            <Image
-              width={24}
-              height={24}
-              sizes={'100vw'}
+            <CustomImage
+              className={'100vw'}
               src={
                 handleSelectedOption(option)
                   ? option.selected

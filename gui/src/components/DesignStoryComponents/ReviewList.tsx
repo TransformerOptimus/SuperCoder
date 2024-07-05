@@ -1,4 +1,4 @@
-import styles from '@/components/DesignStoryComponents/story.module.css';
+import styles from '@/components/DesignStoryComponents/desingStory.module.css';
 import { useRouter } from 'next/navigation';
 import GithubReviewButton from '@/app/(programmer)/pull_request/PRList/GithubReviewButton';
 import { useDesignContext } from '@/context/Design';
@@ -6,6 +6,8 @@ import { storyStatus } from '@/app/constants/BoardConstants';
 import React, { useMemo, useState } from 'react';
 import imagePath from '@/app/imagePath';
 import CustomInput from '@/components/CustomInput/CustomInput';
+import Image from 'next/image';
+
 const ReviewList: React.FC = () => {
   const router = useRouter();
   const openReview = (id: number) => {
@@ -45,11 +47,13 @@ const ReviewList: React.FC = () => {
                   <div
                     className={`${styles.review_image_container} relative flex h-[60px] w-[60px] items-center justify-center overflow-hidden rounded-lg`}
                   >
-                    <img
-                      src={story.input_file_url}
-                      alt="image"
-                      className="max-h-full max-w-full object-contain"
-                    />
+                      <Image
+                          src={story.input_file_url}
+                          alt={'design_image'}
+                          fill
+                          className="object-contain"
+                          loading="lazy"
+                      />
                   </div>
                   <div
                     className={

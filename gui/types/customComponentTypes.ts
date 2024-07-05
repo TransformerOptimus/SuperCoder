@@ -59,6 +59,7 @@ export interface CustomTagProps {
   iconBackClass?: string;
   color?: string;
   children?: ReactNode;
+  className?: string;
 }
 
 export interface CustomDropdownItem {

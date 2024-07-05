@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useDesignContext } from '@/context/Design';
 import { Button } from '@nextui-org/react';
-import styles from '@/components/DesignStoryComponents/story.module.css';
+import styles from '@/components/DesignStoryComponents/desingStory.module.css';
 import { handleStoryStatus } from '@/app/utils';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import imagePath from '@/app/imagePath';
+import CustomTag from '@/components/CustomTag/CustomTag';
+import Image from 'next/image';
 
 const DesignStoryList: React.FC = () => {
   const {
@@ -19,12 +21,7 @@ const DesignStoryList: React.FC = () => {
     setSelectedStory(storyDetails);
     localStorage.setItem('storyId', storyDetails.id);
   };
-  const tagCSS = {
-    grey: styles.grey_tag,
-    purple: styles.purple_tag,
-    green: styles.green_tag,
-    yellow: styles.yellow_tag,
-  };
+
   const filteredStories = storyList.filter((story) =>
     story.title.toLowerCase().includes(searchTerm.toLowerCase()),
   );
@@ -60,20 +57,28 @@ const DesignStoryList: React.FC = () => {
               <div
                 className={`${styles.story_image_container} relative flex h-48 w-full items-center justify-center overflow-hidden rounded-lg px-[10px] py-2`}
               >
-                <img
-                  className={'max-h-full max-w-full object-contain'}
-                  src={story.input_file_url}
-                  alt={'design_image'}
-                />
-                <span
-                  className={`${tagCSS[handleStoryStatus(story.status).color]}`}
-                >
-                  {handleStoryStatus(story.status).text}
-                </span>
+                <div className={'relative h-full w-full'}>
+                  <Image
+                      src={story.input_file_url}
+                      alt={'design_image'}
+                      fill
+                      className="object-contain"
+                      loading="lazy"
+                  />
+                </div>
+                <div className={'absolute left-[5px] top-1.5'}>
+                  <CustomTag
+                      icon={null}
+                      iconClass={'size-4'}
+                      className={'rounded-lg'}
+                      text={handleStoryStatus(story.status).text}
+                      color={handleStoryStatus(story.status).color}
+                  />
+                </div>
               </div>
               <div className={'flex flex-row gap-2'}>
                 <span
-                  className={`${styles.story_number} justify-center text-sm font-normal leading-normal`}
+                    className={`${styles.story_number} justify-center text-sm font-normal leading-normal`}
                 >
                   #{story.id}
                 </span>

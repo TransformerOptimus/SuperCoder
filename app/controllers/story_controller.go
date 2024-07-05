@@ -13,8 +13,7 @@ import (
 )
 
 type StoryController struct {
-	storyService     *services.StoryService
-	executionService *services.ExecutionService
+	storyService *services.StoryService
 }
 
 func (controller *StoryController) CreateStory(context *gin.Context) {
@@ -35,6 +34,7 @@ func (controller *StoryController) CreateDesignStory(context *gin.Context) {
 	file, err := context.FormFile("file")
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	if file == nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "File not found"})
@@ -90,6 +90,7 @@ func (controller *StoryController) GetDesignStoriesOfProject(context *gin.Contex
 	projectID, err := strconv.Atoi(projectIdStr)
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	stories, err := controller.storyService.GetDesignStoriesOfProject(projectID)
 	if err != nil {
@@ -275,9 +276,8 @@ func (controller *StoryController) UpdateStoryIsReviewed(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"status": "OK"})
 }
 
-func NewStoryController(storyService *services.StoryService, executionService *services.ExecutionService) *StoryController {
+func NewStoryController(storyService *services.StoryService) *StoryController {
 	return &StoryController{
-		storyService:     storyService,
-		executionService: executionService,
+		storyService: storyService,
 	}
 }

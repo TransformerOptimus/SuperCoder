@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/hibiken/asynq"
@@ -397,7 +398,9 @@ func main() {
 		ioServer *socketio.Server,
 		nrApp *newrelic.Application,
 		designStoryCtrl *controllers.DesignStoryReviewController,
+		logger *zap.Logger,
 	) error {
+
 		defer func() {
 			err := asynqClient.Close()
 			if err != nil {
@@ -414,6 +417,9 @@ func main() {
 		}
 
 		r := gin.Default()
+
+		r.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+		r.Use(ginzap.RecoveryWithZap(logger, true))
 
 		// Add New Relic middleware to the Gin router
 		r.Use(func(c *gin.Context) {

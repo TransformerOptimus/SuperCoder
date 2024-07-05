@@ -18,11 +18,18 @@ func LoadConfig() (config *koanf.Koanf, err error) {
 		"values.file": "values.yaml",
 		"project":     "workspace",
 		"jobs": map[string]interface{}{
+			"images": map[string]interface{}{},
+			"docker": map[string]interface{}{
+				"network": "supercoder_default",
+			},
 			"local": map[string]interface{}{
-				"image":      "python-executor:latest",
+				"images": map[string]interface{}{
+					"python": "python-executor:latest",
+					"node":   "node-executor:latest",
+				},
 				"autoremove": "false",
 				"volume": map[string]interface{}{
-					"source": "ai-developer_workspaces",
+					"source": "supercoder_workspaces",
 					"target": "/workspaces",
 				},
 			},

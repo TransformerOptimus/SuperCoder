@@ -17,6 +17,17 @@ func CheckIfWorkspaceExists(workspaceId string) (bool, error) {
 	return false, err
 }
 
+func CheckIfFrontendWorkspaceExists(storyHashId, workspaceId string) (bool, error) {
+	_, err := os.Stat("/workspaces/" + workspaceId + "/" + storyHashId)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
 func SudoRsyncFolders(src string, dest string) error {
 	cmd := exec.Command("sudo", "rsync", "-av", src, dest)
 	err := cmd.Run()
@@ -35,12 +46,12 @@ func RsyncFolders(src string, dest string) error {
 	return nil
 }
 
-func ChownRWorkspace(workspaceId string, user string, group string) error {
+func ChownRWorkspace(user string, group string, workspacePath string) error {
 	cmd := exec.Command(
 		"chown",
 		"-R",
 		fmt.Sprintf("%s:%s", user, group),
-		fmt.Sprintf("/workspaces/%s", workspaceId),
+		workspacePath,
 	)
 	err := cmd.Run()
 	if err != nil {

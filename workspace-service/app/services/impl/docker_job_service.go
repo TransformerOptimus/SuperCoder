@@ -34,10 +34,13 @@ func getDockerEnvVars(request dto.CreateJobRequest) []string {
 
 func (js DockerJobService) CreateJob(request dto.CreateJobRequest) (res *dto.CreateJobResponse, err error) {
 	jobName := createJobName(request.ProjectId, request.StoryId, request.ExecutionId)
+
+	js.logger.Info("Creating job", zap.String("jobName", jobName), zap.String("image", js.config.LocalContainerImage(request.ExecutorImage)))
+
 	cont, err := js.dockerClient.ContainerCreate(
 		context.Background(),
 		&container.Config{
-			Image: js.config.LocalContainerImage(),
+			Image: js.config.LocalContainerImage(request.ExecutorImage),
 			Env:   getDockerEnvVars(request),
 		},
 		&container.HostConfig{
@@ -52,7 +55,7 @@ func (js DockerJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Cre
 		},
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
-				"ai-developer_default": {},
+				js.config.DockerNetwork(): {},
 			},
 		},
 		nil,

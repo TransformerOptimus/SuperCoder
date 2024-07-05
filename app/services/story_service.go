@@ -477,7 +477,10 @@ func (s *StoryService) UpdateReviewViewed(storyId int, viewedStatus bool) error 
 		return err
 	}
 	err = s.storyRepo.UpdateReviewViewedStatus(story, viewedStatus)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *StoryService) GetInProgressStoriesByProjectId(projectId int) ([]*response.GetStoryResponse, error) {

@@ -260,6 +260,21 @@ func (controller *StoryController) GetDesignStoryByID(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"story": story})
 }
 
+func (controller *StoryController) UpdateStoryIsReviewed(context *gin.Context) {
+	storyIdStr := context.Param("story_id")
+	storyID, err := strconv.Atoi(storyIdStr)
+	if err != nil {
+		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	err = controller.storyService.UpdateReviewViewed(storyID, true)
+	if err != nil {
+		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	context.JSON(http.StatusOK, gin.H{"status": "OK"})
+}
+
 func NewStoryController(storyService *services.StoryService, executionService *services.ExecutionService) *StoryController {
 	return &StoryController{
 		storyService:     storyService,

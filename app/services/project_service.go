@@ -167,7 +167,7 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 		asynq.NewTask(constants.DeleteWorkspaceTaskType, payloadBytes),
 		asynq.ProcessIn(constants.ProjectConnectionTTL+10*time.Minute),
 		asynq.MaxRetry(3),
-		asynq.TaskID(project.HashID),
+		asynq.TaskID("delete:fallback:"+project.HashID),
 	)
 
 	s.logger.Info("Project created successfully with repository", zap.Any("project", project), zap.Any("repository", repository))
@@ -246,7 +246,7 @@ func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate s
 		asynq.NewTask(constants.DeleteWorkspaceTaskType, payloadBytes),
 		asynq.ProcessIn(constants.ProjectConnectionTTL+10*time.Minute),
 		asynq.MaxRetry(3),
-		asynq.TaskID(project.HashID),
+		asynq.TaskID("delete:fallback:"+project.HashID),
 	)
 	return nil
 }

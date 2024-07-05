@@ -1,9 +1,8 @@
-import React, { useState, useRef, forwardRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@nextui-org/react';
 import imagePath from '@/app/imagePath';
 import {
   DynamicInputSectionProps,
-  InputSectionProps,
   CreateEditStoryProps,
 } from '../../../types/storyTypes';
 import CustomImage from '@/components/ImageComponents/CustomImage';
@@ -11,34 +10,7 @@ import styles from './story.module.css';
 import { FormStoryPayload } from '../../../types/storyTypes';
 import { createStory, editStory } from '@/api/DashboardService';
 import { useBoardContext } from '@/context/Boards';
-
-const InputSection = forwardRef<
-  HTMLTextAreaElement | HTMLInputElement,
-  InputSectionProps
->(({ id, label, type = 'text', isTextArea = false, placeholder }, ref) => (
-  <div id={id} className={'flex flex-col'}>
-    <span className={'text-[13px] font-normal opacity-40'}>{label}</span>
-
-    {isTextArea ? (
-      <textarea
-        className={'textarea_medium w-full'}
-        placeholder={placeholder}
-        ref={ref as React.Ref<HTMLTextAreaElement>}
-      />
-    ) : (
-      <input
-        type={type}
-        className={'input_medium w-full'}
-        placeholder={placeholder}
-        ref={ref as React.Ref<HTMLInputElement>}
-      />
-    )}
-  </div>
-));
-
-// Add displayName for better debugging
-
-InputSection.displayName = 'InputSection';
+import InputSection from '@/components/StoryComponents/InputSection';
 
 const DynamicInputSection: React.FC<DynamicInputSectionProps> = ({
   id,

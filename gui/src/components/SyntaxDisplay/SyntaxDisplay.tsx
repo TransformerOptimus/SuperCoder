@@ -4,15 +4,18 @@ import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { rgba } from 'color2k';
 
 interface SyntaxDisplayProps {
-  error: string;
+  type: 'ERROR' | 'CODE';
+  msg?: string;
 }
 
-const SyntaxDisplay: React.FC<SyntaxDisplayProps> = ({ error }) => {
+const SyntaxDisplay: React.FC<SyntaxDisplayProps> = ({ type, msg }) => {
   return (
     <>
-      <span className={'text-sm font-normal'}>
-        AI Developer has an error in the terminal.
-      </span>
+      {type === 'ERROR' && (
+        <span className={'text-sm font-normal'}>
+          AI Developer has an error in the terminal.
+        </span>
+      )}
       <SyntaxHighlighter
         language="python"
         style={dracula}
@@ -24,7 +27,7 @@ const SyntaxDisplay: React.FC<SyntaxDisplayProps> = ({ error }) => {
           background: rgba(0, 0, 0, 0.4),
         }}
       >
-        {error}
+        {msg}
       </SyntaxHighlighter>
     </>
   );

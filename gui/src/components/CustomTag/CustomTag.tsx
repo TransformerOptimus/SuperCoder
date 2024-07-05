@@ -16,6 +16,7 @@ export default function CustomTag({
     purple: styles.purple_tag,
     yellow: styles.yellow_tag,
     green: styles.green_tag,
+    red: styles.red_tag,
   };
 
   return (

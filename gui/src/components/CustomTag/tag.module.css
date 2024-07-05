@@ -1,7 +1,8 @@
 .grey_tag,
 .purple_tag,
-.yellow_tag,
-.green_tag {
+.green_tag,
+.red_tag,
+.yellow_tag{
   display: flex;
   padding: 6px 8px;
   align-items: center;
@@ -34,4 +35,8 @@
   /* Done Tag */
   background: linear-gradient(0deg, rgb(0 0 0 / 40%) 0%, rgb(0 0 0 / 40%) 100%),
     #4bac1c;
+}
+
+.red_tag{
+  background: #6d2a29;
 }

@@ -166,5 +166,5 @@ export const rebuildDesignStory = (
 };
 
 export const updateReviewViewedStatus = (story_id: number) => {
-  return api.put(`/design/review/${story_id}/update-review-viewed`, {});
+  return api.put(`/stories/design/review_viewed/${story_id}`, {});
 };

@@ -88,9 +88,7 @@ const ReviewPage: React.FC = (props) => {
       if (response) {
         const data = response.data;
         setStory(data.story);
-        console.log(data.story.review_viewed);
         if (data.story && data.story.review_viewed === false) {
-          console.log('inside');
           toUpdateReviewViewedStatus(data.story.id).then().catch();
         }
         frontendURL.current = data.story.frontend_url;

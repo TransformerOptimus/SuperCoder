@@ -225,13 +225,6 @@ func main() {
 			DB:   config.RedisDB(),
 		})
 	})
-	//Provide Asynq Inspector
-	err = c.Provide(func() *asynq.Inspector {
-		return asynq.NewInspector(asynq.RedisClientOpt{
-			Addr: config.RedisAddress(),
-			DB:   config.RedisDB(),
-		})
-	})
 	if err != nil {
 		log.Fatalf("could not provide *asynq.Client: %v", err)
 	}
@@ -242,14 +235,6 @@ func main() {
 		log.Println("Error providing slack alert:", err)
 		return
 	}
-
-	//Provide Redis Lock
-	err = c.Provide(services.NewRedisLocker)
-	if err != nil {
-		config.Logger.Error("Error providing RedisLocker", zap.Error(err))
-		panic(err)
-	}
-
 	//Provide DeleteWorkspaceTaskHandler
 	err = c.Provide(tasks.NewDeleteWorkspaceTaskHandler)
 	if err != nil {

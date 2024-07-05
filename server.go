@@ -88,14 +88,6 @@ func main() {
 		panic(err)
 	}
 
-	//Provide Asynq Inspector
-	err = c.Provide(func() *asynq.Inspector {
-		return asynq.NewInspector(asynq.RedisClientOpt{
-			Addr: config.RedisAddress(),
-			DB:   config.RedisDB(),
-		})
-	})
-
 	// Provide GORM DB instance
 	err = c.Provide(func() *gorm.DB {
 		return config.InitDB()
@@ -375,13 +367,6 @@ func main() {
 		return
 	}
 	fmt.Println("WorkspaceGateway provided")
-
-	//NewRedisLocker
-	err = c.Provide(services.NewRedisLocker)
-	if err != nil {
-		config.Logger.Error("Error providing RedisLocker", zap.Error(err))
-		panic(err)
-	}
 
 	// Setup routes and start the server
 	err = c.Invoke(func(

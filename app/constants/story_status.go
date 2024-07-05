@@ -7,6 +7,7 @@ const (
 	MaxLoopIterationReached = "MAX_LOOP_ITERATION_REACHED"
 	InReviewLLMKeyNotFound  = "IN_REVIEW_LLM_KEY_NOT_FOUND"
 	InReview                = "IN_REVIEW"
+	ExecutionEnqueued       = "IN_PROGRESS_EXECUTION_ENQUEUED"
 )
 
 func ValidStatuses() map[string]bool {

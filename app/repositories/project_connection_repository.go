@@ -22,12 +22,12 @@ func NewProjectConnectionsRepository(client *redis.Client, ctx context.Context, 
 		logger: logger.Named("ProjectConnectionsRepository"),
 	}
 }
-func getRedisProjectKey(projectID string) string {
-	return fmt.Sprintf("project_id:%s", projectID)
+func getRedisProjectKey(workspaceID string) string {
+	return fmt.Sprintf("project_workspace_id:%s", workspaceID)
 }
 
-func (r *ProjectConnectionsRepository) IncrementActiveCount(projectID string, ttl time.Duration) (int64, error) {
-	key := getRedisProjectKey(projectID)
+func (r *ProjectConnectionsRepository) IncrementActiveCount(workspaceID string, ttl time.Duration) (int64, error) {
+	key := getRedisProjectKey(workspaceID)
 	newCount, err := r.client.HIncrBy(r.ctx, key, "active_count", 1).Result()
 	if err != nil {
 		r.logger.Error("Failed to increment active count", zap.Error(err))
@@ -46,8 +46,8 @@ func (r *ProjectConnectionsRepository) IncrementActiveCount(projectID string, tt
 	return newCount, nil
 }
 
-func (r *ProjectConnectionsRepository) DecrementActiveCount(projectID string, ttl time.Duration) (int64, error) {
-	key := getRedisProjectKey(projectID)
+func (r *ProjectConnectionsRepository) DecrementActiveCount(workspaceID string, ttl time.Duration) (int64, error) {
+	key := getRedisProjectKey(workspaceID)
 	newCount, err := r.client.HIncrBy(r.ctx, key, "active_count", -1).Result()
 	if err != nil {
 		r.logger.Error("Failed to decrement active count", zap.Error(err))
@@ -74,6 +74,6 @@ func (r *ProjectConnectionsRepository) DecrementActiveCount(projectID string, tt
 	return newCount, nil
 }
 
-func (r *ProjectConnectionsRepository) GetProjectData(projectID string) (map[string]string, error) {
-	return r.client.HGetAll(r.ctx, getRedisProjectKey(projectID)).Result()
+func (r *ProjectConnectionsRepository) GetProjectData(workspaceID string) (map[string]string, error) {
+	return r.client.HGetAll(r.ctx, getRedisProjectKey(workspaceID)).Result()
 }

@@ -74,6 +74,7 @@ func (controller *StoryController) GetAllStoriesOfProject(context *gin.Context) 
 	projectID, err := strconv.Atoi(projectIdStr)
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	stories, err := controller.storyService.GetAllStoriesOfProject(projectID, searchValue)
 	if err != nil {

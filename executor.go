@@ -10,6 +10,7 @@ import (
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/services/s3_providers"
 	"ai-developer/app/workflow_executors"
 	"ai-developer/app/workflow_executors/step_executors"
 	"ai-developer/app/workflow_executors/step_executors/impl"
@@ -114,6 +115,11 @@ func main() {
 		log.Println("Error providing execution repository:", err)
 		panic(err)
 	}
+	err = c.Provide(repositories.NewDesignStoryReviewRepository)
+	if err != nil {
+		log.Println("Error providing design story review repository:", err)
+		panic(err)
+	}
 	err = c.Provide(repositories.NewExecutionOutputRepository)
 	if err != nil {
 		log.Println("Error providing execution output repository:", err)
@@ -190,9 +196,17 @@ func main() {
 	_ = c.Provide(services.NewPullRequestService)
 	_ = c.Provide(services.NewExecutionOutputService)
 	_ = c.Provide(services.NewLLMAPIKeyService)
+	_ = c.Provide(s3_providers.NewS3Service)
+	_ = c.Provide(services.NewDesignStoryReviewService)
+	fmt.Println("Services Successfully Provided.")
 
 	//GenerateCodeStep
 	err = c.Provide(impl.NewOpenAICodeGenerator)
+	if err != nil {
+		log.Println("Error providing generate code step:", err)
+		panic(err)
+	}
+	err = c.Provide(impl.NewOpenAINextJsCodeGenerationExecutor)
 	if err != nil {
 		log.Println("Error providing generate code step:", err)
 		panic(err)
@@ -201,6 +215,11 @@ func main() {
 	err = c.Provide(impl.NewUpdateCodeFileExecutor)
 	if err != nil {
 		log.Println("Error providing update code file step:", err)
+		panic(err)
+	}
+	err = c.Provide(impl.NewNextJsUpdateCodeFileExecutor)
+	if err != nil {
+		log.Println("Error providing next js code file step:", err)
 		panic(err)
 	}
 	//GitMakeBranchStep
@@ -223,6 +242,12 @@ func main() {
 		log.Println("Error providing server start test step:", err)
 		panic(err)
 
+	}
+	//NEXT JS serverStartTestStep
+	err = c.Provide(impl.NewNextJsServerStartTestExecutor)
+	if err != nil {
+		log.Println("Error providing next js test step:", err)
+		panic(err)
 	}
 	//GitCommitStep
 	err = c.Provide(impl.NewGitCommitExecutor)
@@ -269,6 +294,14 @@ func main() {
 		log.Fatalf("Error providing OpenAiClient: %v", err)
 	}
 
+	// Provide ClaudeClient
+	if err = c.Provide(func() *llms.ClaudeClient {
+		apiKey := config.ClaudeAPIKey()
+		log.Println("Claude API Key:", apiKey)
+		return llms.NewClaudeClient(apiKey)
+	}); err != nil {
+		log.Fatalf("Error providing ClaudeClient: %v", err)
+	}
 	template, exists := os.LookupEnv("EXECUTION_TEMPLATE")
 	if template == "FLASK" || !exists {
 		_ = c.Provide(func(
@@ -316,6 +349,24 @@ func main() {
 				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
 			}
 		})
+	} else if template == "NEXTJS" {
+		_ = c.Provide(func(
+			openAiNextJsCodeGenerator *impl.OpenAiNextJsCodeGenerator,
+			updateCodeFileExecutor *impl.NextJsUpdateCodeFileExecutor,
+			serverStartExecutor *impl.NextJsServerStartTestExecutor,
+		) map[steps.StepName]step_executors.StepExecutor {
+			return map[steps.StepName]step_executors.StepExecutor{
+				steps.CODE_GENERATE_CSS_STEP:       *openAiNextJsCodeGenerator,
+				steps.UPDATE_CODE_CSS_FILE_STEP:    *updateCodeFileExecutor,
+				steps.CODE_GENERATE_LAYOUT_STEP:    *openAiNextJsCodeGenerator,
+				steps.UPDATE_CODE_LAYOUT_FILE_STEP: *updateCodeFileExecutor,
+				steps.CODE_GENERATE_PAGE_STEP:      *openAiNextJsCodeGenerator,
+				steps.UPDATE_CODE_PAGE_FILE_STEP:   *updateCodeFileExecutor,
+				steps.SERVER_START_STEP:            *serverStartExecutor,
+				steps.RETRY_CODE_GENERATE_STEP:     *openAiNextJsCodeGenerator,
+				steps.UPDATE_CODE_FILE_STEP:        *updateCodeFileExecutor,
+			}
+		})
 	}
 
 	_ = c.Provide(workflow_executors.NewWorkflowExecutor)
@@ -354,8 +405,19 @@ func main() {
 				},
 			)
 			return err
+		} else if template == "NEXTJS" {
+			log.Println("Going to execute AI Developer Next JS Workflow Execution")
+			err = executor.Execute(
+				workflow_executors.NextJsWorkflowConfig,
+				&workflow_executors.WorkflowExecutionArgs{
+					StoryId:       adec.GetStoryID(),
+					IsReExecution: adec.IsReExecution(),
+					ExecutionId:   adec.GetExecutionID(),
+				})
+		} else {
+			fmt.Println("_____Invalid template_____", template)
 		}
-		fmt.Println("_____Invalid template_____", template)
+		
 		return nil
 	})
 

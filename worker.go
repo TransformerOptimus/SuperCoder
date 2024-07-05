@@ -10,16 +10,18 @@ import (
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/services/s3_providers"
 	"ai-developer/app/tasks"
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"log"
-	"net/http"
 )
 
 func main() {
@@ -213,6 +215,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = c.Provide(s3_providers.NewS3Service)
+	if err != nil {
+		fmt.Println("Error providing S3 service:", err)
+		panic(err)
+	}
 	// Provide GitnessService
 	err = c.Provide(func(client *gitness_git_provider.GitnessClient) *git_providers.GitnessService {
 		return git_providers.NewGitnessService(client)
@@ -263,6 +270,9 @@ func main() {
 		deleteWorkspaceTaskHandler *tasks.DeleteWorkspaceTaskHandler,
 		createExecutionJobTaskHandler *tasks.CreateExecutionJobTaskHandler,
 		checkExecutionStatusTaskHandler *tasks.CheckExecutionStatusTaskHandler,
+		workspaceServiceClient *workspace.WorkspaceServiceClient,
+		projectService *services.ProjectService,
+		logger *zap.Logger,
 	) *asynq.ServeMux {
 		mux := asynq.NewServeMux()
 		mux.HandleFunc(constants.DeleteWorkspaceTaskType, deleteWorkspaceTaskHandler.HandleTask)

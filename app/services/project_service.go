@@ -159,7 +159,7 @@ func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate s
 	}
 
 	//Check if there is any active workspace
-	currentActiveCount, err := s.GetActiveProjectCount(strconv.Itoa(int(project.ID)))
+	currentActiveCount, err := s.GetActiveProjectCount(project.HashID)
 	s.logger.Info("Initially Active Count", zap.Int("active_count", currentActiveCount))
 	if err != nil {
 		s.logger.Error("Failed to get active project count", zap.Error(err))
@@ -190,7 +190,7 @@ func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate s
 	}
 
 	//Increment active project count
-	_, err = s.redisRepo.IncrementActiveCount(strconv.Itoa(int(project.ID)), constants.ProjectConnectionTTL)
+	_, err = s.redisRepo.IncrementActiveCount(project.HashID, constants.ProjectConnectionTTL)
 	if err != nil {
 		s.logger.Error("Failed to set active project count", zap.Error(err))
 		return err
@@ -219,7 +219,7 @@ func (s *ProjectService) DeleteProjectWorkspace(projectID int) error {
 		return err
 	}
 	//Check if there is any active workspace
-	currentActiveCount, err := s.GetActiveProjectCount(strconv.Itoa(int(project.ID)))
+	currentActiveCount, err := s.GetActiveProjectCount(project.HashID)
 	s.logger.Info("Initially Active Count", zap.Int("active_count", currentActiveCount))
 	if err != nil {
 		s.logger.Error("Failed to get active project count", zap.Error(err))
@@ -246,7 +246,7 @@ func (s *ProjectService) DeleteProjectWorkspace(projectID int) error {
 		}
 	}
 	//Decrement active project count
-	_, err = s.redisRepo.DecrementActiveCount(strconv.Itoa(int(project.ID)), constants.ProjectConnectionTTL)
+	_, err = s.redisRepo.DecrementActiveCount(project.HashID, constants.ProjectConnectionTTL)
 	return nil
 }
 
@@ -262,8 +262,8 @@ func (s *ProjectService) UpdateProject(requestData request.UpdateProjectRequest)
 	return updatedProject, nil
 }
 
-func (s *ProjectService) GetActiveProjectCount(projectID string) (int, error) {
-	data, err := s.redisRepo.GetProjectData(projectID)
+func (s *ProjectService) GetActiveProjectCount(workspaceID string) (int, error) {
+	data, err := s.redisRepo.GetProjectData(workspaceID)
 	if err != nil {
 		s.logger.Error("Failed to get project data", zap.Error(err))
 		return 0, err

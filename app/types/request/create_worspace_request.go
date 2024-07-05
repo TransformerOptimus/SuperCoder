@@ -6,6 +6,8 @@ type CreateWorkspaceRequest struct {
 	RemoteURL        string  `json:"remoteURL"`
 	BackendTemplate  *string `json:"backendTemplate,omitempty"`
 	FrontendTemplate *string `json:"frontendTemplate,omitempty"`
+	GitnessUserName  string  `json:"gitnessUserName,omitempty"`
+	GitnessToken     string  `json:"gitnessToken,omitempty"`
 }
 
 func (receiver *CreateWorkspaceRequest) WithBackendTemplate(backendTemplate string) *CreateWorkspaceRequest {

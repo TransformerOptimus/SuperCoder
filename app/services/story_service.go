@@ -334,6 +334,10 @@ func (s *StoryService) UpdateStoryStatus(storyID int, status string) error {
 
 			// Enqueue the task with exponential backoff
 			_, err = s.asynqClient.Enqueue(task, asynq.MaxRetry(5))
+			if err != nil {
+				s.logger.Error("Error enqueuing task", zap.Error(err))
+				return err
+			}
 			err = s.storyRepo.UpdateStoryStatus(story, constants.ExecutionEnqueued)
 			if err != nil {
 				s.logger.Error("Error updating story status", zap.Error(err))

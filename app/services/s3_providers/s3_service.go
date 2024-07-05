@@ -137,6 +137,10 @@ func NewS3Service() (*S3Service, error) {
 	awsBucketName := config.AWSBucketName()
 	awsRegion := config.AWSRegion()
 
+	fmt.Println("awsAccessKeyID:", awsAccessKeyID)
+	fmt.Println("awsSecretAccessKey:", awsSecretAccessKey)
+	fmt.Println("awsRegion", awsRegion)
+	fmt.Println("awsBucketName:", awsBucketName)
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(awsRegion),
 		Credentials: credentials.NewStaticCredentials(

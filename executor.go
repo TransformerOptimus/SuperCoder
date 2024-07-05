@@ -54,6 +54,13 @@ func main() {
 			DB:   config.RedisDB(),
 		})
 	})
+	//Provide Asynq Inspector
+	err = c.Provide(func() *asynq.Inspector {
+		return asynq.NewInspector(asynq.RedisClientOpt{
+			Addr: config.RedisAddress(),
+			DB:   config.RedisDB(),
+		})
+	})
 	if err != nil {
 		log.Println("Error providing Asynq client:", err)
 		panic(err)
@@ -258,6 +265,13 @@ func main() {
 	if err != nil {
 		log.Println("Error providing slack alert:", err)
 		return
+	}
+
+	//Provide Redis Lock
+	err = c.Provide(services.NewRedisLocker)
+	if err != nil {
+		config.Logger.Error("Error providing RedisLocker", zap.Error(err))
+		panic(err)
 	}
 
 	// Provide OpenAiClient

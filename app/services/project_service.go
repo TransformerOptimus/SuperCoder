@@ -12,9 +12,11 @@ import (
 	"ai-developer/app/types/response"
 	"ai-developer/app/utils"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"strconv"
 	"time"
@@ -30,7 +32,9 @@ type ProjectService struct {
 	hashIdGenerator        *utils.HashIDGenerator
 	workspaceServiceClient *workspace.WorkspaceServiceClient
 	asynqClient            *asynq.Client
+	inspector              *asynq.Inspector
 	logger                 *zap.Logger
+	redisLock              *RedisLocker
 }
 
 func (s *ProjectService) GetAllProjectsOfOrganisation(organisationId int) ([]response.GetAllProjectsResponse, error) {
@@ -81,6 +85,19 @@ func (s *ProjectService) GetProjectDetailsById(projectId int) (*models.Project, 
 
 func (s *ProjectService) CreateProject(organisationID int, requestData request.CreateProjectRequest) (*models.Project, error) {
 	hashID := s.hashIdGenerator.Generate() + "-" + uuid.New().String()
+
+	acquired, err := s.redisLock.AcquireLock(hashID, 5*time.Second)
+	if err != nil || !acquired {
+		s.logger.Error("Failed to acquire lock", zap.Error(err))
+		return nil, fmt.Errorf("could not acquire lock for project %s: %v", requestData.Name, err)
+	}
+	defer func(redisLock *RedisLocker, hashID string) {
+		err := redisLock.ReleaseLock(hashID)
+		if err != nil {
+			s.logger.Error("Failed to release lock", zap.Error(err))
+		}
+	}(s.redisLock, hashID)
+
 	url := "http://localhost:8081/?folder=/workspaces/" + hashID
 	backend_url := "http://localhost:5000"
 	frontend_url := "http://localhost:3000"
@@ -134,7 +151,27 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 		return nil, err
 	}
 
-	fmt.Println("Repository created: ", repository)
+	//Enqueue job to delete workspace with updated delay
+	payloadBytes, err := json.Marshal(asynq_task.CreateDeleteWorkspaceTaskPayload{
+		WorkspaceID: project.HashID,
+	})
+	if err != nil {
+		s.logger.Error("Failed to marshal payload", zap.Error(err))
+		return nil, err
+	}
+	err = s.inspector.DeleteTask(constants.DefaultQueue, project.HashID)
+	if err != nil && !errors.Is(err, redis.Nil) {
+		s.logger.Error("Failed to delete task", zap.Error(err))
+		return nil, err
+	}
+	_, err = s.asynqClient.Enqueue(
+		asynq.NewTask(constants.DeleteWorkspaceTaskType, payloadBytes),
+		asynq.ProcessIn(constants.ProjectConnectionTTL+10*time.Minute),
+		asynq.MaxRetry(3),
+		asynq.TaskID(project.HashID),
+	)
+
+	s.logger.Info("Project created successfully with repository", zap.Any("project", project), zap.Any("repository", repository))
 	return s.projectRepo.CreateProject(project)
 }
 func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate string) error {
@@ -142,6 +179,18 @@ func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate s
 	if err != nil {
 		return err
 	}
+
+	acquired, err := s.redisLock.AcquireLock(project.HashID, 5*time.Second)
+	if err != nil || !acquired {
+		s.logger.Error("Failed to acquire lock", zap.Error(err))
+		return fmt.Errorf("could not acquire lock for project %s: %v", project.Name, err)
+	}
+	defer func(redisLock *RedisLocker, projectHashID string) {
+		err := redisLock.ReleaseLock(projectHashID)
+		if err != nil {
+			s.logger.Error("Failed to release lock", zap.Error(err))
+		}
+	}(s.redisLock, project.HashID)
 
 	//Check if there is any active workspace
 	currentActiveCount, err := s.GetActiveProjectCount(strconv.Itoa(int(project.ID)))
@@ -175,11 +224,31 @@ func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate s
 	}
 
 	//Increment active project count
-	_, err = s.redisRepo.IncrementActiveCount(strconv.Itoa(int(project.ID)), 6*time.Hour)
+	_, err = s.redisRepo.IncrementActiveCount(strconv.Itoa(int(project.ID)), constants.ProjectConnectionTTL)
 	if err != nil {
 		s.logger.Error("Failed to set active project count", zap.Error(err))
 		return err
 	}
+
+	//Enqueue a schedule job on creation to delete workspace after 6 hours
+	payloadBytes, err := json.Marshal(asynq_task.CreateDeleteWorkspaceTaskPayload{
+		WorkspaceID: project.HashID,
+	})
+	if err != nil {
+		s.logger.Error("Failed to marshal payload", zap.Error(err))
+		return err
+	}
+	err = s.inspector.DeleteTask(constants.DefaultQueue, project.HashID)
+	if err != nil && !errors.Is(err, redis.Nil) {
+		s.logger.Error("Failed to delete task", zap.Error(err))
+		return err
+	}
+	_, err = s.asynqClient.Enqueue(
+		asynq.NewTask(constants.DeleteWorkspaceTaskType, payloadBytes),
+		asynq.ProcessIn(constants.ProjectConnectionTTL+10*time.Minute),
+		asynq.MaxRetry(3),
+		asynq.TaskID(project.HashID),
+	)
 	return nil
 }
 
@@ -216,7 +285,7 @@ func (s *ProjectService) DeleteProjectWorkspace(projectID int) error {
 		}
 	}
 	//Decrement active project count
-	_, err = s.redisRepo.DecrementActiveCount(strconv.Itoa(int(project.ID)), 6*time.Hour)
+	_, err = s.redisRepo.DecrementActiveCount(strconv.Itoa(int(project.ID)), constants.ProjectConnectionTTL)
 	return nil
 }
 
@@ -281,6 +350,8 @@ func NewProjectService(projectRepo *repositories.ProjectRepository,
 	workspaceServiceClient *workspace.WorkspaceServiceClient,
 	repo *repositories.ProjectConnectionsRepository,
 	asynqClient *asynq.Client,
+	inspector *asynq.Inspector,
+	redisLock *RedisLocker,
 	logger *zap.Logger,
 ) *ProjectService {
 	return &ProjectService{
@@ -294,6 +365,8 @@ func NewProjectService(projectRepo *repositories.ProjectRepository,
 		hashIdGenerator:        utils.NewHashIDGenerator(5),
 		logger:                 logger.Named("ProjectService"),
 		asynqClient:            asynqClient,
+		inspector:              inspector,
+		redisLock:              redisLock,
 	}
 }
 

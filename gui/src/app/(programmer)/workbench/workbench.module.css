@@ -7,3 +7,12 @@
   align-items: flex-start;
   gap: 8px;
 }
+
+.container_section {
+  border: 1px solid var(--white-opacity-8);
+  background: var(--layout-bg-color);
+}
+
+.container_header {
+  border-bottom: 1px solid var(--white-opacity-8);
+}

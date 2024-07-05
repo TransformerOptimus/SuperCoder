@@ -33,6 +33,11 @@ export interface CommentReBuildPayload {
   comment: string;
 }
 
+export interface CommentReBuildDesignStoryPayload {
+  story_id: number;
+  comment: string;
+}
+
 export interface CommitItems {
   title: string;
   commiter: string;

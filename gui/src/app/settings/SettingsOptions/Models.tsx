@@ -89,7 +89,6 @@ export default function Models() {
         <CustomSelect
           selectedValues={selectedValue}
           setSelectedValues={setSelectedValue}
-          disabled={true}
         >
           {modelsList &&
             modelsList.length > 0 &&

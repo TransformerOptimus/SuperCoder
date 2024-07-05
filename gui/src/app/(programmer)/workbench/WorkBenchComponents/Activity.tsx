@@ -1,29 +1,26 @@
 'use client';
 import React, { useRef, useEffect } from 'react';
 import styles from '../workbench.module.css';
-import Image from 'next/image';
 import imagePath from '@/app/imagePath';
 import SyntaxDisplay from '@/components/SyntaxDisplay/SyntaxDisplay';
 import { formatTimeAgo } from '@/app/utils';
 import CustomImage from '@/components/ImageComponents/CustomImage';
+import { ActivityItem } from '../../../../../types/workbenchTypes';
 
 interface ActivityProps {
-  activity: {
-    CreatedAt: string;
-    ExecutionID: number;
-    ExecutionStepID: number;
-    ID: number;
-    LogMessage: string;
-    Type: string;
-    UpdatedAt: string;
-  }[];
+  activity: ActivityItem[];
+  fullScreen?: boolean;
 }
 
-const Activity: React.FC<ActivityProps> = ({ activity }) => {
+const Activity: React.FC<ActivityProps> = ({ activity, fullScreen = true }) => {
   const activityLogsRef = useRef<HTMLDivElement>(null);
 
   const isErrorLog = (type: string) => {
     return type.includes('ERROR');
+  };
+
+  const isCodeLog = (type: string) => {
+    return type.includes('CODE');
   };
 
   const scrollToBottom = () => {
@@ -40,7 +37,9 @@ const Activity: React.FC<ActivityProps> = ({ activity }) => {
     <div
       id={'activity'}
       className={'proxima_nova flex flex-col gap-3 overflow-y-scroll p-2'}
-      style={{ maxHeight: 'calc(100vh - 170px)' }}
+      style={{
+        maxHeight: fullScreen ? 'calc(100vh - 170px)' : 'calc(50vh - 120px)',
+      }}
       ref={activityLogsRef}
     >
       {activity &&
@@ -48,7 +47,9 @@ const Activity: React.FC<ActivityProps> = ({ activity }) => {
         activity.map((item, index) => (
           <div key={index} className={styles.activity_container}>
             {isErrorLog(item.Type) ? (
-              <SyntaxDisplay error={item.LogMessage} />
+              <SyntaxDisplay msg={item.LogMessage} type={'ERROR'} />
+            ) : isCodeLog(item.Type) ? (
+              <SyntaxDisplay msg={item.LogMessage} type={'CODE'} />
             ) : (
               <div
                 className={'text-sm font-normal'}

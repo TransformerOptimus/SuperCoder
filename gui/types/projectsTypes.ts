@@ -19,4 +19,5 @@ export interface ProjectTypes {
   project_backend_url: string;
   project_frontend_url: string;
   pull_request_count: number;
+  project_framework: string;
 }

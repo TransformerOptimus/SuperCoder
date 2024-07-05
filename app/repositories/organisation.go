@@ -10,10 +10,6 @@ type OrganisationRepository struct {
 	db *gorm.DB
 }
 
-func (receiver OrganisationRepository) GetDB() *gorm.DB {
-	return receiver.db
-}
-
 func (receiver OrganisationRepository) CreateOrganisation(tx *gorm.DB, organisation *models.Organisation) (*models.Organisation, error) {
 	if tx == nil {
 		return nil, fmt.Errorf("transaction is null")
@@ -47,4 +43,8 @@ func NewOrganisationRepository(db *gorm.DB) *OrganisationRepository {
 	return &OrganisationRepository{
 		db: db,
 	}
+}
+
+func (receiver OrganisationRepository) GetDB() *gorm.DB {
+	return receiver.db
 }

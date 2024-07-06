@@ -288,7 +288,6 @@ func main() {
 	// Provide OpenAiClient
 	if err := c.Provide(func() *llms.OpenAiClient {
 		apiKey := config.OpenAIAPIKey()
-		log.Println("OpenAI API Key:", apiKey)
 		return llms.NewOpenAiClient(apiKey)
 	}); err != nil {
 		log.Fatalf("Error providing OpenAiClient: %v", err)
@@ -297,7 +296,6 @@ func main() {
 	// Provide ClaudeClient
 	if err = c.Provide(func() *llms.ClaudeClient {
 		apiKey := config.ClaudeAPIKey()
-		log.Println("Claude API Key:", apiKey)
 		return llms.NewClaudeClient(apiKey)
 	}); err != nil {
 		log.Fatalf("Error providing ClaudeClient: %v", err)

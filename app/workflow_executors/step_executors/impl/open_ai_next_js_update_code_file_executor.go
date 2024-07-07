@@ -32,7 +32,7 @@ type Response struct {
 }
 
 func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) error {
-	fmt.Println("Updating code file for next js update")
+	fmt.Println("Updating code file for next js: ")
 	generateCodeSteps, err := e.executionStepService.FetchExecutionSteps(
 		step.Execution.ID,
 		steps.CODE_GENERATE_STEP.String(),
@@ -67,10 +67,10 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 		return err
 	}
 	if step.Retry {
-		fmt.Println("---Response to UpdateCodeFile---", response)
+		fmt.Println("___Response to UpdateCodeFile___ \n", response)
 		err = e.UpdateReGeneratedCodeFile(response, step)
 		if err != nil {
-			fmt.Println("Error updating regenerated code", err.Error())
+			fmt.Println("Error updating regenerated code: ", err.Error())
 			return err
 		}
 	} else {
@@ -114,7 +114,7 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 		}
 		err = e.EditCode(filePath, startLine, endLine, newCode)
 		if err != nil {
-			fmt.Println("Error editing code: %v\n", err)
+			fmt.Println("Error editing code: ", err)
 			return err
 		}
 	case "insert", "create":

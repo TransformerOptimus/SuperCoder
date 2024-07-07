@@ -84,6 +84,26 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 			return err
 		}
 
+		//Add all code to stage
+		output, err := utils.GitAddToTrackFiles(storyDir, nil)
+		if err != nil {
+			fmt.Printf("Error adding files to track: %s\n", err.Error())
+			return err
+		}
+		fmt.Printf("Git add output: %s\n", output)
+
+		//Handle workspace clean up by commiting could be stashing or other ways later
+		output, err = utils.GitCommitWithMessage(
+			storyDir,
+			"Max retry limit reached for code generation, committing code!",
+			nil,
+		)
+		fmt.Printf("Git commit output: %s\n", output)
+		if err != nil {
+			fmt.Printf("Error commiting code: %s\n", err.Error())
+			return err
+		}
+
 		err = openAiCodeGenerator.activityLogService.CreateActivityLog(
 			step.Execution.ID,
 			step.ExecutionStep.ID,
@@ -197,7 +217,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildFinalInstructionForGe
 	}
 
 	// Print the final instruction
-	fmt.Println("Final Instruction:")
+	//fmt.Println("Final Instruction:")
 	return finalInstruction, nil
 }
 

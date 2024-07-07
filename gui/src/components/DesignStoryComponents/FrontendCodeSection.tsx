@@ -7,7 +7,7 @@ import { Button } from '@nextui-org/react';
 import Image from 'next/image';
 import imagePath from '@/app/imagePath';
 import { FrontendCodeSectionProps } from '../../../types/customComponentTypes';
-import styles from '@/components/DesignStoryComponents/story.module.css';
+import styles from '@/components/DesignStoryComponents/desingStory.module.css';
 
 const FrontendCodeSection: React.FC<FrontendCodeSectionProps> = ({
   height,

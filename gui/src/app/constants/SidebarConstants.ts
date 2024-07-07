@@ -1,20 +1,30 @@
 import { SidebarOption } from '../../../types/sidebarTypes';
 import imagePath from '@/app/imagePath';
 
-export const sidebarOptions: SidebarOption[] = [
-  {
-    id: 'board',
-    text: 'Board',
-    selected: imagePath.boardIconSelected,
-    unselected: imagePath.boardIconUnselected,
-    route: `/board`,
-  },
+export const designSidebarOptions: SidebarOption[] = [
   {
     id: 'design',
     text: 'Design',
     selected: imagePath.designIconSelected,
     unselected: imagePath.designIconUnselected,
     route: '/design',
+  },
+  {
+    id: 'workbench',
+    text: 'Workbench',
+    selected: imagePath.workbenchIconSelected,
+    unselected: imagePath.workbenchIconUnselected,
+    route: `/workbench`,
+  },
+];
+
+export const backendSidebarOptions: SidebarOption[] = [
+  {
+    id: 'board',
+    text: 'Board',
+    selected: imagePath.boardIconSelected,
+    unselected: imagePath.boardIconUnselected,
+    route: `/board`,
   },
   {
     id: 'workbench',

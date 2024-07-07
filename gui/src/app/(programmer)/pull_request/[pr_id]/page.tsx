@@ -210,6 +210,7 @@ export default function PRDetails(props) {
             iconClass={'size-4'}
             text={handlePRStatus(selectedPR.status).text}
             color={handlePRStatus(selectedPR.status).color}
+            className={'rounded-3xl'}
           />
         </div>
       )}

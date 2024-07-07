@@ -6,6 +6,7 @@ import SyntaxDisplay from '@/components/SyntaxDisplay/SyntaxDisplay';
 import { formatTimeAgo } from '@/app/utils';
 import CustomImage from '@/components/ImageComponents/CustomImage';
 import { ActivityItem } from '../../../../../types/workbenchTypes';
+import {ActivityLogType} from "@/app/constants/ActivityLogType";
 
 interface ActivityProps {
   activity: ActivityItem[];
@@ -15,12 +16,8 @@ interface ActivityProps {
 const Activity: React.FC<ActivityProps> = ({ activity, fullScreen = true }) => {
   const activityLogsRef = useRef<HTMLDivElement>(null);
 
-  const isErrorLog = (type: string) => {
-    return type.includes('ERROR');
-  };
-
-  const isCodeLog = (type: string) => {
-    return type.includes('CODE');
+  const isCodeOrError = (type: string) => {
+    return [ActivityLogType.ERROR, ActivityLogType.CODE].includes(type);
   };
 
   const scrollToBottom = () => {
@@ -46,10 +43,8 @@ const Activity: React.FC<ActivityProps> = ({ activity, fullScreen = true }) => {
         activity.length > 0 &&
         activity.map((item, index) => (
           <div key={index} className={styles.activity_container}>
-            {isErrorLog(item.Type) ? (
-              <SyntaxDisplay msg={item.LogMessage} type={'ERROR'} />
-            ) : isCodeLog(item.Type) ? (
-              <SyntaxDisplay msg={item.LogMessage} type={'CODE'} />
+            { isCodeOrError(item.Type) ? (
+              <SyntaxDisplay msg={item.LogMessage} type={item.Type} />
             ) : (
               <div
                 className={'text-sm font-normal'}

@@ -226,6 +226,7 @@ export default function WorkBench() {
                       icon={null}
                       iconClass={'size-4'}
                       text={'Design Story'}
+                      className={'rounded-3xl'}
                     />
                   )}
                   {status && (
@@ -234,6 +235,7 @@ export default function WorkBench() {
                       iconClass={'size-4'}
                       text={handleStoryStatus(status).text}
                       color={handleStoryStatus(status).color}
+                      className={'rounded-3xl'}
                     />
                   )}
                 </div>

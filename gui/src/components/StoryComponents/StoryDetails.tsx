@@ -200,6 +200,7 @@ export default function StoryDetails({
                 iconClass={'size-4'}
                 text={handleStoryStatus(storyDetails.status).text}
                 color={handleStoryStatus(storyDetails.status).color}
+                className={'rounded-3xl'}
               />
 
               <CustomDropdown

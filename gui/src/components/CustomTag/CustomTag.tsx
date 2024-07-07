@@ -10,6 +10,7 @@ export default function CustomTag({
   iconBackClass,
   color = 'grey',
   children,
+  className = 'rounded-3xl',
 }: CustomTagProps) {
   const tagCSS = {
     grey: styles.grey_tag,
@@ -22,7 +23,7 @@ export default function CustomTag({
   return (
     <div
       id={`${text.toLowerCase()}_tag`}
-      className={`${tagCSS[color]} flex flex-row items-center gap-2`}
+      className={`${tagCSS[color]} ${className} flex flex-row items-center gap-2`}
     >
       {icon && (
         <CustomImage

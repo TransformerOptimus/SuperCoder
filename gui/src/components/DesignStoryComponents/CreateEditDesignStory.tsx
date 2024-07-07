@@ -7,7 +7,7 @@ import {
   EditDesignStoryPayload,
 } from '../../../types/designStoryTypes';
 import CustomImage from '@/components/ImageComponents/CustomImage';
-import styles from './story.module.css';
+import styles from './desingStory.module.css';
 import { createDesignStory, editDesignStory } from '@/api/DashboardService';
 import { useDesignContext } from '@/context/Design';
 import toast from 'react-hot-toast';

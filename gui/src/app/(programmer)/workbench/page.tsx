@@ -82,11 +82,11 @@ export default function WorkBench() {
       (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0 || storiesList.IN_REVIEW.length > 0)
     )
       handleSelectedStory();
-  }, [storiesList, selectedStoryId, status]);
+  }, [storiesList, selectedStoryId]);
 
   useEffect(() => {
     if (selectedStoryId) toGetActivityLogs(selectedStoryId).then().catch();
-  }, [selectedStoryId]);
+  }, [selectedStoryId, status]);
 
   async function toGetActivityLogs(story_id: string) {
     try {
@@ -104,19 +104,35 @@ export default function WorkBench() {
       console.error('Error while fetching activity logs:: ', error);
     }
   }
+  const getStatus = (storyId: number) => {
+    for (const [status, storyList] of Object.entries(storiesList)) {
+      if (storyList.some(story => story.story_id === storyId)) {
+        return status;
+      }
+    }
+    return "";
+  }
 
   const handleSelectedStory = () => {
+    console.log(storiesList);
     const completeStoriesList = [
       ...storiesList.IN_PROGRESS,
       ...storiesList.DONE,
       ...storiesList.IN_REVIEW,
     ];
+    console.log('handle selected story called');
 
     const story = completeStoriesList.find(
       (item) => item.story_id.toString() === selectedStoryId,
     );
 
-    if (story) setSelectedStory(story);
+    if (story) {
+      setSelectedStory(story);
+      const currentStatus = getStatus(story.story_id);
+      if(selectedStoryId === story.story_id.toString() && currentStatus !== status){
+        setStatus(currentStatus);
+      }
+    }
     else {
       localStorage.setItem(
         'storyId',

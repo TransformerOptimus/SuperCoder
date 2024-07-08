@@ -10,6 +10,7 @@ export interface StoryListItems {
 export interface StoryList {
   IN_PROGRESS: StoryListItems[];
   DONE: StoryListItems[];
+  IN_REVIEW: StoryListItems[];
 }
 
 export interface BrowserProps {

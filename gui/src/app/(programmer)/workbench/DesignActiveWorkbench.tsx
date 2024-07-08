@@ -22,13 +22,7 @@ const ActiveDesignWorkbench: React.FC = () => {
 
   useEffect(() => {
     getStoryDetails(selectedStoryId).then().catch();
-  }, [selectedStoryId]);
-
-  useEffect(() => {
-    if (executionInProcess === false) {
-      getStoryDetails(selectedStoryId).then().catch();
-    }
-  }, [executionInProcess]);
+  }, [selectedStoryId, executionInProcess]);
 
   async function getCode(story_id) {
     try {

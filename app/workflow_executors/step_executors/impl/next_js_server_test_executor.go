@@ -72,6 +72,7 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 	}
 
 	buildLogs, err := e.serverRunTest(codeFolder, step.ExecutionStep.ExecutionID, step.ExecutionStep.ID, step.Story.HashID, step.Project.HashID)
+	fmt.Println("___BUILD LOGS____: ", buildLogs)
 	if err != nil {
 		return err
 	}
@@ -202,15 +203,18 @@ func (e NextJsServerStartTestExecutor) CheckBuildResponse(response map[string]in
 }
 
 func (e NextJsServerStartTestExecutor) CreateMessage(buildLogs string, directoryPlan string) ([]llms.ClaudeChatCompletionMessage, error) {
-	replacements := map[string]string{
-		"BUILD_LOGS":          buildLogs,
-		"DIRECTORY_STRUCTURE": directoryPlan,
-	}
+	// replacements := map[string]string{
+	// 	"BUILD_LOGS":          buildLogs,
+	// 	"DIRECTORY_STRUCTURE": directoryPlan,
+	// }
 	content, err := os.ReadFile("/go/prompts/next_js_build_checker.txt")
-	var systemPrompt string
-	for key, value := range replacements {
-		systemPrompt = strings.ReplaceAll(string(content), key, value)
-	}
+	// var systemPrompt string
+	// for key, value := range replacements {
+	// 	systemPrompt = strings.ReplaceAll(string(content), key, value)
+	// }
+	fmt.Println("____build logs in create msg function___", buildLogs)
+	modifiedContent := strings.Replace(string(content), "{{BUILD_LOGS}}", buildLogs, -1)
+	modifiedContent = strings.Replace(string(modifiedContent), "{{DIRECTORY_STRUCTURE}}", directoryPlan, -1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load system prompt: %w", err)
 	}
@@ -221,7 +225,7 @@ func (e NextJsServerStartTestExecutor) CreateMessage(buildLogs string, directory
 			Content: []llms.MessageContent{
 				{
 					Type: "text",
-					Text: systemPrompt,
+					Text: modifiedContent,
 				},
 			},
 		},
@@ -230,12 +234,10 @@ func (e NextJsServerStartTestExecutor) CreateMessage(buildLogs string, directory
 	return messages, nil
 }
 
-func (e NextJsServerStartTestExecutor) serverRunTest(codeFolder string, executionId, executionStepId uint, storyHashID string, projectHashID string) (string, error) {
-	var stdout, stderr bytes.Buffer
-
-	// Function to run a command and capture its output
-	runCommand := func(name string, arg ...string) error {
-		cmd := exec.Command(name, arg...)
+func (e NextJsServerStartTestExecutor) runCommand(codeFolder string, executionId, executionStepId uint, storyHashID string, projectHashID string, name string, args ...string) (string, string, error) {
+		var stderr bytes.Buffer
+		var stdout bytes.Buffer
+		cmd := exec.Command(name, args...)
 		cmd.Dir = codeFolder
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
@@ -243,7 +245,7 @@ func (e NextJsServerStartTestExecutor) serverRunTest(codeFolder string, executio
 		cmd.Env = append(os.Environ(), "NEXT_PUBLIC_BASE_PATH="+basePath)
 		fmt.Println(cmd.Env)
 		if err := cmd.Run(); err != nil {
-			fmt.Printf("failed to run command %s %v: %v", name, arg, err.Error())
+			fmt.Printf("failed to run command %s %v: %v", name, args, err.Error())
 		}
 		err := e.activityLogService.CreateActivityLog(
 			executionId,
@@ -252,28 +254,38 @@ func (e NextJsServerStartTestExecutor) serverRunTest(codeFolder string, executio
 			fmt.Sprintf(stdout.String()+stderr.String()),
 		)
 		if err != nil {
-			return err
+			return stdout.String(), stderr.String(), err
 		}
-		fmt.Println(stdout.String(), stderr.String())
-		return nil
-	}
-
+		//fmt.Println(stdout.String(), stderr.String())
+		return stdout.String(), stderr.String(), nil
+}
+func (e NextJsServerStartTestExecutor) serverRunTest(codeFolder string, executionId, executionStepId uint, storyHashID string, projectHashID string) (string, error) {
+	// Function to run a command and capture its output
 	// Run the necessary commands
 	fmt.Printf("Building Next App in %s\n", codeFolder)
-	err := runCommand("npm", "i")
+	stdout, stderr, err := e.runCommand(codeFolder, executionId, executionStepId, storyHashID, projectHashID, "npm", "i")
 	if err != nil {
 		return "", err
 	}
-	err = runCommand("npm", "install", "react-icons", "--save")
+	fmt.Println("command: npm i stdout", stdout)
+	fmt.Println("command: npm i stderr", stderr)
+
+	stdout, stderr, err = e.runCommand(codeFolder, executionId, executionStepId, storyHashID, projectHashID, "npm", "install", "react-icons", "--save")
 	if err != nil {
 		return "", err
 	}
-	err = runCommand("npm", "run", "build")
+	fmt.Println("command: npm react icons stdout", stdout)
+	fmt.Println("command: npm react icons stderr", stderr)
+
+	stdout, stderr, err = e.runCommand(codeFolder, executionId, executionStepId, storyHashID, projectHashID, "npm", "run", "build")
 	if err != nil {
 		return "", err
 	}
+	fmt.Println("command: npm run build stdout", stdout)
+	fmt.Println("command: npm run build stderr", stderr)
+
 	fmt.Println("Successfully built Next App")
-	return stdout.String() + stderr.String(), nil
+	return stdout+stderr, nil
 }
 
 func (e NextJsServerStartTestExecutor) ensureNoEslintFile(projectDir string) error {

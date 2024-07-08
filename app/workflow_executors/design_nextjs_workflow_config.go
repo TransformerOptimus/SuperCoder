@@ -12,7 +12,7 @@ var NextJsWorkflowConfig = &WorkflowConfig{
 		Nodes: map[steps.StepName]*graph.StepNode{
 			steps.CODE_GENERATE_CSS_STEP: {
 				Step: &steps.GenerateCodeStep{
-					MaxLoopIterations: 10,
+					MaxLoopIterations: 15,
 					File:              "globals.css",
 				},
 				Transitions: map[graph.ExecutionState]*steps.StepName{
@@ -31,7 +31,7 @@ var NextJsWorkflowConfig = &WorkflowConfig{
 			},
 			steps.CODE_GENERATE_LAYOUT_STEP: {
 				Step: &steps.GenerateCodeStep{
-					MaxLoopIterations: 10,
+					MaxLoopIterations: 15,
 					File:              "layout.tsx",
 				},
 				Transitions: map[graph.ExecutionState]*steps.StepName{
@@ -50,7 +50,7 @@ var NextJsWorkflowConfig = &WorkflowConfig{
 			},
 			steps.CODE_GENERATE_PAGE_STEP: {
 				Step: &steps.GenerateCodeStep{
-					MaxLoopIterations: 10,
+					MaxLoopIterations: 15,
 					File:              "page.tsx",
 				},
 				Transitions: map[graph.ExecutionState]*steps.StepName{
@@ -77,7 +77,7 @@ var NextJsWorkflowConfig = &WorkflowConfig{
 			},
 			steps.RETRY_CODE_GENERATE_STEP: {
 				Step: &steps.GenerateCodeStep{
-					MaxLoopIterations: 10,
+					MaxLoopIterations: 15,
 					Retry:             true,
 				},
 				Transitions: map[graph.ExecutionState]*steps.StepName{

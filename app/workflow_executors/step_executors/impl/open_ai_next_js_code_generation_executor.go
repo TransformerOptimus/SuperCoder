@@ -183,6 +183,10 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildFinalInstructionForGe
 	step steps.GenerateCodeStep, storyDir string) (map[string]string, error) {
 	// Initialize the final instruction string
 	finalInstruction, err := openAiCodeGenerator.buildInstructionForFirstExecution(step, storyDir)
+	if err!= nil {
+        fmt.Printf("Error building instruction for first execution: %s\n", err.Error())
+        return nil, err
+    }
 	if step.Retry {
 		fmt.Println("Building instruction on retry limit reached for LLM steps")
 		finalInstruction, err = openAiCodeGenerator.buildInstructionOnRetry(step, storyDir)
@@ -199,7 +203,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildFinalInstructionForGe
 	}
 
 	// Print the final instruction
-	//fmt.Println("Final Instruction:")
+	//fmt.Println("Final Instruction:", finalInstruction)
 	return finalInstruction, nil
 }
 
@@ -226,13 +230,39 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 		return nil, err
 	}
 
+	code, err := openAiCodeGenerator.getFilesContent(storyDir)
+
 	return map[string]string{
-		"existingCode": "",
+		"existingCode": string(code),
 		"base64Image":  base64Image,
 		"fileName":     step.File,
 		"feedback":     "Try to replicate original screenshot.",
 		"imageType":    imageType,
 	}, nil
+}
+
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getFilesContent(folderPath string) (string, error) {
+	files, err := os.ReadDir(folderPath)
+	if err != nil {
+		fmt.Printf("Error reading directory %s\n", folderPath)
+		return "", err
+	}
+
+	var fileData string
+	
+	for _, file := range files {
+		if !file.IsDir() && (strings.HasSuffix(file.Name(), ".css") || strings.HasSuffix(file.Name(), ".tsx")) {
+			fullPath := filepath.Join(folderPath, file.Name())
+			content, err := os.ReadFile(fullPath)
+			if err != nil {
+				fmt.Printf("Error reading file %s: %s\n", fullPath, err)
+				return "", err
+			}
+			fileData += string("Code for:"+file.Name()+":\n"+ string(content)+"\n\n")
+		}
+	}
+
+	return fileData, nil
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnRetry(step steps.GenerateCodeStep, storyDir string) (map[string]string, error) {
@@ -261,8 +291,16 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnRetry(st
 		fmt.Printf("Error creating activity log: %s\n", err.Error())
 		return nil, err
 	}
-	filePath := filepath.Join(storyDir)
+
+	storyDir = strings.TrimSuffix(storyDir, "app")
+	fmt.Println("stroy dir----", storyDir)
+	fmt.Println("filename-----", fileName)
+	filePath := filepath.Join(storyDir, fileName)
 	code, err := os.ReadFile(filePath)
+	if err != nil {
+		fmt.Println("Error getting code: ", err.Error())
+		return nil, err
+	}
 
 	return map[string]string{
 		"actionType":   previousServerTestExecutionStep[0].Response["actionType"].(string),
@@ -320,7 +358,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCode(step steps.Ge
 		}
 		return response, nil
 	} else {
-		messages, err := openAiCodeGenerator.GenerateMessages(instruction, storyDir)
+		messages, err := openAiCodeGenerator.GenerateMessages(instruction, storyDir, step)
 		if err != nil {
 			return "", err
 		}
@@ -420,12 +458,12 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instructio
 	return response, nil
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateMessages(instruction map[string]string, storyDir string) ([]llms.ClaudeChatCompletionMessage, error) {
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateMessages(instruction map[string]string, storyDir string, step steps.GenerateCodeStep) ([]llms.ClaudeChatCompletionMessage, error) {
 	generationPlan, err := openAiCodeGenerator.GetCodeGenerationPlan(storyDir)
 	if err != nil {
 		return nil, err
 	}
-	systemPrompt, err := openAiCodeGenerator.getSystemPrompt(instruction["fileName"])
+	systemPrompt, err := openAiCodeGenerator.getSystemPrompt(instruction, step)
 	if err != nil {
 		return nil, err
 	}
@@ -491,33 +529,38 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetMessagesOnRetry(systemP
 	return messages
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getSystemPrompt(fileName string) (string, error) {
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getSystemPrompt(instruction map[string]string, step steps.GenerateCodeStep) (string, error) {
 	content, err := os.ReadFile("/go/prompts/ai_frontend_developer.txt")
 	if err != nil {
 		panic(fmt.Sprintf("failed to read system prompt: %v", err))
-		return "", err
 	}
-	systemPrompt := strings.Replace(string(content), "<file_name>", fileName, -1)
+	systemPrompt := strings.Replace(string(content), "{{EXISTING_CODE}}", instruction["existingCode"], -1)
+	systemPrompt = strings.Replace(string(systemPrompt), "{{USER_FEEDBACK}}", instruction["feedback"], -1)
+	systemPrompt = strings.Replace(string(systemPrompt), "{{FILE_NAME}}", step.File, -1)
 	return systemPrompt, nil
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetRetrySystemPrompt(instruction map[string]string, directoryStructure string) (string, error) {
-	replacements := map[string]string{
-		"FILE_NAME":           instruction["fileName"],
-		"ERROR_DESCRIPTION":   instruction["description"],
-		"DIRECTORY_STRUCTURE": directoryStructure,
-		"CURRENT_CODE":        instruction["existingCode"],
-	}
+	// replacements := map[string]string{
+	// 	"FILE_NAME":           instruction["fileName"],
+	// 	"ERROR_DESCRIPTION":   instruction["description"],
+	// 	"DIRECTORY_STRUCTURE": directoryStructure,
+	// 	"CURRENT_CODE":        instruction["existingCode"],
+	// }
 	content, err := os.ReadFile("/go/prompts/ai_frontend_developer_edit_code.txt")
 	if err != nil {
 		panic(fmt.Sprintf("failed to read system prompt: %v", err))
 		return "", err
 	}
-	var systemPrompt string
-	for key, value := range replacements {
-		systemPrompt = strings.ReplaceAll(string(content), key, value)
-	}
-	return systemPrompt, nil
+	modifiedContent := strings.Replace(string(content), "{{FILE_NAME}}", instruction["fileName"], -1)
+	modifiedContent = strings.Replace(string(modifiedContent), "{{ERROR_DESCRIPTION}}", instruction["description"], -1)
+	modifiedContent = strings.Replace(string(modifiedContent), "{{DIRECTORY_STRUCTURE}}", directoryStructure, -1)
+	modifiedContent = strings.Replace(string(modifiedContent), "{{CURRENT_CODE}}", instruction["existingCode"], -1)
+	// var systemPrompt string
+	// for key, value := range replacements {
+	// 	systemPrompt = strings.ReplaceAll(string(content), key, value)
+	// }
+	return modifiedContent, nil
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetCodeGenerationPlan(storyDir string) (string, error) {

@@ -83,7 +83,7 @@ func NewClaudeClient(apiKey string) *ClaudeClient {
 
 	return &ClaudeClient{
 		Model:            "claude-3-5-sonnet-20240620",
-		Temperature:      0.3,
+		Temperature:      1.0,
 		MaxTokens:        4000,
 		TopP:             1,
 		ApiKey:           apiKey,
@@ -105,6 +105,7 @@ func (c *ClaudeClient) WithApiKey(apiKey string) {
 func (c *ClaudeClient) ChatCompletion(messages []ClaudeChatCompletionMessage) (string, error) {
 	url := fmt.Sprintf("%s/messages", c.ApiBaseUrl)
 	fmt.Println("Model Name", c.Model)
+	fmt.Println("___INPUT____", messages)
 	requestBody := ClaudeChatCompletionRequest{
 		Model:       c.Model,
 		Messages:    messages,
@@ -139,5 +140,6 @@ func (c *ClaudeClient) ChatCompletion(messages []ClaudeChatCompletionMessage) (s
 		return "", fmt.Errorf("no response choices found")
 	}
 
+	fmt.Println("___OUTPUT____: ", chatResponse.Content[0].Text)
 	return chatResponse.Content[0].Text, nil
 }

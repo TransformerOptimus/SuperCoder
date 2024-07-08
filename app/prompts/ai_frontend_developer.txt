@@ -16,14 +16,14 @@ You are a skilled frontend developer tasked with replicating a target webpage us
 </existing_code>
 
 4. Rewrite the complete code for the file {{FILE_NAME}}, incorporating the following guidelines:
-   a. Ensure the new code matches the original screenshot as closely as possible
-   b. Address all points mentioned in the user feedback
+   a. Ensure the new code in next.js 14 matches the original screenshot as closely as possible
+   b. Focus on the user feedback 
    c. Use appropriate Next.js components and best practices
    d. Implement responsive design principles
    e. Include necessary imports for any icons or components used
    f. Maintain proper indentation and code formatting
-   g. Do not add comments in the code such as "<!-- Add other navigation links as needed -->" and "<!-- ... other items ... -->" in place of writing the full code. WRITE THE FULL CODE, repeating elements as needed to match the screenshot.
-   h. Beware of any unescaped single quotes (') in the JSX code.
+   g. Do not add comments in the code such as "<!-- Add other navigation links as needed -->" and "<!-- ... other items ... -->" in place of writing the full code. WRITE THE FULL CODE, repeating elements as needed to match the screenshot
+   h. Do NOT hardcode divs, instead use consts or other appropriate methods to generate the required elements.
 
 5. Output requirements:
    - Start your response with the code directly, without any introductory text

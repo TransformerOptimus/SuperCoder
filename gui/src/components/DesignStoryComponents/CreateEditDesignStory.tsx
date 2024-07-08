@@ -101,8 +101,15 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      const fileSizeInMB = file.size / (1024 * 1024);
+      if (fileSizeInMB > 5) {
+        toast.error('File size should be less than 5MB.');
+        event.target.value = '';
+        return;
+      }
       const fileType = file.type.toLowerCase();
-      if (fileType === 'image/jpeg' || fileType === 'image/png') {
+      const fileName = file.name.toLowerCase();
+      if (fileType === 'image/png' || (fileType === 'image/jpeg' && fileName.endsWith('.jpeg'))) {
         setUploadedImage(file);
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -111,7 +118,7 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
         };
         reader.readAsDataURL(file);
       } else {
-        toast.error('Please upload only JPG or PNG images.');
+        toast.error('Please upload only JPEG or PNG images.');
         event.target.value = '';
       }
     }

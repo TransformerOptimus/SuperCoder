@@ -137,6 +137,8 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
                     text={handleStoryStatus(selectedStory.status).text}
                     color={handleStoryStatus(selectedStory.status).color}
                     className={'rounded-3xl'}
+                    iconBack={imagePath.bottomArrowGrey}
+                    iconBackClass={'size-4'}
                   />
                 }
                 maxHeight={'400px'}

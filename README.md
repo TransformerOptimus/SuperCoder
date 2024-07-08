@@ -69,7 +69,7 @@
 
 # SuperCoder: Open Source Autonomous Software Development System
 
-## What are we?
+## What is SuperCoder?
 
 SuperCoder is an autonomous software development system that leverages advanced AI tools and agents to streamline and automate coding, testing, and deployment tasks, enhancing efficiency and reliability.
 

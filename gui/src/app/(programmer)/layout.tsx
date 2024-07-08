@@ -1,10 +1,8 @@
 'use client';
-
 import '../_app.css';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import SideBar from '@/components/LayoutComponents/SideBar';
 import NavBar from '@/components/LayoutComponents/NavBar';
-import { usePathname } from 'next/navigation';
 import Code from '@/app/(programmer)/code/Code';
 import { Toaster } from 'react-hot-toast';
 import { SocketProvider } from '@/context/SocketContext';
@@ -14,18 +12,8 @@ export default function ProgrammerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const [isCodeRendered, setIsCodeRendered] = useState(false);
-
-  useEffect(() => {
-    if (pathname === '/code') {
-      setIsCodeRendered(true);
-    }
-  }, [pathname]);
-
   useEffect(() => {
     if (typeof window !== 'undefined' && window.clarity) {
-      console.log('Email Tracked');
       window.clarity('set', 'User Email', localStorage.getItem('userEmail'));
     }
   }, []);
@@ -37,7 +25,7 @@ export default function ProgrammerLayout({
         <SideBar />
         <SocketProvider>
           <section className="content">
-            {isCodeRendered && <Code />}
+            <Code />
             {children}
           </section>
         </SocketProvider>

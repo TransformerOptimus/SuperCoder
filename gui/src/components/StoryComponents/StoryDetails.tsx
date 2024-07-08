@@ -14,7 +14,7 @@ import { Button } from '@nextui-org/react';
 import CustomTag from '@/components/CustomTag/CustomTag';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
 import TestCases from '@/components/StoryComponents/TestCases';
-import { checkModelNotAdded, handleStoryStatus } from '@/app/utils';
+import { handleInProgressStoryStatus, handleStoryStatus } from '@/app/utils';
 import { useRouter } from 'next/navigation';
 import { StoryDetailsProps } from '../../../types/storyTypes';
 import { storyStatus } from '@/app/constants/BoardConstants';
@@ -104,32 +104,13 @@ export default function StoryDetails({
   ];
 
   const handleMoveToInProgressClick = async () => {
-    try {
-      const modelNotAdded = await checkModelNotAdded();
-      if (modelNotAdded) {
-        setOpenSetupModelModal(true);
-        return;
-      }
-      if (number_of_stories_in_progress >= 1) {
-        toast.error('Cannot have two stories simultaneously In Progress', {
-          style: {
-            border: '1px solid #713200',
-            padding: '16px',
-            color: '#713200',
-            maxWidth: 'none',
-            whiteSpace: 'nowrap',
-          },
-        });
-        return;
-      }
-
-      if (typeof window !== 'undefined') {
-        toUpdateStoryStatus(storyStatus.IN_PROGRESS).then().catch();
-        router.push(`/workbench`);
-        // toExecuteByStoryId().then().catch();
-      }
-    } catch (error) {
-      console.error(error);
+    const openWorkbench = await handleInProgressStoryStatus(
+      setOpenSetupModelModal,
+      number_of_stories_in_progress,
+      toUpdateStoryStatus,
+    );
+    if (openWorkbench) {
+      router.push(`/workbench`);
     }
   };
 
@@ -219,6 +200,7 @@ export default function StoryDetails({
                 iconClass={'size-4'}
                 text={handleStoryStatus(storyDetails.status).text}
                 color={handleStoryStatus(storyDetails.status).color}
+                className={'rounded-3xl'}
               />
 
               <CustomDropdown

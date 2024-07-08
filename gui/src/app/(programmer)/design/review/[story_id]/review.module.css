@@ -1,0 +1,8 @@
+.heading_container{
+    border-bottom: 1px solid var(--white-opacity-8);
+}
+
+.container{
+    border: 1px solid var(--white-opacity-8);
+    background: var(--white-opacity-8);
+}

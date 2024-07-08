@@ -77,7 +77,7 @@ func (controller *ProjectController) CreateProject(context *gin.Context) {
 		return
 	}
 	context.JSON(http.StatusOK, gin.H{"project_id": project.ID, "project_url": project.Url, "project_name": project.Name,
-		"project_frontend_url": project.FrontendURL, "project_backend_url": project.BackendURL})
+		"project_frontend_url": project.FrontendURL, "project_backend_url": project.BackendURL, "project_framework": project.Framework})
 	return
 }
 

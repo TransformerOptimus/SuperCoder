@@ -2,12 +2,12 @@ package dto
 
 type CreateJobRequest struct {
 	ExecutionId   int64    `json:"executionId"`
-	StoryId       int64    `json:"storyId"`
 	ProjectId     string   `json:"projectId"`
+	StoryId       int64    `json:"storyId"`
 	IsReExecution bool     `json:"isReExecution"`
 	Branch        string   `json:"branch"`
 	PullRequestId int64    `json:"pullRequestId"`
-	ExecutorImage string   `json:"dockerImage"`
+	ExecutorImage string   `json:"executorImage"`
 	Env           []string `json:"env"`
 }
 

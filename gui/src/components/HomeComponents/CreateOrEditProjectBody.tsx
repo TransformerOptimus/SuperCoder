@@ -1,6 +1,9 @@
 import CustomModal from '@/components/CustomModal/CustomModal';
 import CustomImageSelector from '@/components/ImageComponents/CustomImageSelector';
-import { frameworkOptions } from '@/app/constants/ProjectConstants';
+import {
+  frameworkOptions,
+  projectTypes,
+} from '@/app/constants/ProjectConstants';
 import { Button } from '@nextui-org/react';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -14,7 +17,7 @@ import {
   updateProject,
 } from '@/api/DashboardService';
 import { useRouter } from 'next/navigation';
-import { setProjectDetails } from '@/app/utils';
+import { getProjectTypeFromFramework, setProjectDetails } from '@/app/utils';
 import CustomImage from '@/components/ImageComponents/CustomImage';
 import CustomInput from '@/components/CustomInput/CustomInput';
 
@@ -135,7 +138,15 @@ export default function CreateOrEditProjectBody({
         const data = response.data;
         setOpenProjectModal(false);
         setProjectDetails(data);
-        router.push(`/board`);
+        if (
+          data &&
+          getProjectTypeFromFramework(data.project_framework) ===
+            projectTypes.DESIGN
+        ) {
+          router.push('/design');
+        } else {
+          router.push(`/board`);
+        }
       }
     } catch (error) {
       console.error('Error while creating a new project:: ', error);

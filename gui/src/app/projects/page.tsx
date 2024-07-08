@@ -6,10 +6,15 @@ import imagePath from '@/app/imagePath';
 import styles from './projects.module.css';
 import { useRouter } from 'next/navigation';
 import { ProjectTypes } from '../../../types/projectsTypes';
-import { setProjectDetails, toGetAllProjects } from '@/app/utils';
+import {
+  getProjectTypeFromFramework,
+  setProjectDetails,
+  toGetAllProjects,
+} from '@/app/utils';
 import CreateOrEditProjectBody from '@/components/HomeComponents/CreateOrEditProjectBody';
 import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
 import { SkeletonTypes } from '@/app/constants/SkeletonConstants';
+import { projectTypes } from '@/app/constants/ProjectConstants';
 
 export default function Projects() {
   const [openNewProjectModal, setOpenNewProjectModal] = useState<
@@ -20,7 +25,14 @@ export default function Projects() {
 
   const handleProjectClick = async (project: ProjectTypes) => {
     setProjectDetails(project);
-    router.push(`/board`);
+    if (
+      getProjectTypeFromFramework(project.project_framework) ===
+      projectTypes.DESIGN
+    ) {
+      router.push('/design');
+    } else {
+      router.push(`/board`);
+    }
   };
 
   useEffect(() => {

@@ -12,6 +12,7 @@ type CreateJobRequest struct {
 	IsReExecution bool     `json:"isReExecution"`
 	Branch        string   `json:"branch"`
 	PullRequestId int64    `json:"pullRequestId"`
+	ExecutorImage string   `json:"executorImage"`
 	Env           []string `json:"env"`
 }
 
@@ -27,6 +28,11 @@ func (receiver *CreateJobRequest) WithProjectId(projectId string) *CreateJobRequ
 
 func (receiver *CreateJobRequest) WithIsReExecution(isReExecution bool) *CreateJobRequest {
 	receiver.IsReExecution = isReExecution
+	return receiver
+}
+
+func (receiver *CreateJobRequest) WithExecutorImage(executorImage string) *CreateJobRequest {
+	receiver.ExecutorImage = executorImage
 	return receiver
 }
 

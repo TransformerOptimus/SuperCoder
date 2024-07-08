@@ -34,8 +34,16 @@ pipeline {
                             region = "us-west-2",
                     )
                     dockerBuildX(
-                            repository = "ai-developer-executor-staging",
-                            customArgs = " --target executor ",
+                            repository = "ai-developer-python-executor-staging",
+                            customArgs = " --target python-executor ",
+                            path = ".",
+                            dockerFile = "Dockerfile",
+                            accountId = "767397669303",
+                            region = "us-west-2",
+                    )
+                    dockerBuildX(
+                            repository = "ai-developer-node-executor-staging",
+                            customArgs = " --target node-executor ",
                             path = ".",
                             dockerFile = "Dockerfile",
                             accountId = "767397669303",

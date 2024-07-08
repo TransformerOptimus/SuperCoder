@@ -9,10 +9,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"go.uber.org/zap"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type NextJsServerStartTestExecutor struct {
@@ -59,6 +61,13 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 	)
 	if err != nil {
 		fmt.Println("Error creating activity log" + err.Error())
+		return err
+	}
+
+	projectDir := config.WorkspaceWorkingDirectory() + "/" + step.Project.HashID
+	err = e.ensureNoEslintFile(projectDir)
+	if err!=nil{
+		fmt.Println("Error while removing root eslint json file" + err.Error())
 		return err
 	}
 
@@ -265,4 +274,20 @@ func (e NextJsServerStartTestExecutor) serverRunTest(codeFolder string, executio
 	}
 	fmt.Println("Successfully built Next App")
 	return stdout.String() + stderr.String(), nil
+}
+
+func (e NextJsServerStartTestExecutor) ensureNoEslintFile(projectDir string) error {
+    eslintFilePath := filepath.Join(projectDir, ".eslintrc.json")
+    _, err := os.Stat(eslintFilePath)
+    if err == nil {
+        err := os.Remove(eslintFilePath)
+        if err != nil {
+            return fmt.Errorf("failed to delete .eslintrc.json: %w", err)
+        }
+        return nil
+    } else if os.IsNotExist(err) {
+        return nil
+    } else {
+        return fmt.Errorf("error checking .eslintrc.json: %w", err)
+    }
 }

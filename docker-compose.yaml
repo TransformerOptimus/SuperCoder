@@ -29,6 +29,7 @@ services:
       AI_DEVELOPER_AWS_SECRET_ACCESS_KEY: ${AI_DEVELOPER_AWS_SECRET_ACCESS_KEY}
       AI_DEVELOPER_AWS_BUCKET_NAME: ${AI_DEVELOPER_AWS_BUCKET_NAME}
       AI_DEVELOPER_AWS_REGION: ${AI_DEVELOPER_AWS_REGION}
+      AI_DEVELOPER_WORKSPACE_STATIC_FRONTEND_URL: "http://localhost:8083"
     volumes:
       - workspaces:/workspaces
       - './startup.sh:/startup.sh'
@@ -71,6 +72,7 @@ services:
       AI_DEVELOPER_AWS_SECRET_ACCESS_KEY: ${AI_DEVELOPER_AWS_SECRET_ACCESS_KEY}
       AI_DEVELOPER_AWS_BUCKET_NAME: ${AI_DEVELOPER_AWS_BUCKET_NAME}
       AI_DEVELOPER_AWS_REGION: ${AI_DEVELOPER_AWS_REGION}
+      AI_DEVELOPER_WORKSPACE_STATIC_FRONTEND_URL: "http://localhost:8083"
     volumes:
       - workspaces:/workspaces
       - './startup-worker.sh:/startup-worker.sh'

@@ -31,14 +31,24 @@ func (s *OrganisationService) CreateOrganisationName() string {
 }
 
 func (s *OrganisationService) CreateOrganisation(organisation *models.Organisation) (*models.Organisation, error) {
-	org, err := s.organisationRepo.CreateOrganisation(organisation)
-	if err != nil {
-		return nil, err
+	tx := s.organisationRepo.GetDB().Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
 
+	org, err := s.organisationRepo.CreateOrganisation(tx, organisation)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
 	}
 	projectSpace, err := s.gitnessService.CreateProject(s.gitnessService.GetSpaceOrProjectName(org), s.gitnessService.GetSpaceOrProjectDescription(org))
 	fmt.Println("Project/Space created: ", projectSpace)
 	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 	return org, nil
@@ -53,4 +63,8 @@ func NewOrganisationService(organisationRepo *repositories.OrganisationRepositor
 		organisationRepo: organisationRepo,
 		gitnessService:   gitnessService,
 	}
+}
+
+func (s *OrganisationService) GetOrganisationByName(organisationName string) (*models.Organisation, error) {
+	return s.organisationRepo.GetOrganisationByName(organisationName)
 }

@@ -7,6 +7,7 @@ type CreateJobRequest struct {
 	IsReExecution bool     `json:"isReExecution"`
 	Branch        string   `json:"branch"`
 	PullRequestId int64    `json:"pullRequestId"`
+	ExecutorImage string   `json:"dockerImage"`
 	Env           []string `json:"env"`
 }
 

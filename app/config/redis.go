@@ -26,7 +26,7 @@ func InitRedis(ctx context.Context) (client *redis.Client) {
 	fmt.Println("Initializing Redis Client.....")
 	client = redis.NewClient(&redis.Options{
 		Addr: RedisAddress(),
-		DB:   1,
+		DB:   RedisDB(),
 	})
 
 	output, err := client.Ping(ctx).Result()

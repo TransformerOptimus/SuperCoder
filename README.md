@@ -1,4 +1,3 @@
-
 <p align="center">
   <a href="https://superagi.com//#gh-light-mode-only">
     <img src="https://superagi.com/wp-content/uploads/2024/07/SuperCoder-dark.png" width="318px" alt="SuperCoder Dark logo" />
@@ -80,16 +79,14 @@ SuperCoder 2.0 supports a variety of languages and frameworks for diverse develo
 <a href="https://www.superagi.com/" target="_blank"><img src=https://superagi.com/wp-content/uploads/2024/07/nextjs.png height=50px width=50px alt="NextJS" valign="middle" title="NextJS"></a> 
 
 
-## ⚙️ Installation
 
-### Prerequisites
+
+## Prerequisites
 Before you proceed, ensure that you have the following installed on your system:
 - Docker and Docker Compose
 - `direnv`
 
-
-
-#### Installing Direnv
+### Installing Direnv
 To handle environment variables more efficiently, install `direnv`:
 ```bash
 # For macOS
@@ -109,43 +106,24 @@ source ~/.bashrc
 If you are using a shell other than bash, replace bash with your specific shell (e.g., zsh or fish).
 
 *Note: direnv is one of the suggested ways other ways to setup environment variables are also possible*
+## Setup
 
-## 🖥️ Setup
-
-To get started with SuperCoder, first follow these steps:
-
-1. Open your terminal and clone the SuperCoder repository.
-```
-git clone https://github.com/TransformerOptimus/SuperCoder.git 
-```
-
-2. Navigate to the cloned repository directory using the command:
-```
-cd SuperCoder
-```
-
-3. Environment Configuration
-
-Create a .envrc file in the root directory of your project and populate it with the necessary environment variables:
+### 1.Environment Configuration
+First, create a .envrc file in the root directory of your project and populate it with the necessary environment variables:
 ```bash
-export AI_DEVELOPER_GITNESS_TOKEN=
-export AI_DEVELOPER_GITNESS_URL=https://gitness:3000
+
+export AI_DEVELOPER_GITNESS_URL=http://gitness:3000
 export AI_DEVELOPER_GITNESS_HOST=gitness:3000
-export AI_DEVELOPER_GITNESS_USER=
-export AI_DEVELOPER_OPENAI_API_KEY=
-export AI_DEVELOPER_WORKSPACE_WORKING_DIR=/workspaces
-export AI_DEVELOPER_WORKSPACE_TEMPLATE_DIR=/templates/python
-export AI_DEVELOPER_WORKSPACE_SERVICE_ENDPOINT=http://ws:8080
-export AI_DEVELOPER_APP_URL=
+
 export AI_DEVELOPER_GITNESS_PASSWORD=admin
 export AI_DEVELOPER_GITNESS_USER=admin
-export AI_DEVELOPER_GITHUB_CLIENT_SECRET=
-export AI_DEVELOPER_GITHUB_CLIENT_ID=
+
+export AI_DEVELOPER_APP_URL=http://localhost:3000
+
+export AI_DEVELOPER_WORKSPACE_WORKING_DIR=/workspaces
+export AI_DEVELOPER_WORKSPACE_SERVICE_ENDPOINT=http://ws:8080
 
 export NEW_RELIC_ENABLED=false
-
-export WORKSPACES_GITNESS_USER=
-export WORKSPACES_GITNESS_TOKEN=
 ```
 
 To allow direnv to load these settings, run:
@@ -153,17 +131,17 @@ To allow direnv to load these settings, run:
 ```bash
 direnv allow .
 ```
+### 2. Build and Run the Go Server, Asynq worker, and Postgres
 
-4. Ensure that Docker is installed on your system. You can download and install it from [here](https://docs.docker.com/get-docker/).
-
-
-5. Once you have Docker Desktop running, run the following command in the AutoNode directory:
+To build and run the Go server, Asynq worker, and Postgres, execute the following command:
 
 ```bash
 docker-compose up --build
 ```
 
-6. Open your web browser and navigate to http://localhost:3000 to access the UI and make sure your server is running.
+You can now access the UI at http://localhost:3000.
+
+
 
 ### 📖 Need Help?
 

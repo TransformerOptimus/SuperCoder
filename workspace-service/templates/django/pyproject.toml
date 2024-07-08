@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "django-app"
+version = "0.1.0"
+description = ""
+authors = ["SuperCoder <supercoder@superagi.com>"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+Django = "5.0"
+setuptools = "^70.0.0" 
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

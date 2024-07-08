@@ -51,3 +51,11 @@ func NewUserService(userRepo *repositories.UserRepository) *UserService {
 func (s *UserService) FetchOrganisationIDByUserID(userID uint) (uint, error) {
 	return s.userRepo.FetchOrganisationIDByUserID(userID)
 }
+
+func (s *UserService) GetDefaultUser() (*models.User, error) {
+	defaultUser, err := s.GetUserByEmail("supercoder@superagi.com")
+	if err != nil {
+		return nil, err
+	}
+	return defaultUser, nil
+}

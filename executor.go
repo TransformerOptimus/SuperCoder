@@ -15,14 +15,16 @@ import (
 	"ai-developer/app/workflow_executors/step_executors/impl"
 	"ai-developer/app/workflow_executors/step_executors/steps"
 	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"log"
-	"net/http"
-	"os"
 )
 
 func main() {
@@ -190,7 +192,7 @@ func main() {
 	_ = c.Provide(services.NewLLMAPIKeyService)
 
 	//GenerateCodeStep
-	err = c.Provide(impl.NewOpenAIFlaskCodeGenerator)
+	err = c.Provide(impl.NewOpenAICodeGenerator)
 	if err != nil {
 		log.Println("Error providing generate code step:", err)
 		panic(err)
@@ -208,8 +210,15 @@ func main() {
 		panic(err)
 
 	}
-	//serverStartTestStep
+	//FLASK serverStartTestStep
 	err = c.Provide(impl.NewFlaskServerStartTestExecutor)
+	if err != nil {
+		log.Println("Error providing server start test step:", err)
+		panic(err)
+
+	}
+	//DJANGO serverStartTestStep
+	err = c.Provide(impl.NewDjangoServerStartTestExecutor)
 	if err != nil {
 		log.Println("Error providing server start test step:", err)
 		panic(err)
@@ -238,6 +247,11 @@ func main() {
 		log.Println("Error providing reset flask db step:", err)
 		panic(err)
 	}
+	err = c.Provide(impl.NewPackageInstallStepExecutor)
+	if err != nil {
+		log.Println("Error providing package install step:", err)
+		panic(err)
+	}
 
 	//Provide Slack Alert For monitoring
 	err = c.Provide(monitoring.NewSlackAlert)
@@ -255,9 +269,10 @@ func main() {
 		log.Fatalf("Error providing OpenAiClient: %v", err)
 	}
 
-	if template, exists := os.LookupEnv("EXECUTION_TEMPLATE"); template == "FLASK" || !exists {
+	template, exists := os.LookupEnv("EXECUTION_TEMPLATE")
+	if template == "FLASK" || !exists {
 		_ = c.Provide(func(
-			openAIFlaskCodeGenerator *impl.OpenAIFlaskCodeGenerator,
+			openAICodeGenerator *impl.OpenAICodeGenerator,
 			gitMakeBranchExecutor *impl.GitMakeBranchExecutor,
 			updateCodeFileExecutor *impl.UpdateCodeFileExecutor,
 			flaskServerStartTestExecutor *impl.FlaskServerStartTestExecutor,
@@ -265,17 +280,40 @@ func main() {
 			gitPushExecutor *impl.GitPushExecutor,
 			gitnessMakePullRequestExecutor *impl.GitnessMakePullRequestExecutor,
 			resetFlaskDBStepExecutor *impl.ResetFlaskDBStepExecutor,
+			poetryPackageInstallStepExecutor *impl.PackageInstallStepExecutor,
 		) map[steps.StepName]step_executors.StepExecutor {
 			return map[steps.StepName]step_executors.StepExecutor{
-				steps.CODE_GENERATE_STEP:           *openAIFlaskCodeGenerator,
+				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
 				steps.UPDATE_CODE_FILE_STEP:        *updateCodeFileExecutor,
 				steps.GIT_COMMIT_STEP:              *gitCommitExecutor,
 				steps.GIT_CREATE_BRANCH_STEP:       *gitMakeBranchExecutor,
 				steps.GIT_PUSH_STEP:                *gitPushExecutor,
 				steps.GIT_CREATE_PULL_REQUEST_STEP: *gitnessMakePullRequestExecutor,
 				steps.SERVER_START_STEP:            *flaskServerStartTestExecutor,
-				steps.RETRY_CODE_GENERATE_STEP:     *openAIFlaskCodeGenerator,
+				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
 				steps.RESET_DB_STEP:                *resetFlaskDBStepExecutor,
+				steps.PACKAGE_INSTALL_STEP:         *poetryPackageInstallStepExecutor,
+			}
+		})
+	} else if template == "DJANGO" {
+		_ = c.Provide(func(
+			openAICodeGenerator *impl.OpenAICodeGenerator,
+			gitMakeBranchExecutor *impl.GitMakeBranchExecutor,
+			updateCodeFileExecutor *impl.UpdateCodeFileExecutor,
+			djangoServerStartTestExecutor *impl.DjangoServerStartTestExecutor,
+			gitCommitExecutor *impl.GitCommitExecutor,
+			gitPushExecutor *impl.GitPushExecutor,
+			gitnessMakePullRequestExecutor *impl.GitnessMakePullRequestExecutor,
+		) map[steps.StepName]step_executors.StepExecutor {
+			return map[steps.StepName]step_executors.StepExecutor{
+				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
+				steps.UPDATE_CODE_FILE_STEP:        *updateCodeFileExecutor,
+				steps.GIT_COMMIT_STEP:              *gitCommitExecutor,
+				steps.GIT_CREATE_BRANCH_STEP:       *gitMakeBranchExecutor,
+				steps.GIT_PUSH_STEP:                *gitPushExecutor,
+				steps.GIT_CREATE_PULL_REQUEST_STEP: *gitnessMakePullRequestExecutor,
+				steps.SERVER_START_STEP:            *djangoServerStartTestExecutor,
+				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
 			}
 		})
 	}
@@ -291,18 +329,34 @@ func main() {
 		if _, err := config.LoadConfig(); err != nil {
 			return err
 		}
-		log.Println("Going to execute AI Developer Workflow Execution For Flask")
-		err = executor.Execute(
-			workflow_executors.FlaskWorkflowConfig,
-			&workflow_executors.WorkflowExecutionArgs{
-				StoryId:       adec.GetStoryID(),
-				IsReExecution: adec.IsReExecution(),
-				Branch:        adec.GetBranch(),
-				PullRequestId: adec.GetPullRequestID(),
-				ExecutionId:   adec.GetExecutionID(),
-			},
-		)
-		return err
+		log.Println(fmt.Sprintf("Going to execute AI Developer Workflow Execution For %s", template))
+		if template == "FLASK" {
+			err = executor.Execute(
+				workflow_executors.FlaskWorkflowConfig,
+				&workflow_executors.WorkflowExecutionArgs{
+					StoryId:       adec.GetStoryID(),
+					IsReExecution: adec.IsReExecution(),
+					Branch:        adec.GetBranch(),
+					PullRequestId: adec.GetPullRequestID(),
+					ExecutionId:   adec.GetExecutionID(),
+				},
+			)
+			return err
+		} else if template == "DJANGO" {
+			err = executor.Execute(
+				workflow_executors.DjangoWorkflowConfig,
+				&workflow_executors.WorkflowExecutionArgs{
+					StoryId:       adec.GetStoryID(),
+					IsReExecution: adec.IsReExecution(),
+					Branch:        adec.GetBranch(),
+					PullRequestId: adec.GetPullRequestID(),
+					ExecutionId:   adec.GetExecutionID(),
+				},
+			)
+			return err
+		}
+		fmt.Println("_____Invalid template_____", template)
+		return nil
 	})
 
 	if err != nil {

@@ -109,7 +109,7 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
       }
       const fileType = file.type.toLowerCase();
       const fileName = file.name.toLowerCase();
-      if (fileType === 'image/png' || (fileType === 'image/jpeg' && fileName.endsWith('.jpeg'))) {
+      if (fileType === 'image/png' || (fileType === 'image/jpeg' && fileName.endsWith('.jpg'))) {
         setUploadedImage(file);
         const reader = new FileReader();
         reader.onloadend = () => {

@@ -30,9 +30,6 @@ function initialise() {
     echo "Updating lock file..."
     poetry lock --no-update
 
-    echo "Installing dependencies with Poetry..."
-    poetry install
-
     mkdir -p .vscode || true
 
     # Check if .vscode/settings.json exists

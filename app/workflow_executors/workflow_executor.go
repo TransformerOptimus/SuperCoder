@@ -124,8 +124,16 @@ func (we *WorkflowExecutor) Execute(workflowConfig *WorkflowConfig, args *Workfl
 			resetDBStep.WithProject(project)
 			resetDBStep.WithExecution(execution)
 			resetDBStep.WithExecutionStep(executionStep)
-			return executor.(executors.ResetDBStep).Execute(*resetDBStep)
+			return executor.(executors.ResetDBStepExecutor).Execute(*resetDBStep)
+		case steps.PACKAGE_INSTALL_STEP:
+			resetDBStep := step.(*steps.PackageInstallStep)
+			resetDBStep.WithStory(story)
+			resetDBStep.WithProject(project)
+			resetDBStep.WithExecution(execution)
+			resetDBStep.WithExecutionStep(executionStep)
+			return executor.(executors.PackageInstallStepExecutor).Execute(*resetDBStep)
 		}
+
 		return errors.New("step not found")
 	})
 	return nil

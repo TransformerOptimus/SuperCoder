@@ -12,6 +12,7 @@ var (
 	SERVER_START_STEP            StepName = "SERVER_START_STEP"
 	UPDATE_CODE_FILE_STEP        StepName = "UPDATE_CODE_FILE_STEP"
 	RESET_DB_STEP                StepName = "RESET_DB_STEP"
+	PACKAGE_INSTALL_STEP         StepName = "PACKAGE_INSTALL_STEP"
 )
 
 func (s StepName) String() string {

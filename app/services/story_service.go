@@ -174,6 +174,11 @@ func (s *StoryService) GetAllStoriesOfProject(projectId int, searchValue string)
 				StoryID:   int(story.ID),
 				StoryName: story.Title,
 			})
+		case constants.ExecutionEnqueued:
+			storiesByStatus[constants.InProgress] = append(storiesByStatus[constants.InProgress], response.StoryData{
+				StoryID:   int(story.ID),
+				StoryName: story.Title,
+			})
 		default:
 			storiesByStatus[constants.InReview] = append(storiesByStatus[constants.InReview], response.StoryData{
 				StoryID:   int(story.ID),
@@ -329,6 +334,15 @@ func (s *StoryService) UpdateStoryStatus(storyID int, status string) error {
 
 			// Enqueue the task with exponential backoff
 			_, err = s.asynqClient.Enqueue(task, asynq.MaxRetry(5))
+			if err != nil {
+				s.logger.Error("Error enqueuing task", zap.Error(err))
+				return err
+			}
+			err = s.storyRepo.UpdateStoryStatus(story, constants.ExecutionEnqueued)
+			if err != nil {
+				s.logger.Error("Error updating story status", zap.Error(err))
+				return err
+			}
 
 		} else {
 			s.logger.Info("Story already in progress", zap.Int("storyID", storyID))

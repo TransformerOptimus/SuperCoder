@@ -13,6 +13,7 @@ import (
 )
 
 type OauthController struct {
+	authService        *services.AuthService
 	githubOauthService *services.GithubOauthService
 	clientID           string
 	clientSecret       string
@@ -20,6 +21,18 @@ type OauthController struct {
 }
 
 func (controller *OauthController) GithubSignIn(c *gin.Context) {
+	var env = config.Get("app.env")
+	fmt.Println("ENV : ", env)
+	if env == "development" {
+		fmt.Println("Handling Skip Authentication Token.....")
+		redirectURL, err := controller.authService.HandleDefaultAuth()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to get default user token"})
+			return
+		}
+		c.Redirect(http.StatusTemporaryRedirect, redirectURL)
+
+	}
 	var githubOauthConfig = &oauth2.Config{
 		RedirectURL:  controller.redirectURL,
 		ClientID:     controller.clientID,
@@ -51,9 +64,16 @@ func (controller *OauthController) GithubCallback(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
 
-func NewOauthController(githubOauthService *services.GithubOauthService, clientID string, clientSecret string, redirectURL string) *OauthController {
+func NewOauthController(
+	githubOauthService *services.GithubOauthService,
+	authService *services.AuthService,
+	clientID string,
+	clientSecret string,
+	redirectURL string,
+) *OauthController {
 	return &OauthController{
 		githubOauthService: githubOauthService,
+		authService:        authService,
 		clientID:           clientID,
 		clientSecret:       clientSecret,
 		redirectURL:        redirectURL,

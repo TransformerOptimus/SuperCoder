@@ -30,7 +30,7 @@ func (ws DockerWorkspaceService) CreateWorkspace(workspaceId string, backendTemp
 
 	workspaceUrl := "http://localhost:8081/?folder=/workspaces/" + workspaceId
 	frontendUrl := "http://localhost:3000"
-	backendUrl := "http://localhost:5000"
+	backendUrl := "http://localhost:5001"
 
 	return &dto.WorkspaceDetails{
 		WorkspaceId:      workspaceId,

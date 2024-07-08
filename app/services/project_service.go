@@ -82,7 +82,7 @@ func (s *ProjectService) GetProjectDetailsById(projectId int) (*models.Project, 
 func (s *ProjectService) CreateProject(organisationID int, requestData request.CreateProjectRequest) (*models.Project, error) {
 	hashID := s.hashIdGenerator.Generate() + "-" + uuid.New().String()
 	url := "http://localhost:8081/?folder=/workspaces/" + hashID
-	backend_url := "http://localhost:5000"
+	backend_url := "http://localhost:5001"
 	frontend_url := "http://localhost:3000"
 	env := config.Get("app.env")
 	host := config.Get("workspace.host")

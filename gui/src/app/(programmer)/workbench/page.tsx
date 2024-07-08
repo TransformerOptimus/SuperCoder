@@ -44,8 +44,8 @@ export default function WorkBench() {
   const activeWorkbenchCondition = () => {
     return (
       storiesList &&
-      (storiesList.IN_PROGRESS || storiesList.DONE) &&
-      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0)
+      (storiesList.IN_PROGRESS || storiesList.DONE || storiesList.IN_REVIEW) &&
+      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0 || storiesList.IN_REVIEW.length > 0)
     );
   };
 
@@ -79,10 +79,10 @@ export default function WorkBench() {
   useEffect(() => {
     if (
       storiesList &&
-      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0)
+      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0 || storiesList.IN_REVIEW.length > 0)
     )
       handleSelectedStory();
-  }, [storiesList, selectedStoryId]);
+  }, [storiesList, selectedStoryId, status]);
 
   useEffect(() => {
     if (selectedStoryId) toGetActivityLogs(selectedStoryId).then().catch();
@@ -109,6 +109,7 @@ export default function WorkBench() {
     const completeStoriesList = [
       ...storiesList.IN_PROGRESS,
       ...storiesList.DONE,
+      ...storiesList.IN_REVIEW,
     ];
 
     const story = completeStoriesList.find(
@@ -140,6 +141,10 @@ export default function WorkBench() {
 
   const handleDoneCheck = () => {
     return storiesList && storiesList.DONE && storiesList.DONE.length > 0;
+  };
+
+  const handleInReviewCheck = () => {
+    return storiesList && storiesList.IN_REVIEW && storiesList.IN_REVIEW.length > 0;
   };
 
   return (
@@ -200,6 +205,21 @@ export default function WorkBench() {
                           </CustomDropdown.Item>
                         ))}
                       </CustomDropdown.Section>
+                    )}
+
+                    {handleInReviewCheck() && (
+                        <CustomDropdown.Section title={'IN REVIEW STORIES'}>
+                          {storiesList.IN_REVIEW.map((story) => (
+                              <CustomDropdown.Item
+                                  key={story.story_id.toString()}
+                                  onClick={() =>
+                                      handleItemSelect(story.story_id.toString())
+                                  }
+                              >
+                                <span>{story.story_name}</span>
+                              </CustomDropdown.Item>
+                          ))}
+                        </CustomDropdown.Section>
                     )}
                   </CustomDropdown>
 

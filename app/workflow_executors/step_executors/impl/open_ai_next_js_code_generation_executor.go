@@ -103,7 +103,6 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 		fmt.Printf("Error building final instruction for generation: %s\n", err.Error())
 		return err
 	}
-	fmt.Println("_________Final Instruction for Generation__________")
 	//extracting api_key from executionId
 	story, err := openAiCodeGenerator.storyService.GetStoryByExecutionID(step.Execution.ID)
 	if err != nil {
@@ -176,7 +175,6 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	}
 
 	return nil
-
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildFinalInstructionForGeneration(
@@ -231,6 +229,9 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 	}
 
 	code, err := openAiCodeGenerator.getFilesContent(storyDir)
+	if err!=nil{
+		return nil, err
+	}
 
 	return map[string]string{
 		"existingCode": string(code),
@@ -472,8 +473,8 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateMessages(instructi
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetMessages(systemPrompt string, instruction map[string]string, generationPlan string) []llms.ClaudeChatCompletionMessage {
-	fmt.Println(instruction["feedback"])
-	fmt.Println(instruction["existingCode"])
+	// fmt.Println(instruction["feedback"])
+	// fmt.Println(instruction["existingCode"])
 	messages := []llms.ClaudeChatCompletionMessage{
 		{
 			Role: "user",

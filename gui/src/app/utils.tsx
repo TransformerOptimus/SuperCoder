@@ -23,6 +23,7 @@ export const logout = () => {
     localStorage.removeItem('projectName');
     localStorage.removeItem('storyId');
     localStorage.removeItem('organisationId');
+    localStorage.removeItem('projectFrontendFramework');
   }
 
   window.location.replace('/');
@@ -138,6 +139,10 @@ export function formatTimeAgo(timestamp: string): string {
 
 export function setProjectDetails(project: ProjectTypes) {
   localStorage.setItem('projectFramework', project.project_framework);
+  localStorage.setItem(
+    'projectFrontendFramework',
+    project.project_frontend_framework,
+  );
   localStorage.setItem('projectId', project.project_id.toString());
   localStorage.setItem('projectURL', project.project_url);
   localStorage.setItem('projectURLFrontend', project.project_frontend_url);

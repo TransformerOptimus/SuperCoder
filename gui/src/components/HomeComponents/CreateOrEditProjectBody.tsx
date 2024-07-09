@@ -98,8 +98,8 @@ export default function CreateOrEditProjectBody({
     } else {
       const newProjectPayload = {
         name: projectName,
-        backendFramework: selectedBackendFramework,
-        frontendFramework: selectedFrontendFramework,
+        framework: selectedBackendFramework,
+        frontend_framework: selectedFrontendFramework,
         description: projectDescription,
       };
       await toCreateNewProject(newProjectPayload);
@@ -130,7 +130,7 @@ export default function CreateOrEditProjectBody({
           const data = response.data;
           setProjectName(data.Name);
           setProjectDescription(data.Description);
-          setSelectedBackendFramework(data.BackendFramework);
+          setSelectedBackendFramework(data.Framework);
           setSelectedFrontendFramework(data.FrontendFramework);
         }
       }

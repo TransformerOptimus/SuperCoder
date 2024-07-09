@@ -6,7 +6,7 @@ import imagePath from '@/app/imagePath';
 import styles from './projects.module.css';
 import { useRouter } from 'next/navigation';
 import { ProjectTypes } from '../../../types/projectsTypes';
-import { toGetAllProjects } from '@/app/utils';
+import { setProjectDetails, toGetAllProjects } from '@/app/utils';
 import CreateOrEditProjectBody from '@/components/HomeComponents/CreateOrEditProjectBody';
 import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
 import { SkeletonTypes } from '@/app/constants/SkeletonConstants';
@@ -20,6 +20,7 @@ export default function Projects() {
   const router = useRouter();
 
   const handleProjectClick = async (project: ProjectTypes) => {
+    setProjectDetails(project);
     router.push(`/board`);
   };
 
@@ -94,15 +95,21 @@ export default function Projects() {
                   </div>
                 ))
               ) : (
-                <div className={'flex items-center justify-center gap-2 py-44'}>
-                  <CustomImage
-                    className={'size-24'}
-                    src={imagePath.emptyFilesIcons}
-                    alt={'empty_icon'}
-                  />
-                  <span className={'proxima_nova secondary_color text-xl'}>
-                    No projects created yet!
-                  </span>
+                <div className={'col-span-12 grid'}>
+                  <div
+                    className={
+                      'flex flex-col items-center justify-center gap-2 py-44'
+                    }
+                  >
+                    <CustomImage
+                      className={'size-24'}
+                      src={imagePath.emptyFilesIcons}
+                      alt={'empty_icon'}
+                    />
+                    <span className={'proxima_nova secondary_color text-xl'}>
+                      No projects created yet!
+                    </span>
+                  </div>
                 </div>
               ))}
           </div>

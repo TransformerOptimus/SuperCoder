@@ -1,7 +1,7 @@
 export interface CreateProjectPayload {
   name: string;
-  backendFramework: string;
-  frontendFramework: string;
+  framework: string;
+  frontend_framework: string;
   description: string;
 }
 
@@ -21,4 +21,5 @@ export interface ProjectTypes {
   project_frontend_url: string;
   pull_request_count: number;
   project_framework: string;
+  project_frontend_framework: string;
 }

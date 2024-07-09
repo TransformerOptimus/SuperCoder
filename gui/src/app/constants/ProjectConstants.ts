@@ -5,33 +5,32 @@ export const projectTypes = {
   DESIGN: 'DESIGN',
 };
 
-export const frameworkOptions = [
+export const backendFrameworkOptions = [
   {
     id: 'flask',
     text: 'Flask',
     src: imagePath.flaskImage,
     available: true,
-    type: projectTypes.BACKEND,
-  },
-  {
-    id: 'nextjs',
-    text: 'Next Js',
-    src: imagePath.nextJsImage,
-    available: true,
-    type: projectTypes.DESIGN,
   },
   {
     id: 'django',
     text: 'Django',
     src: imagePath.djangoImage,
     available: true,
-    type: projectTypes.BACKEND,
   },
   {
     id: 'fast_api',
     text: 'Fast API',
     src: imagePath.fastAPIImage,
     available: false,
-    type: projectTypes.BACKEND,
+  },
+];
+
+export const frontendFrameworkOptions = [
+  {
+    id: 'nextjs',
+    text: 'Next Js',
+    src: imagePath.nextJsImage,
+    available: true,
   },
 ];

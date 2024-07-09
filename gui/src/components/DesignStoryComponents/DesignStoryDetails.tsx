@@ -5,14 +5,12 @@ import CustomImage from '@/components/ImageComponents/CustomImage';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
 import React from 'react';
 import CustomTag from '@/components/CustomTag/CustomTag';
-import {
-  handleInProgressStoryStatus,
-  handleStoryStatus,
-} from '@/app/utils';
+import { handleInProgressStoryStatus, handleStoryStatus } from '@/app/utils';
 import { useDesignContext } from '@/context/Design';
 import { deleteStory, updateStoryStatus } from '@/api/DashboardService';
 import { storyStatus } from '@/app/constants/BoardConstants';
 import { useRouter } from 'next/navigation';
+import { Button } from '@nextui-org/react';
 
 const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
   id,
@@ -70,23 +68,16 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
       action: () => handleDeleteAction(),
     },
   ];
-  const statusItems = [
-    { key: 'IN_PROGRESS', text: 'In Progress', icon: imagePath.inprogressDot },
-  ];
 
-  const handleUpdateStoryStatus = async (status: string) => {
-    if (status === storyStatus.IN_PROGRESS) {
-      const openWorkbench = await handleInProgressStoryStatus(
-        setOpenSetupModelModal,
-        number_of_stories_in_progress,
-        toUpdateStoryStatus,
-      );
-      if (openWorkbench) {
-        router.push(`/workbench`);
-      }
-      return;
+  const handleMoveToInProgressClick = async () => {
+    const openWorkbench = await handleInProgressStoryStatus(
+      setOpenSetupModelModal,
+      number_of_stories_in_progress,
+      toUpdateStoryStatus,
+    );
+    if (openWorkbench) {
+      router.push(`/design_workbench`);
     }
-    toUpdateStoryStatus(status).then().catch();
   };
 
   async function toUpdateStoryStatus(status: string) {
@@ -127,54 +118,22 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
           </div>
 
           <div className={'flex flex-row items-center gap-3'}>
-            {selectedStory.status === storyStatus.TODO ||
-            selectedStory.status === storyStatus.IN_REVIEW ? (
-              <CustomDropdown
-                trigger={
-                  <CustomTag
-                    icon={imagePath.whiteDot}
-                    iconClass={'size-4'}
-                    text={handleStoryStatus(selectedStory.status).text}
-                    color={handleStoryStatus(selectedStory.status).color}
-                    className={'rounded-3xl'}
-                    iconBack={imagePath.bottomArrowGrey}
-                    iconBackClass={'size-4'}
-                  />
-                }
-                maxHeight={'400px'}
-                gap={'10px'}
-                position={'end'}
+            {selectedStory.status === storyStatus.TODO && (
+              <Button
+                className={'primary_medium'}
+                onClick={() => handleMoveToInProgressClick()}
               >
-                {statusItems &&
-                  statusItems.map((status, index) => (
-                    <CustomDropdown.Item
-                      key={status.key}
-                      onClick={() => handleUpdateStoryStatus(status.key)}
-                    >
-                      <div
-                        className={
-                          'flex flex-row items-center justify-center gap-1'
-                        }
-                      >
-                        <CustomImage
-                          className={'size-4'}
-                          src={status.icon}
-                          alt={`${status.key}_icon`}
-                        />
-                        {status.text}
-                      </div>
-                    </CustomDropdown.Item>
-                  ))}
-              </CustomDropdown>
-            ) : (
-              <CustomTag
-                icon={imagePath.whiteDot}
-                iconClass={'size-4'}
-                text={handleStoryStatus(selectedStory.status).text}
-                color={handleStoryStatus(selectedStory.status).color}
-                className={'rounded-3xl'}
-              />
+                Move to In Progress
+              </Button>
             )}
+
+            <CustomTag
+              icon={imagePath.whiteDot}
+              iconClass={'size-4'}
+              text={handleStoryStatus(selectedStory.status).text}
+              color={handleStoryStatus(selectedStory.status).color}
+              className={'rounded-3xl'}
+            />
 
             <CustomDropdown
               trigger={

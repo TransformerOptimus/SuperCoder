@@ -1,6 +1,7 @@
 export interface CreateProjectPayload {
   name: string;
-  framework: string;
+  backendFramework: string;
+  frontendFramework: string;
   description: string;
 }
 

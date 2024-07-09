@@ -22,13 +22,7 @@ const ActiveDesignWorkbench: React.FC = () => {
 
   useEffect(() => {
     getStoryDetails(selectedStoryId).then().catch();
-  }, [selectedStoryId]);
-
-  useEffect(() => {
-    if (executionInProcess === false) {
-      getStoryDetails(selectedStoryId).then().catch();
-    }
-  }, [executionInProcess]);
+  }, [selectedStoryId, executionInProcess]);
 
   async function getCode(story_id) {
     try {
@@ -49,7 +43,7 @@ const ActiveDesignWorkbench: React.FC = () => {
         const data = response.data;
         setSelectedStory(data.story);
         frontendURL.current = data.story ? data.story.frontend_url : '';
-        if (data.story.status === storyStatus.DONE) {
+        if (data.story.status === storyStatus.DONE || data.story.status === storyStatus.IN_REVIEW || data.story.status === storyStatus.MAX_LOOP_ITERATIONS) {
           getCode(story_id).then().catch();
         } else {
           setCodeFiles(null);

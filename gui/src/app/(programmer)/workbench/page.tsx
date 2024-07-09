@@ -44,8 +44,8 @@ export default function WorkBench() {
   const activeWorkbenchCondition = () => {
     return (
       storiesList &&
-      (storiesList.IN_PROGRESS || storiesList.DONE) &&
-      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0)
+      (storiesList.IN_PROGRESS || storiesList.DONE || storiesList.IN_REVIEW) &&
+      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0 || storiesList.IN_REVIEW.length > 0)
     );
   };
 
@@ -79,14 +79,14 @@ export default function WorkBench() {
   useEffect(() => {
     if (
       storiesList &&
-      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0)
+      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0 || storiesList.IN_REVIEW.length > 0)
     )
       handleSelectedStory();
   }, [storiesList, selectedStoryId]);
 
   useEffect(() => {
     if (selectedStoryId) toGetActivityLogs(selectedStoryId).then().catch();
-  }, [selectedStoryId]);
+  }, [selectedStoryId, status]);
 
   async function toGetActivityLogs(story_id: string) {
     try {
@@ -104,18 +104,35 @@ export default function WorkBench() {
       console.error('Error while fetching activity logs:: ', error);
     }
   }
+  const getStatus = (storyId: number) => {
+    for (const [status, storyList] of Object.entries(storiesList)) {
+      if (storyList.some(story => story.story_id === storyId)) {
+        return status;
+      }
+    }
+    return "";
+  }
 
   const handleSelectedStory = () => {
+    console.log(storiesList);
     const completeStoriesList = [
       ...storiesList.IN_PROGRESS,
       ...storiesList.DONE,
+      ...storiesList.IN_REVIEW,
     ];
+    console.log('handle selected story called');
 
     const story = completeStoriesList.find(
       (item) => item.story_id.toString() === selectedStoryId,
     );
 
-    if (story) setSelectedStory(story);
+    if (story) {
+      setSelectedStory(story);
+      const currentStatus = getStatus(story.story_id);
+      if(selectedStoryId === story.story_id.toString() && currentStatus !== status){
+        setStatus(currentStatus);
+      }
+    }
     else {
       localStorage.setItem(
         'storyId',
@@ -140,6 +157,10 @@ export default function WorkBench() {
 
   const handleDoneCheck = () => {
     return storiesList && storiesList.DONE && storiesList.DONE.length > 0;
+  };
+
+  const handleInReviewCheck = () => {
+    return storiesList && storiesList.IN_REVIEW && storiesList.IN_REVIEW.length > 0;
   };
 
   return (
@@ -200,6 +221,21 @@ export default function WorkBench() {
                           </CustomDropdown.Item>
                         ))}
                       </CustomDropdown.Section>
+                    )}
+
+                    {handleInReviewCheck() && (
+                        <CustomDropdown.Section title={'IN REVIEW STORIES'}>
+                          {storiesList.IN_REVIEW.map((story) => (
+                              <CustomDropdown.Item
+                                  key={story.story_id.toString()}
+                                  onClick={() =>
+                                      handleItemSelect(story.story_id.toString())
+                                  }
+                              >
+                                <span>{story.story_name}</span>
+                              </CustomDropdown.Item>
+                          ))}
+                        </CustomDropdown.Section>
                     )}
                   </CustomDropdown>
 

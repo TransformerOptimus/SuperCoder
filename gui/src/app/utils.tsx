@@ -35,6 +35,7 @@ export const handleStoryStatus = (status: string) => {
     IN_PROGRESS: { text: 'In Progress', color: 'purple' },
     IN_REVIEW: { text: 'In Review', color: 'yellow' },
     DONE: { text: 'Done', color: 'green' },
+    MAX_LOOP_ITERATION_REACHED: {text: 'In Review', color: 'yellow'}
   };
 
   return storyStatus[status] || { text: 'Default ', color: 'grey' };

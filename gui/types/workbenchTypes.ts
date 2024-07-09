@@ -26,4 +26,16 @@ export interface ActivityItem {
 
 export interface ActiveWorkbenchProps {
   storiesList: StoryList;
+  storyType: string;
+}
+
+export interface BackendWorkbenchProps {
+  activityLogs: ActivityItem[];
+  selectedStoryId: string;
+}
+
+export interface DesignWorkbenchProps {
+  activityLogs: ActivityItem[];
+  selectedStoryId: string;
+  executionInProcess: boolean;
 }

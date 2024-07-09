@@ -1,6 +1,6 @@
 import imagePath from '@/app/imagePath';
 
-export const projectTypes = {
+export const storyTypes = {
   BACKEND: 'BACKEND',
   DESIGN: 'DESIGN',
 };

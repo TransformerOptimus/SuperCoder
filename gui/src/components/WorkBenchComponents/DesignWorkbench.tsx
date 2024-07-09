@@ -5,19 +5,21 @@ import Browser from '@/components/WorkBenchComponents/Browser';
 import { DesignStoryItem } from '../../../types/designStoryTypes';
 import { getFrontendCode, getDesignStoryDetails } from '@/api/DashboardService';
 import FrontendCodeSection from '@/components/DesignStoryComponents/FrontendCodeSection';
-import styles from '../../app/(programmer)/workbench/workbench.module.css';
+import styles from './workbenchComponents.module.css';
 import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
 import { CodeFile } from '../../../types/customComponentTypes';
-import { useWorkbenchContext } from '@/context/Workbench';
 import { storyStatus } from '@/app/constants/BoardConstants';
+import { DesignWorkbenchProps } from '../../../types/workbenchTypes';
 
-const ActiveDesignWorkbench: React.FC = () => {
+const ActiveDesignWorkbench: React.FC<DesignWorkbenchProps> = ({
+  activityLogs,
+  selectedStoryId,
+  executionInProcess,
+}) => {
   const [selectedStory, setSelectedStory] = useState<DesignStoryItem | null>(
     null,
   );
   const [codeFiles, setCodeFiles] = useState<CodeFile[] | null>(null);
-  const { executionInProcess, activityLogs, selectedStoryId } =
-    useWorkbenchContext();
   const frontendURL = useRef('');
 
   useEffect(() => {

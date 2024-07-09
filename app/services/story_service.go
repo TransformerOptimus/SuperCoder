@@ -132,6 +132,10 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 	s3Url, err := s.UploadFileBytesToS3(file, fileName, projectID, int(createdStory.ID))
 	if err != nil {
 		fmt.Println("Error uploading file to S3", err.Error())
+		err := s.DeleteStoryByID(int(createdStory.ID))
+		if err!=nil{
+			fmt.Println("Error deleting story")
+		}
 		return 0, err
 	}
 

@@ -74,4 +74,5 @@ export default {
   uploadIcon: '/icons/upload_icon.svg',
   redCrossDeleteIcon: '/icons/red_cross_delete_icon.svg',
   copyIcon: '/icons/copy_icon.svg',
+  emptyFilesIcons: '/icons/empty_files_icon.svg',
 };

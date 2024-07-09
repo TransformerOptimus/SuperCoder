@@ -7,6 +7,7 @@ import React, { useMemo, useState } from 'react';
 import imagePath from '@/app/imagePath';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import Image from 'next/image';
+import CustomImage from '@/components/ImageComponents/CustomImage';
 
 const ReviewList: React.FC = () => {
   const router = useRouter();
@@ -47,13 +48,13 @@ const ReviewList: React.FC = () => {
                   <div
                     className={`${styles.review_image_container} relative flex h-[60px] w-[60px] items-center justify-center overflow-hidden rounded-lg`}
                   >
-                      <Image
-                          src={story.input_file_url}
-                          alt={'design_image'}
-                          fill
-                          className="object-contain"
-                          loading="lazy"
-                      />
+                    <Image
+                      src={story.input_file_url}
+                      alt={'design_image'}
+                      fill
+                      className="object-contain"
+                      loading="lazy"
+                    />
                   </div>
                   <div
                     className={
@@ -84,7 +85,12 @@ const ReviewList: React.FC = () => {
             }
           })
         ) : (
-          <div className={'flex items-center justify-center py-44'}>
+          <div className={'flex items-center justify-center gap-2 py-44'}>
+            <CustomImage
+              className={'size-24'}
+              src={imagePath.emptyFilesIcons}
+              alt={'empty_icon'}
+            />
             <span className={'proxima_nova secondary_color text-xl'}>
               No reviews found!
             </span>

@@ -1,6 +1,6 @@
 'use client';
 import StoryDetails from '@/components/StoryComponents/StoryDetails';
-import { StoryDetailsWorkbenchProps } from '../../../../../types/workbenchTypes';
+import { StoryDetailsWorkbenchProps } from '../../../types/workbenchTypes';
 
 export default function StoryDetailsWorkbench({
   id,

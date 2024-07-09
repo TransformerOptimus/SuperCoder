@@ -2,7 +2,7 @@
 import React from 'react';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import imagePath from '@/app/imagePath';
-import { BrowserProps } from '../../../../../types/workbenchTypes';
+import { BrowserProps } from '../../../types/workbenchTypes';
 
 export default function Browser({ url, showUrl = true }: BrowserProps) {
   return (

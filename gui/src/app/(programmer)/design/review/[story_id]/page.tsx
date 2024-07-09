@@ -8,7 +8,7 @@ import styles from './review.module.css';
 import FrontendCodeSection from '@/components/DesignStoryComponents/FrontendCodeSection';
 import React, { useEffect, useRef, useState } from 'react';
 import ReBuildModal from '@/components/RebuildModal/RebuildModal';
-import Browser from '@/app/(programmer)/workbench/WorkBenchComponents/Browser';
+import Browser from '@/components/WorkBenchComponents/Browser';
 import { CommentReBuildDesignStoryPayload } from '../../../../../../types/pullRequestsTypes';
 import {
   getFrontendCode,
@@ -182,24 +182,28 @@ const ReviewPage: React.FC = (props) => {
                 >
                   Input
                 </span>
-                <div className={ 'relative flex h-[40vh] w-full justify-center overflow-hidden'} >
+                <div
+                  className={
+                    'relative flex h-[40vh] w-full justify-center overflow-hidden'
+                  }
+                >
                   <Image
-                      src={story.input_file_url}
-                      alt={'design_image'}
-                      fill
-                      className="object-contain"
-                      loading="lazy"
+                    src={story.input_file_url}
+                    alt={'design_image'}
+                    fill
+                    className="object-contain"
+                    loading="lazy"
                   />
                 </div>
               </div>
               <div
-                  className={`${styles.container} flex flex-col rounded-tr-lg`}
+                className={`${styles.container} flex flex-col rounded-tr-lg`}
               >
                 <CustomTabs
-                    options={tabOptions}
-                    position={'end'}
-                    containerCss={'background'}
-                    tabCss={'my-1 p-2'}
+                  options={tabOptions}
+                  position={'end'}
+                  containerCss={'background'}
+                  tabCss={'my-1 p-2'}
                 >
                   <span className={'space_mono mx-2 text-xs'}>Output</span>
                 </CustomTabs>

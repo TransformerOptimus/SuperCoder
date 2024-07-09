@@ -23,3 +23,7 @@ export interface ActivityItem {
   Type: string;
   CreatedAt: string;
 }
+
+export interface ActiveWorkbenchProps {
+  storiesList: StoryList;
+}

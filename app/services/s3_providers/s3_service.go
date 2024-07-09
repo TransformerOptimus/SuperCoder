@@ -123,7 +123,7 @@ func (service *S3Service) GetBase64FromS3Url(s3URL string) (string, string, erro
 
 func determineImageType(data []byte) (string, error) {
 	if _, err := jpeg.DecodeConfig(bytes.NewReader(data)); err == nil {
-		return "image/jpg", nil
+		return "image/jpeg", nil
 	}
 	if _, err := png.DecodeConfig(bytes.NewReader(data)); err == nil {
 		return "image/png", nil

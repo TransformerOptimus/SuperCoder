@@ -19,7 +19,9 @@ const SideBar: React.FC = () => {
 
   const handleSelectedOption = useCallback(
     (option: SidebarOption) => {
-      return pathname.includes(option.id);
+      return (
+        pathname === option.route || pathname.startsWith(option.route + '/')
+      );
     },
     [pathname],
   );

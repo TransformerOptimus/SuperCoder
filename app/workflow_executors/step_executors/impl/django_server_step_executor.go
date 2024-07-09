@@ -106,7 +106,7 @@ func (e DjangoServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 }
 
 func (e *DjangoServerStartTestExecutor) getDjangoServerURL() string {
-	return "http://127.0.0.1:5000/"
+	return "http://127.0.0.1:5001/"
 }
 
 func (e *DjangoServerStartTestExecutor) getDjangoServerAppFileName() string {
@@ -141,7 +141,7 @@ func (e *DjangoServerStartTestExecutor) serverRunTest(step steps.ServerStartTest
 		} else {
 			fmt.Println("Server process is nil, cannot kill the process.")
 		}
-		e.cleanupPort(5000)
+		e.cleanupPort(5001)
 		fmt.Printf("Error starting Django server: %s\n", stderr.String())
 		return "Failed", stderr.String()
 	}
@@ -159,7 +159,7 @@ func (e *DjangoServerStartTestExecutor) serverRunTest(step steps.ServerStartTest
 		fmt.Println("Server process killed successfully")
 		return "Passed", ""
 	} else {
-		e.cleanupPort(5000)
+		e.cleanupPort(5001)
 		return "Failed", err_msg + string(response_body)
 	}
 }
@@ -202,7 +202,7 @@ func RunDjangoServer(appPath string, workDir string, pythonPath string, newPath 
 	commands := []string{
 		fmt.Sprintf("%s %s makemigrations", pythonPath, appPath),
 		fmt.Sprintf("%s %s migrate", pythonPath, appPath),
-		fmt.Sprintf("%s %s runserver 0.0.0.0:5000", pythonPath, appPath),
+		fmt.Sprintf("%s %s runserver 0.0.0.0:5001", pythonPath, appPath),
 	}
 
 	for i, command := range commands {

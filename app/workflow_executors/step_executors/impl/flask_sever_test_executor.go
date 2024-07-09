@@ -104,7 +104,7 @@ func (e FlaskServerStartTestExecutor) Execute(step steps.ServerStartTestStep) er
 }
 
 func (e *FlaskServerStartTestExecutor) getFlaskServerURL() string {
-	return "http://127.0.0.1:5000/"
+	return "http://127.0.0.1:5001/"
 }
 
 func (e *FlaskServerStartTestExecutor) getFlaskServerAppFileName() string {

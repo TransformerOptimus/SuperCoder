@@ -14,4 +14,5 @@ export interface StoryList {
 
 export interface BrowserProps {
   url: string;
+  status: boolean;
 }

@@ -30,6 +30,15 @@ const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
     null,
   );
 
+  const getStatus = (storyId: number) => {
+    for (const [status, storyList] of Object.entries(storiesList)) {
+      if (storyList.some((story) => story.story_id === storyId)) {
+        return status;
+      }
+    }
+    return '';
+  };
+
   const handleSelectedStory = () => {
     const completeStoriesList = [
       ...storiesList.IN_PROGRESS,
@@ -40,8 +49,16 @@ const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
       (item) => item.story_id.toString() === selectedStoryId,
     );
 
-    if (story) setSelectedStory(story);
-    else {
+    if (story) {
+      setSelectedStory(story);
+      const currentStatus = getStatus(story.story_id);
+      if (
+        selectedStoryId === story.story_id.toString() &&
+        currentStatus !== status
+      ) {
+        setStatus(currentStatus);
+      }
+    } else {
       localStorage.setItem(
         'storyId',
         completeStoriesList[0].story_id.toString(),
@@ -97,7 +114,7 @@ const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
 
   useEffect(() => {
     if (selectedStoryId) toGetActivityLogs(selectedStoryId).then().catch();
-  }, [selectedStoryId]);
+  }, [selectedStoryId, status]);
 
   async function toGetActivityLogs(story_id: string) {
     try {

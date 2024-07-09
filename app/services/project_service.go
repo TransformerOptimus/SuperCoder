@@ -57,6 +57,7 @@ func (s *ProjectService) GetAllProjectsOfOrganisation(organisationId int) ([]res
 			ProjectName:        project.Name,
 			ProjectDescription: project.Description,
 			ProjectFramework:   project.Framework,
+			ProjectFrontendFramework: project.FrontendFramework,
 			ProjectHashID:      project.HashID,
 			ProjectUrl:         project.Url,
 			ProjectBackendURL:  project.BackendURL,

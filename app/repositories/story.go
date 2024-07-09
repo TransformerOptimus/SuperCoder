@@ -21,7 +21,7 @@ func (receiver *StoryRepository) CreateStory(story *models.Story) (*models.Story
 
 func (receiver *StoryRepository) GetStoriesByProjectId(projectId int, storyType string) ([]models.Story, error) {
 	var stories []models.Story
-	err := receiver.db.Where("project_id = ? AND is_deleted = ? AND story_type = ?", projectId, false, storyType).Find(&stories).Error
+	err := receiver.db.Where("project_id = ? AND is_deleted = ? AND type = ?", projectId, false, storyType).Find(&stories).Error
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (receiver *StoryRepository) GetStoriesByProjectId(projectId int, storyType 
 func (receiver *StoryRepository) GetStoriesByProjectIdAndSearch(projectId int, searchValue string, storyType string) ([]models.Story, error) {
     var stories []models.Story
     searchPattern := searchValue + "%"
-    err := receiver.db.Where("title ILIKE ? AND project_id = ? AND is_deleted = ? AND story_type = ?", 
+    err := receiver.db.Where("title ILIKE ? AND project_id = ? AND is_deleted = ? AND type = ?", 
         searchPattern, projectId, false, storyType).Find(&stories).Error
     if err != nil {
         return nil, err

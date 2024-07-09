@@ -38,6 +38,7 @@ type TerminalController struct {
 	MaxBufferSizeBytes          int
 	KeepalivePingTimeout        time.Duration
 	ConnectionErrorLimit        int
+	cmd                         *exec.Cmd
 	Command                     string
 	Arguments                   []string
 	AllowedHostnames            []string
@@ -58,6 +59,7 @@ func NewTerminalController(logger *zap.Logger, command string, arguments []strin
 		KeepalivePingTimeout:        20 * time.Second,
 		ConnectionErrorLimit:        10,
 		tty:                         tty,
+		cmd:                         cmd,
 		Arguments:                   arguments,
 		AllowedHostnames:            allowedHostnames,
 		logger:                      logger,
@@ -105,25 +107,23 @@ func (controller *TerminalController) NewTerminal(ctx *gin.Context) {
 		return
 	}
 
-	terminal := controller.Command
-	args := controller.Arguments
-	controller.logger.Debug("starting new tty", zap.String("command", terminal), zap.Strings("arguments", args))
-	cmd := exec.Command(terminal, args...)
+	cmd := controller.cmd
 	cmd.Env = os.Environ()
 	tty := controller.tty
 	defer func() {
 		controller.logger.Info("gracefully stopping spawned tty...")
-		if err := cmd.Process.Kill(); err != nil {
-			controller.logger.Warn("failed to kill process: %s", zap.Error(err))
+		if cmd.Process != nil {
+			if err := cmd.Process.Kill(); err != nil {
+				controller.logger.Warn("failed to kill process: %s", zap.Error(err))
+			}
+			if _, err := cmd.Process.Wait(); err != nil {
+				controller.logger.Warn("failed to wait for process to exit: %s", zap.Error(err))
+			}
 		}
-		if _, err := cmd.Process.Wait(); err != nil {
-			controller.logger.Warn("failed to wait for process to exit: %s", zap.Error(err))
-		}
-		if err := tty.Close(); err != nil {
-			controller.logger.Warn("failed to close spawned tty gracefully: %s", zap.Error(err))
-		}
-		if err := connection.Close(); err != nil {
-			controller.logger.Warn("failed to close webscoket connection: %s", zap.Error(err))
+		if connection != nil {
+			if err := connection.Close(); err != nil {
+				controller.logger.Warn("failed to close webscoket connection: %s", zap.Error(err))
+			}
 		}
 	}()
 

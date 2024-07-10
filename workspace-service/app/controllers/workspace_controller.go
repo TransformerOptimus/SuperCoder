@@ -21,7 +21,33 @@ func (wc *WorkspaceController) CreateWorkspace(c *gin.Context) {
 		})
 		return
 	}
-	wsDetails, err := wc.wsService.CreateWorkspace(body.WorkspaceId, *body.BackendTemplate, body.RemoteURL)
+	wsDetails, err := wc.wsService.CreateWorkspace(body.WorkspaceId, *body.BackendTemplate,  *body.FrontendTemplate, body.RemoteURL, body.GitnessUserName, body.GitnessToken)
+	if err != nil {
+		c.AbortWithStatusJSON(
+			500,
+			gin.H{"error": "Internal Server Error"},
+		)
+		return
+	}
+	c.JSON(
+		200,
+		gin.H{"message": "success", "workspace": wsDetails},
+	)
+}
+
+func (wc *WorkspaceController) CreateFrontendWorkspace(c *gin.Context) {
+	nextjs := "nextjs"
+	body := dto.CreateWorkspace{
+		FrontendTemplate: &nextjs,
+	}
+	if err := c.BindJSON(&body); err != nil {
+		wc.logger.Error("Failed to bind json", zap.Error(err))
+		c.AbortWithStatusJSON(400, gin.H{
+			"error": "Bad Request",
+		})
+		return
+	}
+	wsDetails, err := wc.wsService.CreateFrontendWorkspace(body.StoryHashId, body.WorkspaceId, *body.FrontendTemplate)
 	if err != nil {
 		c.AbortWithStatusJSON(
 			500,

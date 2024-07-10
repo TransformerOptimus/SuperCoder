@@ -1,10 +1,13 @@
 package request
 
 type CreateWorkspaceRequest struct {
+	StoryHashId      string  `json:"storyHashId"`
 	WorkspaceId      string  `json:"workspaceId"`
 	RemoteURL        string  `json:"remoteURL"`
 	BackendTemplate  *string `json:"backendTemplate,omitempty"`
 	FrontendTemplate *string `json:"frontendTemplate,omitempty"`
+	GitnessUserName  string  `json:"gitnessUserName"`
+	GitnessToken     string  `json:"gitnessToken"`
 }
 
 func (receiver *CreateWorkspaceRequest) WithBackendTemplate(backendTemplate string) *CreateWorkspaceRequest {

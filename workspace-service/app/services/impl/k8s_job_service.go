@@ -78,7 +78,7 @@ func (js K8sJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Create
 					Containers: []v13.Container{
 						{
 							Name:            "execution",
-							Image:           js.jobsConfig.ContainerImage(),
+							Image:           js.jobsConfig.ContainerImage(request.ExecutorImage),
 							ImagePullPolicy: v13.PullAlways,
 							Env:             getKubernetesEnvVars(request),
 							VolumeMounts: []v13.VolumeMount{

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
 	"github.com/goccy/go-json"
 	"gorm.io/gorm"
 	"github.com/hibiken/asynq"
@@ -147,8 +148,8 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	createJobRequest.WithProjectId(project.HashID)
 	createJobRequest.WithIsReExecution(payload.ReExecute)
 	createJobRequest.WithExecutionId(int64(execution.ID))
-	createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE=" + strings.ToUpper(project.Framework))
-	
+	createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.Framework))
+
 	job, err := h.workspaceServiceClient.CreateJob(createJobRequest)
 	if err != nil {
 		tx.Rollback()

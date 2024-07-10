@@ -49,7 +49,7 @@ FROM build-base AS worker-development
 
 ENTRYPOINT ["go", "run", "worker.go"]
 
-FROM superagidev/supercoder-python-ide:latest AS executor
+FROM superagidev/supercoder-python-ide:latest AS python-executor
 
 RUN git config --global user.email "supercoder@superagi.com"
 RUN git config --global user.name "SuperCoder"
@@ -62,6 +62,19 @@ COPY --from=executor-base /go/executor /go/executor
 COPY ./app/prompts /go/prompts
 
 ENTRYPOINT ["bash", "-c", "/entrypoint.d/initialise.sh && /go/executor"]
+
+FROM superagidev/supercoder-node-ide:latest AS node-executor
+
+RUN git config --global user.email "supercoder@superagi.com"
+RUN git config --global user.name "SuperCoder"
+
+
+ENV HOME /home/coder
+
+COPY --from=executor-base /go/executor /go/executor
+COPY ./app/prompts /go/prompts
+
+ENTRYPOINT ["bash", "-c", "/go/executor"]
 
 FROM public.ecr.aws/docker/library/debian:bookworm-slim as production
 

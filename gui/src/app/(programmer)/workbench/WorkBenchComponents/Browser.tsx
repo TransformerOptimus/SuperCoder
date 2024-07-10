@@ -1,10 +1,17 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import imagePath from '@/app/imagePath';
 import { BrowserProps } from '../../../../../types/workbenchTypes';
 
-export default function Browser({ url }: BrowserProps) {
+export default function Browser({ url, status }: BrowserProps) {
+  const [iframeKey, setIframeKey] = useState(0);
+
+  useEffect(() => {
+    console.log('Status: ', status.toString());
+    setIframeKey((prevKey) => prevKey + 1);
+  }, [status]);
+
   return (
     <div
       id={'browser'}
@@ -18,9 +25,9 @@ export default function Browser({ url }: BrowserProps) {
         size={'size-4'}
         alt={'search_icon'}
       />
-
       <div className={'mx-10'} style={{ height: 'calc(100vh - 590px)' }}>
         <iframe
+          key={iframeKey}
           src={url}
           className={'h-full w-full border-none bg-white'}
           loading={'lazy'}

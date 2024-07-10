@@ -109,7 +109,13 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 		s.logger.Error("Error creating repository", zap.Error(err))
 		return nil, err
 	}
-	remoteGitURL := fmt.Sprintf("https://%s:%s@%s/git/%s/%s.git", config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
+	httpPrefix := "https"
+
+	if config.AppEnv() == constants.Development {
+		httpPrefix = "http"
+	}
+
+	remoteGitURL := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
 	backendService := requestData.Framework
 	//Making Call to Workspace Service to create workspace on project level
 	_, err = s.workspaceServiceClient.CreateWorkspace(
@@ -117,7 +123,9 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 			WorkspaceId:     hashID,
 			BackendTemplate: &backendService,
 			//FrontendTemplate: &backendService,
-			RemoteURL: remoteGitURL,
+			RemoteURL:       remoteGitURL,
+			GitnessUserName: config.GitnessUser(),
+			GitnessToken:    config.GitnessToken(),
 		},
 	)
 
@@ -126,7 +134,22 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 		return nil, err
 	}
 
-	fmt.Println("Repository created: ", repository)
+	//Enqueue job to delete workspace with updated delay
+	payloadBytes, err := json.Marshal(asynq_task.CreateDeleteWorkspaceTaskPayload{
+		WorkspaceID: project.HashID,
+	})
+	if err != nil {
+		s.logger.Error("Failed to marshal payload", zap.Error(err))
+		return nil, err
+	}
+	_, err = s.asynqClient.Enqueue(
+		asynq.NewTask(constants.DeleteWorkspaceTaskType, payloadBytes),
+		asynq.ProcessIn(constants.ProjectConnectionTTL+10*time.Minute),
+		asynq.MaxRetry(3),
+		asynq.TaskID("delete:fallback:"+project.HashID),
+	)
+
+	s.logger.Info("Project created successfully with repository", zap.Any("project", project), zap.Any("repository", repository))
 	return s.projectRepo.CreateProject(project)
 }
 func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate string) error {
@@ -136,7 +159,7 @@ func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate s
 	}
 
 	//Check if there is any active workspace
-	currentActiveCount, err := s.GetActiveProjectCount(strconv.Itoa(int(project.ID)))
+	currentActiveCount, err := s.GetActiveProjectCount(project.HashID)
 	s.logger.Info("Initially Active Count", zap.Int("active_count", currentActiveCount))
 	if err != nil {
 		s.logger.Error("Failed to get active project count", zap.Error(err))
@@ -145,14 +168,21 @@ func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate s
 
 	organisation, err := s.organisationRepository.GetOrganisationByID(uint(int(project.OrganisationID)))
 	spaceOrProjectName := s.gitnessService.GetSpaceOrProjectName(organisation)
-	remoteGitURL := fmt.Sprintf("https://%s:%s@%s/git/%s/%s.git", config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
+	httpPrefix := "https"
+
+	if config.AppEnv() == constants.Development {
+		httpPrefix = "http"
+	}
+	remoteGitURL := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
 	s.logger.Info("Active count is less than 1, creating workspace....")
 	_, err = s.workspaceServiceClient.CreateWorkspace(
 		&request.CreateWorkspaceRequest{
 			WorkspaceId:     project.HashID,
 			BackendTemplate: &backendTemplate,
 			//FrontendTemplate: &backendService,
-			RemoteURL: remoteGitURL,
+			RemoteURL:       remoteGitURL,
+			GitnessUserName: config.GitnessUser(),
+			GitnessToken:    config.GitnessToken(),
 		})
 	if err != nil {
 		s.logger.Error("Failed to create workspace", zap.Error(err))
@@ -160,11 +190,26 @@ func (s *ProjectService) CreateProjectWorkspace(projectID int, backendTemplate s
 	}
 
 	//Increment active project count
-	_, err = s.redisRepo.IncrementActiveCount(strconv.Itoa(int(project.ID)), 6*time.Hour)
+	_, err = s.redisRepo.IncrementActiveCount(project.HashID, constants.ProjectConnectionTTL)
 	if err != nil {
 		s.logger.Error("Failed to set active project count", zap.Error(err))
 		return err
 	}
+
+	//Enqueue a schedule job on creation to delete workspace after 6 hours
+	payloadBytes, err := json.Marshal(asynq_task.CreateDeleteWorkspaceTaskPayload{
+		WorkspaceID: project.HashID,
+	})
+	if err != nil {
+		s.logger.Error("Failed to marshal payload", zap.Error(err))
+		return err
+	}
+	_, err = s.asynqClient.Enqueue(
+		asynq.NewTask(constants.DeleteWorkspaceTaskType, payloadBytes),
+		asynq.ProcessIn(constants.ProjectConnectionTTL+10*time.Minute),
+		asynq.MaxRetry(3),
+		asynq.TaskID("delete:fallback:"+project.HashID),
+	)
 	return nil
 }
 
@@ -174,7 +219,7 @@ func (s *ProjectService) DeleteProjectWorkspace(projectID int) error {
 		return err
 	}
 	//Check if there is any active workspace
-	currentActiveCount, err := s.GetActiveProjectCount(strconv.Itoa(int(project.ID)))
+	currentActiveCount, err := s.GetActiveProjectCount(project.HashID)
 	s.logger.Info("Initially Active Count", zap.Int("active_count", currentActiveCount))
 	if err != nil {
 		s.logger.Error("Failed to get active project count", zap.Error(err))
@@ -201,7 +246,7 @@ func (s *ProjectService) DeleteProjectWorkspace(projectID int) error {
 		}
 	}
 	//Decrement active project count
-	_, err = s.redisRepo.DecrementActiveCount(strconv.Itoa(int(project.ID)), 6*time.Hour)
+	_, err = s.redisRepo.DecrementActiveCount(project.HashID, constants.ProjectConnectionTTL)
 	return nil
 }
 
@@ -217,8 +262,8 @@ func (s *ProjectService) UpdateProject(requestData request.UpdateProjectRequest)
 	return updatedProject, nil
 }
 
-func (s *ProjectService) GetActiveProjectCount(projectID string) (int, error) {
-	data, err := s.redisRepo.GetProjectData(projectID)
+func (s *ProjectService) GetActiveProjectCount(workspaceID string) (int, error) {
+	data, err := s.redisRepo.GetProjectData(workspaceID)
 	if err != nil {
 		s.logger.Error("Failed to get project data", zap.Error(err))
 		return 0, err

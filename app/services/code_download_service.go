@@ -2,6 +2,7 @@ package services
 
 import (
 	"ai-developer/app/config"
+	"ai-developer/app/constants"
 	"ai-developer/app/services/git_providers"
 	"fmt"
 	"github.com/go-git/go-git/v5"
@@ -40,7 +41,13 @@ func (cds CodeDownloadService) GetZipFile(projectId uint) (zipFile *string, err 
 
 	spaceOrProjectName := cds.gitnessService.GetSpaceOrProjectName(org)
 
-	origin := fmt.Sprintf("https://%s/git/%s/%s.git", config.GitnessHost(), spaceOrProjectName, project.Name)
+	httpPrefix := "https"
+
+	if config.AppEnv() == constants.Development {
+		httpPrefix = "http"
+	}
+
+	origin := fmt.Sprintf("%s://%s/git/%s/%s.git", httpPrefix, config.GitnessHost(), spaceOrProjectName, project.Name)
 	_, err = git.PlainClone(tempDir, false, &git.CloneOptions{
 		URL: origin,
 		Auth: &http.BasicAuth{

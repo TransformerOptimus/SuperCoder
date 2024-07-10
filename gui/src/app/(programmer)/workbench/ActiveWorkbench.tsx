@@ -19,13 +19,17 @@ const ActiveWorkbench: React.FC = () => {
         key: 'backend',
         text: 'Backend',
         icon: imagePath.browserIconDark,
-        content: <Browser url={backendURL.current} />,
+        content: (
+          <Browser url={backendURL.current} status={!executionInProcess} />
+        ),
       },
       {
         key: 'frontend',
         text: 'Frontend',
         icon: imagePath.browserIconDark,
-        content: <Browser url={frontendURL.current} />,
+        content: (
+          <Browser url={frontendURL.current} status={!executionInProcess} />
+        ),
       },
     ],
   };

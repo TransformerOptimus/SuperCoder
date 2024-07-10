@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import Loader from '@/components/CustomLoaders/Loader';
@@ -29,29 +28,12 @@ export default function Code() {
     };
 
     const checkIframeLoaded = () => {
-      if (iframeRef.current) {
-        try {
-          const iframeDocument =
-            iframeRef.current.contentDocument ||
-            iframeRef.current.contentWindow?.document;
-          if (iframeDocument && iframeDocument.readyState === 'complete') {
-            setIsIframeLoaded(true);
-          } else {
-            setIsIframeLoaded(false);
-            iframeRef.current.src = projectURL;
-          }
-        } catch (e) {
-          setIsIframeLoaded(false);
-          iframeRef.current.src = projectURL;
-        }
+      if (!isIframeLoaded && iframeRef.current) {
+        iframeRef.current.src = projectURL;
       }
     };
 
-    const intervalId = setInterval(() => {
-      if (!isIframeLoaded) {
-        checkIframeLoaded();
-      }
-    }, 10000);
+    const intervalId = setInterval(checkIframeLoaded, 10000);
 
     if (iframeRef.current) {
       iframeRef.current.addEventListener('load', handleIframeLoad);
@@ -69,26 +51,36 @@ export default function Code() {
 
   const iframeElement = useMemo(() => {
     return (
-      <iframe
-        ref={iframeRef}
-        src={projectURL}
-        allow="clipboard-read; clipboard-write;"
-        title={'Embedded Workspace'}
-        style={{ width: '100%', height: 'calc(100vh - 50px)', border: 'none' }}
-      />
+        <iframe
+            ref={iframeRef}
+            src={projectURL}
+            allow={'clipboard-read; clipboard-write;'}
+            title={'Embedded Workspace'}
+            style={{
+              width: '100%',
+              height: 'calc(100vh - 50px)',
+              border: 'none',
+              position: pathName === '/code' ? 'relative' : 'absolute',
+              top: pathName === '/code' ? '0' : '-9999px',
+              left: pathName === '/code' ? '0' : '-9999px',
+              visibility: pathName === '/code' ? 'visible' : 'hidden',
+            }}
+        />
     );
-  }, [projectURL]);
+  }, [projectURL, pathName]);
 
   return (
-    <div
-      className={`relative ${pathName !== '/code' && 'hidden'} h-screen w-full`}
-    >
-      {!isIframeLoaded && (
-        <div className="absolute left-0 top-0 flex h-[720px] w-full items-center justify-center">
-          <Loader size={120} text="Please wait..." />
-        </div>
-      )}
-      {iframeElement}
-    </div>
+      <>
+        {!isIframeLoaded && pathName === '/code' && (
+            <div
+                className={
+                  'absolute left-0 top-0 flex h-[720px] w-full items-center justify-center'
+                }
+            >
+              <Loader size={120} text={'Please wait...'} />
+            </div>
+        )}
+        {iframeElement}
+      </>
   );
 }

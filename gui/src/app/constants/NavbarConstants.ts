@@ -3,9 +3,9 @@ import { NavbarTypes } from '../../../types/navbarTypes';
 
 export const navbarOptions: NavbarTypes[] = [
   {
-    id: 'github',
+    id: 'discord',
     text: 'Get help?',
-    image: imagePath.githubIcon,
-    url: 'https://discord.gg/pmFVyCDDyH',
+    image: imagePath.discordIcon,
+    url: 'https://discord.com/invite/dXbRe5BHJC',
   },
 ];

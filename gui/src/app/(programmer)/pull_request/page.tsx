@@ -30,12 +30,12 @@ export default function PullRequests() {
       icon: imagePath.prMergedIcon,
       content: <PRList type={'open'} list={prList} />,
     },
-    {
-      key: 'CLOSED',
-      text: 'Closed',
-      icon: imagePath.prClosedIcon,
-      content: <PRList type={'open'} list={prList} />,
-    },
+    // {
+    //   key: 'CLOSED',
+    //   text: 'Closed',
+    //   icon: imagePath.prClosedIcon,
+    //   content: <PRList type={'open'} list={prList} />,
+    // },
   ];
 
   const handleTabSelection = (key: string) => {

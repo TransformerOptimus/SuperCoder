@@ -14,11 +14,5 @@ export interface StoryList {
 
 export interface BrowserProps {
   url: string;
-  showUrl?: boolean;
-}
-
-export interface ActivityItem {
-  LogMessage: string;
-  Type: string;
-  CreatedAt: string;
+  status: boolean;
 }

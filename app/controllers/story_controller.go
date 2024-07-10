@@ -23,7 +23,6 @@ func (controller *StoryController) CreateStory(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	createStoryRequest.Type = "backend"
 	storyID, err := controller.storyService.CreateStoryForProject(createStoryRequest)
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

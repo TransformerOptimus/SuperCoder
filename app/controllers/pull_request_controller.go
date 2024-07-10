@@ -109,3 +109,11 @@ func (ctrl *PullRequestController) GetPullRequestDiffByPullRequestID(c *gin.Cont
 
 	c.JSON(http.StatusOK, gin.H{"diff": diff})
 }
+
+func (ctrl *PullRequestController) CreatePullRequestFromCodeEditor(c *gin.Context) {
+	//create branch - we cant use existing branch bcz everything is commited in tht branch
+	//checkout branch
+	//get excluded folder list
+	//git add and commit
+	//create pr
+}

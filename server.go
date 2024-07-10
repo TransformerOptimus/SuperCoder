@@ -495,6 +495,7 @@ func main() {
 
 		pullRequests := api.Group("/pull-requests", middleware.AuthenticateJWT())
 
+		pullRequests.POST("/create", pullRequestCtrl.CreatePullRequestFromCodeEditor)
 		pullRequest := pullRequests.Group("/:pull_request_id", pullRequestAuthMiddleware.Authorize())
 		pullRequest.GET("/diff", pullRequestCtrl.GetPullRequestDiffByPullRequestID)
 		pullRequest.GET("/commits", pullRequestCtrl.FetchPullRequestCommits)

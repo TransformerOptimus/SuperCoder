@@ -45,6 +45,7 @@ func (s *StoryService) GetStoryById(storyId int64) (*models.Story, error) {
 }
 
 func (s *StoryService) CreateStoryForProject(requestData request.CreateStoryRequest) (int, error) {
+	storyType := "backend"
 	hashID := s.hashIdGenerator.Generate() + "-" + uuid.New().String()
 	story := &models.Story{
 		ProjectID:   uint(requestData.ProjectId),
@@ -52,7 +53,7 @@ func (s *StoryService) CreateStoryForProject(requestData request.CreateStoryRequ
 		Description: requestData.Description,
 		Status:      constants.Todo,
 		HashID:      hashID,
-		Type:        requestData.Type,
+		Type:        storyType,
 	}
 
 	// create a story

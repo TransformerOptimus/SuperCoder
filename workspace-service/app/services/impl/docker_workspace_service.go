@@ -24,7 +24,7 @@ type DockerWorkspaceService struct {
 	logger                 *zap.Logger
 }
 
-func (ws DockerWorkspaceService) CreateWorkspace(workspaceId string, backendTemplate string, frontendTemplate string, remoteURL string, gitnessUser string, gitnessToken string) (*dto.WorkspaceDetails, error) {
+func (ws DockerWorkspaceService) CreateWorkspace(workspaceId string, backendTemplate string, frontendTemplate *string, remoteURL string, gitnessUser string, gitnessToken string) (*dto.WorkspaceDetails, error) {
 	err := ws.checkAndCreateWorkspaceFromTemplate(workspaceId, backendTemplate, frontendTemplate, remoteURL, gitnessUser, gitnessToken)
 	if err != nil {
 		ws.logger.Error("Failed to check and create workspace from template", zap.Error(err))
@@ -38,7 +38,7 @@ func (ws DockerWorkspaceService) CreateWorkspace(workspaceId string, backendTemp
 	return &dto.WorkspaceDetails{
 		WorkspaceId:      workspaceId,
 		BackendTemplate:  &backendTemplate,
-		FrontendTemplate: &frontendTemplate,
+		FrontendTemplate: frontendTemplate,
 		WorkspaceUrl:     &workspaceUrl,
 		FrontendUrl:      &frontendUrl,
 		BackendUrl:       &backendUrl,
@@ -65,7 +65,7 @@ func (ws DockerWorkspaceService) CreateFrontendWorkspace(storyHashId, workspaceI
 
 }
 
-func (ws DockerWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId string, backendTemplate string, frontendTemplate string, remoteURL string, gitnessUser string, gitnessToken string) error {
+func (ws DockerWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId string, backendTemplate string, frontendTemplate *string, remoteURL string, gitnessUser string, gitnessToken string) error {
 	exists, err := utils.CheckIfWorkspaceExists(workspaceId)
 	if err != nil {
 		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
@@ -93,10 +93,12 @@ func (ws DockerWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId
 		return err
 	}
 	//copying frontend template in the /frontend folder
-	err = utils.SudoRsyncFolders("/templates/"+frontendTemplate+"/", "/workspaces/"+workspaceId+"/frontend")
-	if err != nil {
-		ws.logger.Error("Failed to rsync folders", zap.Error(err))
-		return err
+	if frontendTemplate != nil{
+		err = utils.SudoRsyncFolders("/templates/"+*frontendTemplate+"/", "/workspaces/"+workspaceId+"/frontend")
+		if err != nil {
+			ws.logger.Error("Failed to rsync folders", zap.Error(err))
+			return err
+		}
 	}
 
 	workspacePath := "/workspaces/" + workspaceId

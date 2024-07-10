@@ -19,11 +19,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-
-	"fmt"
-	"log"
-	"net/http"
-	"os"
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
@@ -284,10 +279,7 @@ func main() {
 
 	template, exists := os.LookupEnv("EXECUTION_TEMPLATE")
 	if template == "FLASK" || !exists {
-	template, exists := os.LookupEnv("EXECUTION_TEMPLATE")
-	if template == "FLASK" || !exists {
 		_ = c.Provide(func(
-			openAICodeGenerator *impl.OpenAICodeGenerator,
 			openAICodeGenerator *impl.OpenAICodeGenerator,
 			gitMakeBranchExecutor *impl.GitMakeBranchExecutor,
 			updateCodeFileExecutor *impl.UpdateCodeFileExecutor,
@@ -334,49 +326,7 @@ func main() {
 				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
 			}
 		})
-	} else if template == "DJANGO" {
-		_ = c.Provide(func(
-			openAICodeGenerator *impl.OpenAICodeGenerator,
-			gitMakeBranchExecutor *impl.GitMakeBranchExecutor,
-			updateCodeFileExecutor *impl.UpdateCodeFileExecutor,
-			djangoServerStartTestExecutor *impl.DjangoServerStartTestExecutor,
-			gitCommitExecutor *impl.GitCommitExecutor,
-			gitPushExecutor *impl.GitPushExecutor,
-			gitnessMakePullRequestExecutor *impl.GitnessMakePullRequestExecutor,
-		) map[steps.StepName]step_executors.StepExecutor {
-			return map[steps.StepName]step_executors.StepExecutor{
-				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
-				steps.UPDATE_CODE_FILE_STEP:        *updateCodeFileExecutor,
-				steps.GIT_COMMIT_STEP:              *gitCommitExecutor,
-				steps.GIT_CREATE_BRANCH_STEP:       *gitMakeBranchExecutor,
-				steps.GIT_PUSH_STEP:                *gitPushExecutor,
-				steps.GIT_CREATE_PULL_REQUEST_STEP: *gitnessMakePullRequestExecutor,
-				steps.SERVER_START_STEP:            *djangoServerStartTestExecutor,
-				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
-			}
-		})
-	} else if template == "DJANGO" {
-		_ = c.Provide(func(
-			openAICodeGenerator *impl.OpenAICodeGenerator,
-			gitMakeBranchExecutor *impl.GitMakeBranchExecutor,
-			updateCodeFileExecutor *impl.UpdateCodeFileExecutor,
-			djangoServerStartTestExecutor *impl.DjangoServerStartTestExecutor,
-			gitCommitExecutor *impl.GitCommitExecutor,
-			gitPushExecutor *impl.GitPushExecutor,
-			gitnessMakePullRequestExecutor *impl.GitnessMakePullRequestExecutor,
-		) map[steps.StepName]step_executors.StepExecutor {
-			return map[steps.StepName]step_executors.StepExecutor{
-				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
-				steps.UPDATE_CODE_FILE_STEP:        *updateCodeFileExecutor,
-				steps.GIT_COMMIT_STEP:              *gitCommitExecutor,
-				steps.GIT_CREATE_BRANCH_STEP:       *gitMakeBranchExecutor,
-				steps.GIT_PUSH_STEP:                *gitPushExecutor,
-				steps.GIT_CREATE_PULL_REQUEST_STEP: *gitnessMakePullRequestExecutor,
-				steps.SERVER_START_STEP:            *djangoServerStartTestExecutor,
-				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
-			}
-		})
-	}
+	} 
 
 	_ = c.Provide(workflow_executors.NewWorkflowExecutor)
 

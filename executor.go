@@ -291,7 +291,6 @@ func main() {
 				steps.GIT_CREATE_PULL_REQUEST_STEP: *gitnessMakePullRequestExecutor,
 				steps.SERVER_START_STEP:            *flaskServerStartTestExecutor,
 				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
-				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
 				steps.RESET_DB_STEP:                *resetFlaskDBStepExecutor,
 				steps.PACKAGE_INSTALL_STEP:         *poetryPackageInstallStepExecutor,
 			}

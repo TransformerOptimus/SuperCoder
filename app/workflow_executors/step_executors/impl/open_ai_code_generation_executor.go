@@ -203,9 +203,7 @@ func (openAICodeGenerator OpenAICodeGenerator) Execute(step steps.GenerateCodeSt
 		}
 		return errors.New("LLM API Key not found in database")
 	}
-	apiKey := llmAPIKey.LLMAPIKey
-	fmt.Println("_________API_KEY_________", apiKey)
-	
+	apiKey := llmAPIKey.LLMAPIKeyexe
 	framework := project.Framework
 	fmt.Println("_________FRAMEWORK_________", framework)
 	// Generate code using the final instruction

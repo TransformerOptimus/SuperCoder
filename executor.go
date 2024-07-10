@@ -19,6 +19,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
@@ -192,7 +193,6 @@ func main() {
 
 	//GenerateCodeStep
 	err = c.Provide(impl.NewOpenAICodeGenerator)
-	err = c.Provide(impl.NewOpenAICodeGenerator)
 	if err != nil {
 		log.Println("Error providing generate code step:", err)
 		panic(err)
@@ -211,15 +211,7 @@ func main() {
 
 	}
 	//FLASK serverStartTestStep
-	//FLASK serverStartTestStep
 	err = c.Provide(impl.NewFlaskServerStartTestExecutor)
-	if err != nil {
-		log.Println("Error providing server start test step:", err)
-		panic(err)
-
-	}
-	//DJANGO serverStartTestStep
-	err = c.Provide(impl.NewDjangoServerStartTestExecutor)
 	if err != nil {
 		log.Println("Error providing server start test step:", err)
 		panic(err)
@@ -291,7 +283,6 @@ func main() {
 			poetryPackageInstallStepExecutor *impl.PackageInstallStepExecutor,
 		) map[steps.StepName]step_executors.StepExecutor {
 			return map[steps.StepName]step_executors.StepExecutor{
-				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
 				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
 				steps.UPDATE_CODE_FILE_STEP:        *updateCodeFileExecutor,
 				steps.GIT_COMMIT_STEP:              *gitCommitExecutor,

@@ -89,10 +89,6 @@ export default function Board() {
     setOpenCreateStoryModal(true);
   };
 
-  const handleSearchChange = (search: string) => {
-    toGetAllStoriesOfProject();
-  };
-
   useEffect(() => {
     toGetAllStoriesOfProject();
   }, [searchValue]);
@@ -126,7 +122,6 @@ export default function Board() {
           toGetAllStoriesOfProject={toGetAllStoriesOfProject}
         />
       </CustomDrawer>
-
       <CustomDrawer
         open={openStoryDetailsModal}
         onClose={() => setOpenStoryDetailsModal(false)}
@@ -152,7 +147,6 @@ export default function Board() {
         openModal={openSetupModelModal}
         setOpenModel={setOpenSetupModelModal}
       />
-
       <div
         id={'board_filter_section'}
         className={'flex w-full flex-row items-center gap-2'}

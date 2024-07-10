@@ -1,24 +1,18 @@
-import React, { useEffect, useRef } from 'react';
-import { Terminal } from 'xterm';
-import 'xterm/css/xterm.css';
-import styles from './terminal.module.css';
+import React from 'react';
+import { useTerminal } from '@/hooks/useTerminal';
+
+type Command = {
+  content: string;
+  type: 'input' | 'output';
+};
 
 const TerminalComponent: React.FC = () => {
-  const terminalRef = useRef<HTMLDivElement | null>(null);
+  const commands: Command[] = [
+    { content: 'echo Hello, World!', type: 'output' },
+  ];
+  const terminalRef = useTerminal(commands);
 
-  useEffect(() => {
-    const terminal = new Terminal();
-    if (terminalRef.current) {
-      terminal.open(terminalRef.current);
-      terminal.write('Hello from xterm.js!\r\n');
-    }
-
-    return () => {
-      terminal.dispose();
-    };
-  }, []);
-
-  return <div ref={terminalRef} className={styles.terminal} />;
+  return <div ref={terminalRef} style={{ height: '100%', width: '100%' }} />;
 };
 
 export default TerminalComponent;

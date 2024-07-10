@@ -1,4 +1,9 @@
 .terminal {
     height: 100%;
     width: 100%;
+    border: 1px solid var(--white-opacity-8);
+    background: var(--layout-bg-color);
+    color: #ffffff;
+    padding: 10px;
+    border-radius: 8px;
 }

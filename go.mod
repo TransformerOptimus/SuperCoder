@@ -3,7 +3,9 @@ module ai-developer
 go 1.22.3
 
 require (
+	github.com/creack/pty v1.1.21
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/gin-contrib/zap v1.1.3
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/goccy/go-json v0.10.2
@@ -19,6 +21,7 @@ require (
 	go.uber.org/dig v1.17.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.20.0
+	golang.org/x/term v0.20.0
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.10
 )
@@ -42,7 +45,6 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
-	github.com/gin-contrib/zap v1.1.3 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

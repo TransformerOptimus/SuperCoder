@@ -104,15 +104,27 @@ services:
       dockerfile: Dockerfile
       target: python-executor
 
-  node-executor:
+#  node-executor:
+#    restart: no
+#    hostname: node-executor
+#    container_name: node-executor
+#    image: node-executor:latest
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#      target: node-executor
+
+  terminal:
     restart: no
-    hostname: node-executor
-    container_name: node-executor
-    image: node-executor:latest
+    hostname: terminal
+    container_name: terminal
+    image: terminal:latest
+    ports:
+      - 8084:8080
     build:
       context: .
       dockerfile: Dockerfile
-      target: node-executor
+      target: terminal
 
   ws:
     hostname: ws

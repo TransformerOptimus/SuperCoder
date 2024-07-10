@@ -52,6 +52,7 @@ func (s *StoryService) CreateStoryForProject(requestData request.CreateStoryRequ
 		Description: requestData.Description,
 		Status:      constants.Todo,
 		HashID:      hashID,
+		Type:        requestData.Type,
 	}
 
 	// create a story
@@ -84,7 +85,7 @@ func (s *StoryService) CreateStoryForProject(requestData request.CreateStoryRequ
 	return int(createdStory.ID), nil
 }
 
-func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName, title string, projectID int) (uint, error) {
+func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName, title string, projectID int, storyType string) (uint, error) {
 	hashID := s.hashIdGenerator.Generate() + "-" + uuid.New().String()
 	project, err := s.projectService.GetProjectById(uint(projectID))
 	if err != nil {
@@ -105,6 +106,7 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 		HashID:      hashID,
 		Url:         url,
 		FrontendURL: frontendUrl,
+		Type:        storyType,
 	}
 
 	frontendService := "nextjs"
@@ -280,8 +282,8 @@ func (s *StoryService) UpdateStoryTestCases(newTestCases []string, storyID int) 
 	return nil
 }
 
-func (s *StoryService) GetAllStoriesOfProject(projectId int, searchValue string) (*response.GetAllStoriesByProjectIDResponse, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectIdAndSearch(projectId, searchValue)
+func (s *StoryService) GetAllStoriesOfProject(projectId int, searchValue string, storyType string) (*response.GetAllStoriesByProjectIDResponse, error) {
+	stories, err := s.storyRepo.GetStoriesByProjectIdAndSearch(projectId, searchValue, storyType)
 	if err != nil {
 		return &response.GetAllStoriesByProjectIDResponse{}, err
 	}
@@ -337,8 +339,8 @@ func (s *StoryService) GetAllStoriesOfProject(projectId int, searchValue string)
 	return responseData, nil
 }
 
-func (s *StoryService) GetDesignStoriesOfProject(projectId int) ([]*response.GetDesignStoriesOfProjectId, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectId)
+func (s *StoryService) GetDesignStoriesOfProject(projectId int, storyType string) ([]*response.GetDesignStoriesOfProjectId, error) {
+	stories, err := s.storyRepo.GetStoriesByProjectId(projectId, storyType)
 	fmt.Println(stories)
 	if err != nil {
 		return nil, err
@@ -609,7 +611,8 @@ func (s *StoryService) UpdateStoryStatus(storyID int, status string) error {
 }
 
 func (s *StoryService) GetStoriesByProjectId(projectID int) ([]models.Story, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectID)
+	storyType := "backend"
+	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
 	if err != nil {
 		return nil, err
 	}
@@ -617,7 +620,8 @@ func (s *StoryService) GetStoriesByProjectId(projectID int) ([]models.Story, err
 }
 
 func (s *StoryService) GetDesignStoriesByProjectId(projectID int) ([]models.Story, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectID)
+	storyType := "frontend"
+	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
 	if err != nil {
 		return nil, err
 	}

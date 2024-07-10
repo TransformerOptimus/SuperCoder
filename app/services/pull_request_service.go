@@ -41,7 +41,8 @@ func NewPullRequestService(pullRequestRepo *repositories.PullRequestRepository, 
 }
 
 func (s *PullRequestService) GetAllPullRequests(projectID int, status string) ([]*response.GetAllPullRequests, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectID)
+	storyType := "backend"
+	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
 	if err != nil {
 		return nil, err
 	}

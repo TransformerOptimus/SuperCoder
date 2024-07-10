@@ -23,6 +23,7 @@ func (controller *StoryController) CreateStory(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	createStoryRequest.Type = "backend"
 	storyID, err := controller.storyService.CreateStoryForProject(createStoryRequest)
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -54,12 +55,13 @@ func (controller *StoryController) CreateDesignStory(context *gin.Context) {
 		}
 	}(uploadedFile)
 	projectIdStr := context.PostForm("project_id")
+	storyType := "frontend"
 	projectId, err := strconv.Atoi(projectIdStr)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project_id"})
 		return
 	}
-	storyID, err := controller.storyService.CreateDesignStoryForProject(uploadedFile, file.Filename, title, projectId)
+	storyID, err := controller.storyService.CreateDesignStoryForProject(uploadedFile, file.Filename, title, projectId, storyType)
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -70,13 +72,14 @@ func (controller *StoryController) CreateDesignStory(context *gin.Context) {
 func (controller *StoryController) GetAllStoriesOfProject(context *gin.Context) {
 	projectIdStr := context.Param("project_id")
 	searchValue := context.Query("search")
+	storyType := context.Query("story_type")
 
 	projectID, err := strconv.Atoi(projectIdStr)
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	stories, err := controller.storyService.GetAllStoriesOfProject(projectID, searchValue)
+	stories, err := controller.storyService.GetAllStoriesOfProject(projectID, searchValue, storyType)
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -91,7 +94,8 @@ func (controller *StoryController) GetDesignStoriesOfProject(context *gin.Contex
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
-	stories, err := controller.storyService.GetDesignStoriesOfProject(projectID)
+	storyType := "frontend"
+	stories, err := controller.storyService.GetDesignStoriesOfProject(projectID, storyType)
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

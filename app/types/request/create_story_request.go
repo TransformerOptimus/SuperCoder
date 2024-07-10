@@ -6,4 +6,5 @@ type CreateStoryRequest struct {
 	Description  string   `json:"description"`
 	TestCases    []string `json:"test_cases"`
 	Instructions string   `json:"instructions"`
+	Type         string   `json:"type"`
 }

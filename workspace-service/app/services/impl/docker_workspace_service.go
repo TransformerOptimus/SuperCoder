@@ -207,11 +207,6 @@ func (ws DockerWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))
 		return err
 	}
-	err = utils.ChownRWorkspace("1000", "1000", frontendPath)
-	if err != nil {
-		ws.logger.Error("Failed to chown frontend", zap.Error(err))
-		return err
-	}
 	return nil
 }
 

@@ -85,15 +85,15 @@ func (ws DockerWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId
 		ws.logger.Error("Failed to rsync folders", zap.Error(err))
 		return err
 	}
-	//creating a frontend folder in the directory
-	frontendPath := "/workspaces/"+workspaceId+"/frontend"
-	err = os.MkdirAll(frontendPath, os.ModePerm)
-	if err != nil {
-		fmt.Println("Error creating directory:", err)
-		return err
-	}
-	//copying frontend template in the /frontend folder
 	if frontendTemplate != nil{
+		//creating a frontend folder in the directory
+		frontendPath := "/workspaces/"+workspaceId+"/frontend"
+		err = os.MkdirAll(frontendPath, os.ModePerm)
+		if err != nil {
+			fmt.Println("Error creating directory:", err)
+			return err
+		}
+		//copying frontend template in the /frontend folder
 		err = utils.SudoRsyncFolders("/templates/"+*frontendTemplate+"/", "/workspaces/"+workspaceId+"/frontend")
 		if err != nil {
 			ws.logger.Error("Failed to rsync folders", zap.Error(err))

@@ -24,15 +24,21 @@ func (w *TerminalGateway) OnDisconnect(s socketio.Conn, reason string) {
 	w.logger.Info("Terminal websocket disconnection", zap.String("connection_id", s.ID()), zap.String("reason", reason))
 }
 
-func (w *TerminalGateway) RunCommand(s socketio.Conn, data string) {
-	w.logger.Info("Terminal websocket command received", zap.String("connection_id", s.ID()), zap.String("command", data))
+func (w *TerminalGateway) RunCommand(s socketio.Conn, data map[string]interface{}) {
+	w.logger.Info("Terminal websocket command received", zap.String("connection_id", s.ID()), zap.Any("data", data))
 	// Execute the command
 	c := exec.Command("bash")
 	f, err := pty.Start(c)
 	if err != nil {
 		panic(err)
 	}
-	commandString := data + "\n"
+	command, ok := data["command"].(string)
+	if !ok {
+		w.logger.Error("Invalid command type")
+		s.Emit("error", "Invalid command type")
+		return
+	}
+	commandString := command + "\n"
 
 	go func() {
 		f.Write([]byte(commandString))
@@ -40,7 +46,17 @@ func (w *TerminalGateway) RunCommand(s socketio.Conn, data string) {
 	}()
 	//io.Copy(os.Stdout, f)
 	// instead of printing to stdout, we can emit the output to the client
-	s.Emit("output", *f)
+	go func() {
+		buf := make([]byte, 100)
+		for {
+			n, err := f.Read(buf)
+			if err != nil {
+				w.logger.Error("Error reading from terminal", zap.Error(err))
+				return
+			}
+			s.Emit("output", string(buf[:n]))
+		}
+	}()
 }
 
 func NewTerminalGateway(

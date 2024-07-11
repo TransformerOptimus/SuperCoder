@@ -100,7 +100,7 @@ func main() {
 
 		api := r.Group("/api")
 		api.GET("/health", health.Health)
-		api.GET("/terminal", teminalController.NewTerminal)
+		api.GET("/terminal", middleware.AuthenticateJWT(), teminalController.NewTerminal)
 		fmt.Println("Starting Gin server on port 8080...")
 		return r.Run()
 	})

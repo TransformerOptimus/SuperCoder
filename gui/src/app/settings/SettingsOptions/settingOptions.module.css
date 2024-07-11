@@ -1,0 +1,11 @@
+.user_list_container {
+    border: 1px solid var(--white-opacity-8);
+}
+
+.heading{
+    background: var(--white-opacity-6);
+}
+
+.item{
+    border-top: 1px solid var(--white-opacity-8);
+}

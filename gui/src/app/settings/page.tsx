@@ -3,6 +3,7 @@ import React from 'react';
 import Models from '@/app/settings/SettingsOptions/Models';
 import CustomSidebar from '@/components/CustomSidebar/CustomSidebar';
 import imagePath from '@/app/imagePath';
+import Users from '@/app/settings/SettingsOptions/Users';
 
 export default function Settings() {
   const options = [
@@ -13,6 +14,14 @@ export default function Settings() {
       unselected: imagePath.modelsIconUnselected,
       icon_css: 'size-4',
       component: <Models />,
+    },
+    {
+      key: 'users',
+      text: 'Users',
+      selected: imagePath.usersIconSelected,
+      unselected: imagePath.usersIconUnselected,
+      icon_css: 'size-4',
+      component: <Users />,
     },
   ];
 

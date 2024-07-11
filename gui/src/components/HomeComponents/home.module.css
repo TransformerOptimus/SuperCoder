@@ -1,11 +1,10 @@
-.github_icon {
+.button {
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: #fff;
   color: #000;
-  font-family: 'Public Sans', sans-serif;
-  font-size: 12px;
+  font-size: 14px;
   font-style: normal;
   font-weight: 500;
   line-height: normal;
@@ -35,4 +34,8 @@
   filter: blur(300px);
   width: 300px;
   height: 160px;
+}
+
+.divider {
+  background: var(--white-opacity-8);
 }

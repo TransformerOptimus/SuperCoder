@@ -13,10 +13,13 @@ import (
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
+	"ai-developer/app/services/filestore"
+	"ai-developer/app/services/filestore/impl"
 	"ai-developer/app/services/git_providers"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/session"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
@@ -65,9 +68,46 @@ func main() {
 		return context.Background()
 	})
 
-	err = c.Provide(config.NewWorkspaceServiceConfig)
-	if err != nil {
-		log.Println("Error providing workspace service config:", err)
+	if err = c.Provide(config.NewWorkspaceServiceConfig); err != nil {
+		config.Logger.Error("Error providing workspace service config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewAWSConfig); err != nil {
+		config.Logger.Error("Error providing AWS config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewFileStoreConfig); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewAwsSession); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewAwsSession); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(func(
+		awsConfig *config.AWSConfig,
+		storeConfig *config.FileStoreConfig,
+		awsSession *session.Session,
+		logger *zap.Logger,
+	) *filestore.FileStore {
+		if storeConfig.GetFileStoreType() == "s3" {
+			s3fs := impl.NewS3FileSystem(awsSession, storeConfig, logger)
+			return &s3fs
+		} else {
+			lfs := impl.NewLocalFileStore(storeConfig, logger)
+			return &lfs
+		}
+	}); err != nil {
+		config.Logger.Error("Error providing FileStore", zap.Error(err))
 		panic(err)
 	}
 

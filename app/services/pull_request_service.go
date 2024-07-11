@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -273,4 +274,75 @@ func (s *PullRequestService) GetPullRequestByID(pullRequestId uint) (*models.Pul
 
 func (s *PullRequestService) UpdatePullRequestSourceSHA(pullRequest *models.PullRequest, sourceSHA string) error {
 	return s.pullRequestRepo.UpdatePullRequestSourceSHA(pullRequest, sourceSHA)
+}
+func (s *PullRequestService) CreatePullRequestFromCodeEditor(projectID int, title string, description string) (int, error){
+	//git add and commit
+	//create pr
+	project, err := s.projectRepo.GetProjectById(projectID)
+	if err!= nil {
+		fmt.Println("failed to fetch project", err)
+        return -1, err
+    }
+
+	workingDir := "/workspaces/"+project.HashID
+	err = utils.ConfigureGitUserName(workingDir)
+	if err!= nil {
+        fmt.Println("failed to configure git user name", err)
+        return -1, err
+    }
+	err = utils.ConfigGitUserEmail(workingDir)
+	if err!= nil {
+        fmt.Println("failed to configure git user email", err)
+        return -1, err
+    }
+	err = utils.ConfigGitSafeDir(workingDir)
+	if err!= nil {
+        fmt.Println("failed to configure git safe dir", err)
+        return -1, err
+    }
+	currentBranch, err := utils.GetCurrentBranch(workingDir)
+	if err!=nil{
+		fmt.Println("failed to get current branch", err)
+        return -1, err
+	}
+	fmt.Printf("-------Current branch: %s----- ", currentBranch)
+	output, err := utils.GitAddToTrackFiles(workingDir, nil)
+	if err != nil {
+		fmt.Printf("Error adding files to track: %s\n", err.Error())
+		return -1, err
+	}
+	fmt.Printf("Git add output: %s\n", output)
+
+	commitMsg := fmt.Sprintf("commiting for project id: %s\n", strconv.Itoa(projectID))
+	output, err = utils.GitCommitWithMessage(
+		workingDir,
+		commitMsg,
+		nil,
+	)
+	fmt.Printf("Git commit output: %s\n", output)
+	if err != nil {
+		fmt.Printf("Error commiting code: %s\n", err.Error())
+		return -1, err
+	}
+
+	organisationID := project.OrganisationID
+	organisation, err := s.organisationRepo.GetOrganisationByID(uint(organisationID))
+	if err!= nil {
+        fmt.Println("failed to fetch organisation", err)
+        return -1, err
+    }
+	spaceOrProjectName := s.gitService.GetSpaceOrProjectName(organisation)
+	pr, err := s.gitService.CreatePullRequest(spaceOrProjectName, project.Name, currentBranch, "main", "Pull Request: "+title, description)
+	if err != nil {
+		fmt.Printf("Error creating pull request: %s\n", err.Error())
+		return -1, err
+	}
+
+	pullRequest, err := s.CreatePullRequest(pr.Title, pr.Description, strconv.Itoa(pr.Number), "GITNESS", pr.SourceSHA, "sample", pr.MergeBaseSHA, pr.Number, uint(projectID), 0)
+	if err!= nil {
+        fmt.Printf("Error creating pull request in database: %s\n", err.Error())
+        return -1, err
+    }
+	fmt.Println("Pull Request created successfully", pullRequest)
+	return int(pullRequest.ID), nil
 }

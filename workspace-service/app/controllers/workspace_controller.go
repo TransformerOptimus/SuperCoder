@@ -21,7 +21,7 @@ func (wc *WorkspaceController) CreateWorkspace(c *gin.Context) {
 		})
 		return
 	}
-	wsDetails, err := wc.wsService.CreateWorkspace(body.WorkspaceId, *body.BackendTemplate,  *body.FrontendTemplate, body.RemoteURL, body.GitnessUserName, body.GitnessToken)
+	wsDetails, err := wc.wsService.CreateWorkspace(body.WorkspaceId, *body.BackendTemplate, body.FrontendTemplate, body.RemoteURL, body.GitnessUserName, body.GitnessToken)
 	if err != nil {
 		c.AbortWithStatusJSON(
 			500,

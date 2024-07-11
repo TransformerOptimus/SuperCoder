@@ -107,6 +107,7 @@ FROM superagidev/supercoder-python-ide:latest AS terminal
 RUN git config --global user.email "supercoder@superagi.com"
 RUN git config --global user.name "SuperCoder"
 
+ENV TERM xterm
 ENV HOME /home/coder
 
 COPY --from=terminal-base /go/terminal /go/terminal

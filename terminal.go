@@ -3,18 +3,15 @@ package main
 import (
 	"ai-developer/app/config"
 	"ai-developer/app/controllers"
-	"ai-developer/app/gateways"
 	"ai-developer/app/middleware"
 	"ai-developer/app/services"
 	"context"
 	"fmt"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
-	socketio "github.com/googollee/go-socket.io"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
 	"go.uber.org/zap"
-	"log"
 	"net/http"
 	"time"
 )
@@ -69,21 +66,6 @@ func main() {
 		panic(err)
 	}
 
-	//Websocket
-	err = c.Provide(gateways.NewTerminalSocketIOServer)
-	if err != nil {
-		fmt.Printf("Error providing SocketIOServer: %v\n", err)
-		panic(err)
-	}
-	fmt.Println("SocketIOServer provided")
-
-	err = c.Provide(gateways.NewTerminalGateway)
-	if err != nil {
-		fmt.Printf("Error providing TerminalGateway: %v\n", err)
-		return
-	}
-	fmt.Println("TerminalGateway provided")
-
 	err = c.Provide(func() *controllers.HealthController {
 		return controllers.NewHealth()
 	})
@@ -92,10 +74,18 @@ func main() {
 		return
 	}
 
+	err = c.Provide(func() *controllers.TerminalController {
+		return controllers.NewTerminalController(config.Logger, "bash", []string{}, []string{"localhost"})
+	})
+	if err != nil {
+		fmt.Printf("Error providing TerminalController: %v\n", err)
+		return
+	}
+
 	// Setup routes and start the server
 	err = c.Invoke(func(
 		health *controllers.HealthController,
-		ioServer *socketio.Server,
+		teminalController *controllers.TerminalController,
 		logger *zap.Logger,
 		middleware *middleware.JWTClaims,
 	) error {
@@ -110,19 +100,7 @@ func main() {
 
 		api := r.Group("/api")
 		api.GET("/health", health.Health)
-
-		// Wrap the socket.io server as Gin handlers for specific routes
-		r.GET("/api/socket.io/*any", gin.WrapH(ioServer))
-		r.POST("/api/socket.io/*any", gin.WrapH(ioServer))
-
-		go func() {
-			if err := ioServer.Serve(); err != nil {
-				fmt.Printf("socket.io listen error: %s\n", err)
-				log.Fatalf("socket.io listen error: %s\n", err)
-			}
-		}()
-		defer ioServer.Close()
-
+		api.GET("/terminal", teminalController.NewTerminal)
 		fmt.Println("Starting Gin server on port 8080...")
 		return r.Run()
 	})

@@ -130,3 +130,12 @@ func (r *PullRequestRepository) GetPullRequestWithDetails(pullRequestID uint) (*
 	}
 	return &project, nil
 }
+
+func (r *PullRequestRepository) GetOpenPullRequestsByStoryID(storyID int) (*models.PullRequest, error) {
+	var pullRequest *models.PullRequest
+    err := r.db.Where("story_id =? AND status =?", storyID, constants.Open).First(&pullRequest).Error
+    if err!= nil {
+        return nil, err
+    }
+    return pullRequest, nil
+}

@@ -224,7 +224,7 @@ const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
       ) : (
         <BackendWorkbench
           activityLogs={activityLogs}
-          selectedStoryId={selectedStoryId.toString()}
+          selectedStoryId={selectedStoryId}
           status={!executionInProcess}
         />
       )}

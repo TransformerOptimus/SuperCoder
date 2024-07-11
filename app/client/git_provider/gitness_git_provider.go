@@ -84,7 +84,6 @@ func (c *GitnessClient) CreateRepository(parentRef, uid, description, defaultBra
 		Readme:        readme,
 		ParentRef:     parentRef,
 	}
-
 	headers := map[string]string{
 		"Accept":        "*/*",
 		"Content-Type":  "application/json",

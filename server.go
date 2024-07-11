@@ -410,6 +410,7 @@ func main() {
 
 		env := config.Get("app.env")
 		if env == constants.Development {
+			fmt.Println("____RUNNING INITIALIZE SCRIPT______")
 			err := InitializeSuperCoderData(userService, organisationService)
 			if err != nil {
 				log.Fatalf("Failed to initialize SuperCoder data: %v", err)

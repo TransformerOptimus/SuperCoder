@@ -163,7 +163,7 @@ services:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - server
-      - frontend
+#      - frontend
 
   redis:
     hostname: redis
@@ -185,23 +185,23 @@ services:
     volumes:
       - workspaces:/workspaces
 
-  frontend:
-    container_name: frontend
-    build:
-      context: ./gui
-      dockerfile: Dockerfile
-    ports:
-      - 3000:3000
-    volumes:
-      - ./gui:/app
-      - /app/node_modules/
-      - /app/.next/
-    depends_on:
-      - server
-    environment:
-      - NEXT_PUBLIC_DOCKER=true
-    restart: always
-    command: [ "yarn", "dev" ]
+#  frontend:
+#    container_name: frontend
+#    build:
+#      context: ./gui
+#      dockerfile: Dockerfile
+#    ports:
+#      - 3000:3000
+#    volumes:
+#      - ./gui:/app
+#      - /app/node_modules/
+#      - /app/.next/
+#    depends_on:
+#      - server
+#    environment:
+#      - NEXT_PUBLIC_DOCKER=true
+#    restart: always
+#    command: [ "yarn", "dev" ]
 
   gitness:
     container_name: gitness

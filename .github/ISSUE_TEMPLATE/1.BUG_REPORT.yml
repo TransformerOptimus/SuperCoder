@@ -6,14 +6,10 @@ body:
     attributes:
       value: |
         ### ⚠️ Issue Creation Guideline
-        * Join our [discord] to discuss what's going on
-        * If you need help, you can ask in the [#general-supercoder] section or in [#support]
-        * **Thoroughly search the [existing issues] before creating a new one**
-        * Read through our docs:
-        [discord]: https://discord.gg/dXbRe5BHJC
-        [#general-discussion]: https://discord.com/channels/1107593006032355359/1257985438627663924
-        [#supercoder-support]: https://discord.com/channels/1107593006032355359/1256153481387970632
-        [existing issues]: https://github.com/TransformerOptimus/SuperCoder/issues
+        * Join our [discord](https://discord.gg/dXbRe5BHJC) to discuss what's going on
+        * If you need help, you can ask in the [#general-discussion](https://discord.com/channels/1107593006032355359/1257985438627663924) section or in [#supercoder-support](https://discord.com/channels/1107593006032355359/1256153481387970632)
+        * **Thoroughly search the [existing issues](https://github.com/TransformerOptimus/SuperCoder/issues) before creating a new one**
+
   - type: checkboxes
     attributes:
       label: ⚠️ Check for existing issues before proceeding. ⚠️

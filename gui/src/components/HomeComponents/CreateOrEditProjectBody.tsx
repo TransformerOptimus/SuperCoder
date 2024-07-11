@@ -198,7 +198,10 @@ export default function CreateOrEditProjectBody({
               />
             )}
           </div>
-          <div className={'flex flex-col gap-1'} id={'framework_section'}>
+          <div
+            className={'flex flex-col gap-1'}
+            id={'backend_framework_section'}
+          >
             <span className={'secondary_color text-[13px] font-normal'}>
               {' '}
               Backend Framework{' '}
@@ -225,23 +228,29 @@ export default function CreateOrEditProjectBody({
               />
             )}
           </div>
-          <div className={'flex flex-col gap-1'} id={'framework_section'}>
+
+          <div
+            className={'flex flex-col gap-1'}
+            id={'frontend_framework_section'}
+          >
             <span className={'secondary_color text-[13px] font-normal'}>
               {' '}
               Frontend Framework{' '}
             </span>
 
             {edit ? (
-              <div className={'flex flex-row items-center gap-2'}>
-                <CustomImage
-                  className={'size-6 rounded-[4px]'}
-                  src={selectedFrontendOption.src}
-                  alt={'selected_framework_icon'}
-                />
-                <span className={'text-sm font-normal'}>
-                  {selectedFrontendOption.text}
-                </span>
-              </div>
+              selectedFrontendFramework && (
+                <div className={'flex flex-row items-center gap-2'}>
+                  <CustomImage
+                    className={'size-6 rounded-[4px]'}
+                    src={selectedFrontendOption.src}
+                    alt={'selected_framework_icon'}
+                  />
+                  <span className={'text-sm font-normal'}>
+                    {selectedFrontendOption.text}
+                  </span>
+                </div>
+              )
             ) : (
               <CustomImageSelector
                 size={'70px'}

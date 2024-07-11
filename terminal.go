@@ -74,7 +74,7 @@ func main() {
 		return
 	}
 
-	err = c.Provide(func() *controllers.TerminalController {
+	err = c.Provide(func() (*controllers.TerminalController, error) {
 		return controllers.NewTerminalController(config.Logger, "bash", []string{}, []string{"localhost"})
 	})
 	if err != nil {
@@ -100,6 +100,7 @@ func main() {
 
 		api := r.Group("/api")
 		api.GET("/health", health.Health)
+		api.POST("/run-command", middleware.AuthenticateJWT(), teminalController.RunCommand)
 		api.GET("/terminal", middleware.AuthenticateJWT(), teminalController.NewTerminal)
 		fmt.Println("Starting Gin server on port 8080...")
 		return r.Run()

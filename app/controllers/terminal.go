@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"ai-developer/app/types/request"
 	"ai-developer/app/utils"
 	"bytes"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"github.com/creack/pty"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"strings"
 
 	"go.uber.org/zap"
 	"os"
@@ -40,18 +42,46 @@ type TerminalController struct {
 	Arguments                   []string
 	AllowedHostnames            []string
 	logger                      *zap.Logger
+	tty                         *os.File
 }
 
-func NewTerminalController(logger *zap.Logger, command string, arguments []string, allowedHostnames []string) *TerminalController {
+func NewTerminalController(logger *zap.Logger, command string, arguments []string, allowedHostnames []string) (*TerminalController, error) {
+	cmd := exec.Command(command, arguments...)
+	tty, err := pty.Start(cmd)
+	if err != nil {
+		logger.Warn("failed to start command", zap.Error(err))
+		return nil, err
+	}
 	return &TerminalController{
 		DefaultConnectionErrorLimit: 10,
 		MaxBufferSizeBytes:          1024,
 		KeepalivePingTimeout:        20 * time.Second,
 		ConnectionErrorLimit:        10,
-		Command:                     command,
+		tty:                         tty,
 		Arguments:                   arguments,
 		AllowedHostnames:            allowedHostnames,
 		logger:                      logger,
+	}, nil
+}
+
+func (controller *TerminalController) RunCommand(ctx *gin.Context) {
+	var commandRequest request.RunCommandRequest
+	if err := ctx.ShouldBindJSON(&commandRequest); err != nil {
+		ctx.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	command := commandRequest.Command
+	if command == "" {
+		ctx.JSON(400, gin.H{"error": "command is required"})
+		return
+	}
+	if !strings.HasSuffix(command, "\n") {
+		command += "\n"
+	}
+
+	_, err := controller.tty.Write([]byte(command))
+	if err != nil {
+		return
 	}
 }
 
@@ -80,17 +110,7 @@ func (controller *TerminalController) NewTerminal(ctx *gin.Context) {
 	controller.logger.Debug("starting new tty", zap.String("command", terminal), zap.Strings("arguments", args))
 	cmd := exec.Command(terminal, args...)
 	cmd.Env = os.Environ()
-	tty, err := pty.Start(cmd)
-	if err != nil {
-		message := fmt.Sprintf("failed to start tty: %s", err)
-		controller.logger.Warn(message)
-		err := connection.WriteMessage(websocket.TextMessage, []byte(message))
-		if err != nil {
-			controller.logger.Warn("failed to write message to connection", zap.Error(err))
-			return
-		}
-		return
-	}
+	tty := controller.tty
 	defer func() {
 		controller.logger.Info("gracefully stopping spawned tty...")
 		if err := cmd.Process.Kill(); err != nil {
@@ -179,7 +199,7 @@ func (controller *TerminalController) NewTerminal(ctx *gin.Context) {
 			dataBuffer := bytes.Trim(data, "\x00")
 			dataType, ok := WebsocketMessageType[messageType]
 			if !ok {
-				dataType = "uunknown"
+				dataType = "unknown"
 			}
 			controller.logger.Info(fmt.Sprintf("received %s (type: %v) message of size %v byte(s) from xterm.js with key sequence: %v", dataType, messageType, dataLength, dataBuffer))
 

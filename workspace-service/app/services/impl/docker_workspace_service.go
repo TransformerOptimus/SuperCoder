@@ -51,7 +51,7 @@ func (ws DockerWorkspaceService) CreateFrontendWorkspace(storyHashId, workspaceI
 		ws.logger.Error("Failed to check and create workspace from template", zap.Error(err))
 		return nil, err
 	}
-	workspaceUrl := "http://localhost:8081/?folder=/workspaces/" + workspaceId
+	workspaceUrl := "http://localhost:8081/?folder=/workspaces/stories" + workspaceId
 	frontendUrl := "http://localhost:3000"
 
 	return &dto.WorkspaceDetails{
@@ -234,7 +234,7 @@ func (ws DockerWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(sto
 		ws.logger.Error("Failed to rsync folders", zap.Error(err))
 		return err
 	}
-	workspacePath := "/workspaces/" + workspaceId + "/" + storyHashId
+	workspacePath := "/workspaces/stories" + workspaceId + "/" + storyHashId
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))

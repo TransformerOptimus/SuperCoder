@@ -131,7 +131,7 @@ func (ws K8sWorkspaceService) CreateFrontendWorkspace(workspaceId string, fronte
 	}
 
 	workspaceHost := ws.workspaceServiceConfig.WorkspaceHostName()
-	workspaceUrl := fmt.Sprintf("https://%s.%s/?folder=/workspaces/%s", workspaceId, workspaceHost, workspaceId)
+	workspaceUrl := fmt.Sprintf("https://%s.%s/?folder=/workspaces/stories/%s", workspaceId, workspaceHost, workspaceId)
 	frontendUrl := fmt.Sprintf("https://fe-%s.%s", workspaceId, workspaceHost)
 
 	response := &dto.WorkspaceDetails{
@@ -363,7 +363,7 @@ func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyH
 			return err
 		}
 	}
-	workspacePath := "/workspaces/" + workspaceId + "/" + storyHashId
+	workspacePath := "/workspaces/stories" + workspaceId + "/" + storyHashId
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))

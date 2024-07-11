@@ -88,23 +88,14 @@ export async function handleInProgressStoryStatus(
   }
 }
 
-export async function toGetAllStoriesOfProjectUtils(setter, search = '') {
+export async function toGetAllStoriesOfProjectUtils(
+  setter,
+  search = '',
+  type = 'backend',
+) {
   try {
     const project_id = localStorage.getItem('projectId');
-    const response = await getAllStoriesOfProject(project_id, search);
-    if (response) {
-      const data = response.data;
-      setter(data.stories);
-    }
-  } catch (error) {
-    console.error('Error while fetching all stories of project:: ', error);
-  }
-}
-
-export async function toGetAllDesignStoriesOfProjectUtils(setter, search = '') {
-  try {
-    const project_id = localStorage.getItem('projectId');
-    const response = await getAllStoriesOfProject(project_id, search);
+    const response = await getAllStoriesOfProject(project_id, search, type);
     if (response) {
       const data = response.data;
       setter(data.stories);

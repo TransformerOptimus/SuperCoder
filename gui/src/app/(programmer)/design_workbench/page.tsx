@@ -5,7 +5,7 @@ import { Button } from '@nextui-org/react';
 import { Suspense, useEffect, useState } from 'react';
 import ActiveWorkbench from '@/components/WorkBenchComponents/ActiveWorkbench';
 import { useRouter } from 'next/navigation';
-import { toGetAllDesignStoriesOfProjectUtils } from '@/app/utils';
+import { toGetAllStoriesOfProjectUtils } from '@/app/utils';
 import { StoryList } from '../../../../types/workbenchTypes';
 import { storyTypes } from '@/app/constants/ProjectConstants';
 
@@ -20,12 +20,16 @@ const DesignWorkBenchPage: React.FC = () => {
     );
   };
 
-  // useEffect(() => {
-  //   toGetAllDesignStoriesOfProjectUtils(setStoriesList).then().catch();
-  //   setTimeout(() => {
-  //     toGetAllDesignStoriesOfProjectUtils(setStoriesList).then().catch();
-  //   }, 10000);
-  // }, []);
+  useEffect(() => {
+    toGetAllStoriesOfProjectUtils(setStoriesList, '', 'frontend')
+      .then()
+      .catch();
+    setTimeout(() => {
+      toGetAllStoriesOfProjectUtils(setStoriesList, '', 'frontend')
+        .then()
+        .catch();
+    }, 10000);
+  }, []);
 
   return (
     <div id={'workbench'} className={'proxima_nova p-4'}>

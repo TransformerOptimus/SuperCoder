@@ -29,11 +29,13 @@
 }
 
 .gradient_effect {
+  position: absolute;
   border-radius: 424px;
   background: var(--landing-page-gradient-color);
   filter: blur(300px);
   width: 300px;
   height: 160px;
+  top: -100px;
 }
 
 .divider {

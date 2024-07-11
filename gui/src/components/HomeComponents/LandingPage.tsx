@@ -80,7 +80,7 @@ export default function LandingPage() {
         alt={'superagi_logo'}
       />
 
-      <div className={'proxima_nova flex flex-col items-center self-center'}>
+      <div className={'proxima_nova flex flex-col  self-center'}>
         <div className={styles.gradient_effect} />
 
         <CustomImage
@@ -124,6 +124,15 @@ export default function LandingPage() {
                   format={showPassword ? 'text' : 'password'}
                   value={password}
                   setter={setPassword}
+                  endIcon={
+                    showPassword
+                      ? imagePath.passwordUnhidden
+                      : imagePath.passwordHidden
+                  }
+                  endIconSize={'size-4'}
+                  endIconClick={() =>
+                    setShowPassword((prevState) => !prevState)
+                  }
                 />
               </div>
             )}

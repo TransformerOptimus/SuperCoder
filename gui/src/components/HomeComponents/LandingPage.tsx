@@ -2,11 +2,14 @@
 import CustomImage from '@/components/ImageComponents/CustomImage';
 import imagePath from '@/app/imagePath';
 import styles from './home.module.css';
-import { checkHealth } from '@/api/DashboardService';
+import { checkHealth, login, signUp } from '@/api/DashboardService';
 import { Button } from '@nextui-org/react';
 import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '@/api/apiConfig';
 import CustomInput from '@/components/CustomInput/CustomInput';
+import { authPayload, userData } from '../../../types/authTypes';
+import { useRouter } from 'next/navigation';
+import { setUserData } from '@/app/utils';
 
 export default function LandingPage() {
   const [email, setEmail] = useState<string>('');
@@ -15,6 +18,10 @@ export default function LandingPage() {
   const [isEmailRegistered, setIsEmailRegistered] = useState<boolean | null>(
     null,
   );
+  const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
+
+  const router = useRouter();
+
   useEffect(() => {
     toCheckHealth().then().catch();
   }, []);
@@ -38,34 +45,100 @@ export default function LandingPage() {
     }
   }
 
-  const handleCheckUserEmail = () => {
-    toCheckUserEmail();
-  };
-
-  const handleLogin = () => {
-    console.log('login');
-  };
-
-  const handleSignUp = () => {
-    console.log('sign Up');
+  const onSetEmail = (value) => {
+    setEmail(value);
+    setIsEmailRegistered(null);
+    setPassword('');
+    setShowPassword(false);
   };
 
   async function toCheckUserEmail() {
     try {
-      setIsEmailRegistered(true);
+      setIsButtonLoading(true);
+      const payload: authPayload = {
+        email: email,
+        password: '',
+      };
+      const response = await signUp(payload);
+      if (response) {
+        const data = response.data;
+        if (data.ExistingUser) {
+          setIsEmailRegistered(true);
+        } else {
+          setIsEmailRegistered(false);
+        }
+      }
+      setIsButtonLoading(false);
+    } catch (error) {
+      setIsButtonLoading(false);
+      console.error('Error: ', error);
+    }
+  }
+
+  async function loginUser() {
+    try {
+      setIsButtonLoading(true);
+      const payload: authPayload = {
+        email: email,
+        password: password,
+      };
+      const response = await login(payload);
+      if (response) {
+        const data = response.data;
+        if (data.success) {
+          const userData: userData = {
+            userEmail: data.user.email,
+            userName: data.user.name,
+            organisationId: data.user.organisation_id,
+            accessToken: data.access_token,
+          };
+          setUserData(userData);
+          router.push('/projects');
+        }
+      }
+      setIsButtonLoading(false);
     } catch (error) {
       console.error('Error: ', error);
+      setIsButtonLoading(false);
+    }
+  }
+
+  async function createAccount() {
+    try {
+      setIsButtonLoading(true);
+      const payload: authPayload = {
+        email: email,
+        password: password,
+      };
+      const response = await signUp(payload);
+      if (response) {
+        const data = response.data;
+        if (data.success) {
+          const userData: userData = {
+            userEmail: data.user.email,
+            userName: data.user.name,
+            organisationId: data.user.organisation_id,
+            accessToken: data.access_token,
+          };
+          setUserData(userData);
+          router.push('/projects');
+        }
+      }
+      setIsButtonLoading(false);
+    } catch (error) {
+      console.error('Error: ', error);
+      setIsButtonLoading(false);
     }
   }
 
   const getButtonFields = () => {
     switch (isEmailRegistered) {
       case null:
-        return { text: 'Continue', onClick: handleCheckUserEmail };
+        return { text: 'Continue', onClick: toCheckUserEmail };
       case true:
-        return { text: 'Sign In', onClick: handleLogin };
+        return { text: 'Sign In', onClick: loginUser };
       case false:
-        return { text: 'Create Account', onClick: handleSignUp };
+        return { text: 'Create Account', onClick: createAccount };
     }
   };
 
@@ -112,7 +185,7 @@ export default function LandingPage() {
                 placeholder={'Enter your email'}
                 format={'text'}
                 value={email}
-                setter={setEmail}
+                setter={onSetEmail}
                 disabled={false}
               />
             </div>
@@ -140,6 +213,7 @@ export default function LandingPage() {
           <Button
             onClick={getButtonFields().onClick}
             className={`${styles.button} w-full`}
+            isLoading={isButtonLoading}
           >
             {getButtonFields().text}
           </Button>

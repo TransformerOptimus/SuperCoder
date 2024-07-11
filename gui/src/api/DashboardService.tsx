@@ -6,14 +6,19 @@ import {
 import { FormStoryPayload } from '../../types/storyTypes';
 import { CommentReBuildPayload } from '../../types/pullRequestsTypes';
 import { CreateOrUpdateLLMAPIKeyPayload } from '../../types/modelsTypes';
+import { authPayload } from '../../types/authTypes';
 
 export const checkHealth = () => {
   return api.get(`/health`);
 };
 
-// GitHub Sign In
-export const githubSignIn = () => {
-  return api.get(`/github/signin`);
+// Auth APIS
+export const login = (payload: authPayload) => {
+  return api.post(`/user/sign_in`, payload);
+};
+
+export const signUp = (payload: authPayload) => {
+  return api.post(`/user/sign_up`, payload);
 };
 
 // Project APIs
@@ -59,7 +64,10 @@ export const updateStoryStatus = (
   status: string,
   story_id: number | string,
 ) => {
-  return api.put(`/stories/${story_id}/status`, { story_status: status, story_id: story_id });
+  return api.put(`/stories/${story_id}/status`, {
+    story_status: status,
+    story_id: story_id,
+  });
 };
 
 export const getActivityLogs = (story_id: string) => {
@@ -75,7 +83,9 @@ export const getAllExecutionOutputs = (id: string) => {
 };
 
 export const getProjectPullRequests = (project_id: string, status: string) => {
-  return api.get(`/projects/${project_id}/pull-requests`, { params: { status } });
+  return api.get(`/projects/${project_id}/pull-requests`, {
+    params: { status },
+  });
 };
 
 export const commentRebuildStory = (payload: CommentReBuildPayload) => {
@@ -83,7 +93,9 @@ export const commentRebuildStory = (payload: CommentReBuildPayload) => {
 };
 
 export const mergePullRequest = (pull_request_id: number) => {
-  return api.post(`/pull-requests/${pull_request_id}/merge`, { pull_request_id: pull_request_id });
+  return api.post(`/pull-requests/${pull_request_id}/merge`, {
+    pull_request_id: pull_request_id,
+  });
 };
 
 export const getCommitsPullRequest = (pr_id: number) => {

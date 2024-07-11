@@ -4,9 +4,22 @@ import {
   getLLMAPIKeys,
   getProjectPullRequests,
 } from '@/api/DashboardService';
-import { removeCookie } from '@/utils/CookieUtils';
+import { removeCookie, setCookie } from '@/utils/CookieUtils';
 import { ProjectTypes } from '../../types/projectsTypes';
 import { useRouter } from 'next/navigation';
+import { userData } from '../../types/authTypes';
+
+export const setUserData = (data: userData) => {
+  if (typeof window !== 'undefined') {
+    setCookie('accessToken', data.accessToken);
+    localStorage.setItem('userName', data.userName);
+    localStorage.setItem('userEmail', data.userEmail);
+    localStorage.setItem('organisationId', data.organisationId);
+    if (window.clarity) {
+      window.clarity('set', 'User Email', data.userEmail);
+    }
+  }
+};
 
 export const logout = () => {
   if (typeof window !== 'undefined') {

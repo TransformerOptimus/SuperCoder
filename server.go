@@ -105,6 +105,7 @@ func main() {
 
 	// Provide GitnessClient
 	err = c.Provide(func(logger *zap.Logger, slackAlert *monitoring.SlackAlert) *gitness_git_provider.GitnessClient {
+		fmt.Println("___token in server____", config.GitnessToken())
 		return gitness_git_provider.NewGitnessClient(config.GitnessURL(), config.GitnessToken(),
 			client.NewHttpClient(), logger, slackAlert)
 	})

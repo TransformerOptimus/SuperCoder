@@ -45,7 +45,7 @@ func NewPullRequestService(pullRequestRepo *repositories.PullRequestRepository, 
 func (s *PullRequestService) GetAllPullRequests(projectID int, status string) ([]*response.GetAllPullRequests, error) {
 	storyType := "backend"
 	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
-	fmt.Println("____stories_____", stories)
+	// fmt.Println("____stories_____", stories)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (s *PullRequestService) GetAllPullRequests(projectID int, status string) ([
 		storyIDs[i] = story.ID
 	}
 	pullRequests, err := s.pullRequestRepo.GetAllPullRequestsByStoryIDs(storyIDs, status)
-	fmt.Println("____pullRequests_____", pullRequests)
+	// fmt.Println("____pullRequests_____", pullRequests)
 	var allPullRequests []*response.GetAllPullRequests
 	if err != nil {
 		return nil, err
@@ -360,6 +360,7 @@ func (s *PullRequestService) CreatePullRequestFromCodeEditor(projectID int, titl
         return -1, err
     }
 	if openPullRequest == nil {
+		fmt.Println("no open pull requests, creating a new one")
 		pr, err := s.gitService.CreatePullRequest(spaceOrProjectName, project.Name, currentBranch, "main", "Pull Request: "+title, description)
 		if err != nil {
 			fmt.Printf("Error creating pull request: %s\n", err.Error())
@@ -375,9 +376,25 @@ func (s *PullRequestService) CreatePullRequestFromCodeEditor(projectID int, titl
 	} else {
 		fmt.Println("found an open pull request pushing changes in it")
 		httpPrefix := "https"
-		origin := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(),
-		config.GitnessHost(), spaceOrProjectName, project.Name)
-		utils.GitPush(workingDir, origin, currentBranch)
+		if config.AppEnv() == constants.Development {
+			httpPrefix = "http"
+		}
+		origin := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
+		err := utils.GitPush(workingDir, origin, currentBranch)
+		if err!=nil{
+			fmt.Printf("Error pushing changes: %s\n", err.Error())
+            return -1, err
+		}
+		latestCommitID, err := utils.GetLatestCommitID(workingDir, err)
+		if err!= nil{
+            fmt.Printf("Error getting latest commit id: %s\n", err.Error())
+            return -1, err
+        }
+		err = s.UpdatePullRequestSourceSHA(openPullRequest, latestCommitID)
+		if err!= nil {
+            fmt.Printf("Error updating pull request source sha: %s\n", err.Error())
+            return -1, err
+        }
 		return int(openPullRequest.ID), nil
 	}
 }

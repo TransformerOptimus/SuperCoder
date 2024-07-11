@@ -296,6 +296,7 @@ func (c *GitnessClient) GetPullRequestCommits(repoPath string, pullRequestNumber
 	fmt.Println("BaseURL: ", c.baseURL)
 	fmt.Println("RepoPath: ", repoPath)
 	fmt.Println("PullRequestNumber: ", pullRequestNumber)
+	fmt.Println("____AuthToken: ___", c.authToken)
 
 	headers := map[string]string{
 		"Accept":        "*/*",

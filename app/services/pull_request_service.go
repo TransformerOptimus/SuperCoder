@@ -359,8 +359,20 @@ func (s *PullRequestService) CreatePullRequestFromCodeEditor(projectID int, titl
         fmt.Println("failed to fetch open pull requests by story id", err)
         return -1, err
     }
+
+	httpPrefix := "https"
+	if config.AppEnv() == constants.Development {
+		httpPrefix = "http"
+	}
+	origin := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
+	err = utils.GitPush(workingDir, origin, currentBranch)
+	if err!=nil{
+		fmt.Printf("Error pushing changes: %s\n", err.Error())
+		return -1, err
+	}
+
 	if openPullRequest == nil {
-		fmt.Println("no open pull requests, creating a new one")
+		fmt.Println("____no open pull requests, creating a new one____")
 		pr, err := s.gitService.CreatePullRequest(spaceOrProjectName, project.Name, currentBranch, "main", "Pull Request: "+title, description)
 		if err != nil {
 			fmt.Printf("Error creating pull request: %s\n", err.Error())
@@ -374,17 +386,7 @@ func (s *PullRequestService) CreatePullRequestFromCodeEditor(projectID int, titl
 		fmt.Println("Pull Request created successfully", pullRequest)
 		return int(pullRequest.ID), nil
 	} else {
-		fmt.Println("found an open pull request pushing changes in it")
-		httpPrefix := "https"
-		if config.AppEnv() == constants.Development {
-			httpPrefix = "http"
-		}
-		origin := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
-		err := utils.GitPush(workingDir, origin, currentBranch)
-		if err!=nil{
-			fmt.Printf("Error pushing changes: %s\n", err.Error())
-            return -1, err
-		}
+		fmt.Println("______found an open pull request pushing changes in it______")
 		latestCommitID, err := utils.GetLatestCommitID(workingDir, err)
 		if err!= nil{
             fmt.Printf("Error getting latest commit id: %s\n", err.Error())

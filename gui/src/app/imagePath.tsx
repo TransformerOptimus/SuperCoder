@@ -47,6 +47,7 @@ export default {
   searchIcon: '/icons/search_icon.svg',
   horizontalThreeDots: '/icons/horizontal_three_dots.svg',
   verticalThreeDots: '/icons/vertical_three_dots.svg',
+  yellowBackIcon: '/icons/yellow_back_icon.svg',
   verticalLine: '/icons/vertical_line.svg',
   clockIcon: '/icons/clock_icon.svg',
   playIcon: '/icons/play_icon.svg',

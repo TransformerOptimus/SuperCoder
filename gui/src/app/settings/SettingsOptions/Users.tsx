@@ -21,16 +21,20 @@ export default function Users() {
       key: '1',
       text: 'Remove',
       icon: null,
-      action: () => handleRemoveUser(),
+      action: (email) => handleRemoveUser(email),
     },
   ];
-  const handleRemoveUser = () => {
-    console.log('Remove');
+  const handleRemoveUser = (email) => {
+    console.log(email);
   };
 
   const handleSendInvite = () => {
     console.log(inviteUserEmail);
     setOpenInviteUserModal(false);
+  };
+
+  const handleRevokeInvite = (email) => {
+    console.log(email);
   };
   return (
     <div id={'users'} className={'proxima_nova flex flex-col gap-6'}>
@@ -74,7 +78,7 @@ export default function Users() {
           return (
             <div className={`px-3 py-4 ${styles.item} flex justify-between`}>
               <span className={`text-sm text-white`}>{item}</span>
-              {index !== 0 && (
+              {index !== 0 && index !== 2 ? (
                 <CustomDropdown
                   trigger={
                     <CustomImage
@@ -89,7 +93,10 @@ export default function Users() {
                 >
                   {dropdownItems &&
                     dropdownItems.map((item) => (
-                      <CustomDropdown.Item key={item.key} onClick={item.action}>
+                      <CustomDropdown.Item
+                        key={item.key}
+                        onClick={() => item.action(item)}
+                      >
                         <div
                           className={
                             'flex flex-row items-center justify-center gap-2'
@@ -101,6 +108,22 @@ export default function Users() {
                       </CustomDropdown.Item>
                     ))}
                 </CustomDropdown>
+              ) : (
+                index === 2 && (
+                  <div
+                    className={' flex flex-row gap-1'}
+                    onClick={() => handleRevokeInvite(item)}
+                  >
+                    <CustomImage
+                      className={'size-4'}
+                      src={imagePath.yellowBackIcon}
+                      alt={'yellow back'}
+                    />
+                    <span className={`text-[13px] ${styles.revoke_color}`}>
+                      Revoke Invite
+                    </span>
+                  </div>
+                )
               )}
             </div>
           );

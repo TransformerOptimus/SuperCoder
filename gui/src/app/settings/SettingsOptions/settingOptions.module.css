@@ -9,3 +9,6 @@
 .item{
     border-top: 1px solid var(--white-opacity-8);
 }
+.revoke_color{
+    color: var(--revoke-color);
+}

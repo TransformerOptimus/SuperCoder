@@ -357,13 +357,13 @@ func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyH
 		return err
 	}
 	if !exists {
-		err = utils.RsyncFolders("/templates/"+frontendTemplate+"/", "/workspaces/"+workspaceId+"/"+storyHashId)
+		err = utils.RsyncFolders("/templates/"+frontendTemplate+"/", "/workspaces/stories/"+workspaceId+"/"+storyHashId)
 		if err != nil {
 			ws.logger.Error("Failed to rsync folders", zap.Error(err))
 			return err
 		}
 	}
-	workspacePath := "/workspaces/stories" + workspaceId + "/" + storyHashId
+	workspacePath := "/workspaces/stories/" + workspaceId + "/" + storyHashId
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))

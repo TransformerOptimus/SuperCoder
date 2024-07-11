@@ -113,9 +113,6 @@ func (ctrl *PullRequestController) GetPullRequestDiffByPullRequestID(c *gin.Cont
 func (ctrl *PullRequestController) CreatePullRequestFromCodeEditor(c *gin.Context) {
 	// var createPRRequest request.CreatePRFromCodeEditorRequest
 	// ProjectID := createPRRequest.ProjectID
-	//create branch - we cant use existing branch bcz everything is commited in tht branch
-	//checkout branch
-	//get excluded folder list
 	//git add and commit
 	//create pr
 }

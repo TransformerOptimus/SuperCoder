@@ -92,12 +92,12 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 	if err != nil {
 		return 0, err
 	}
-	url := "http://localhost:8082/?folder=/workspaces/story" + hashID
+	url := "http://localhost:8081/?folder=/workspaces/stories/" + hashID
 	env := config.Get("app.env")
 	frontendBaseUrl := config.WorkspaceStaticFrontendUrl()
 	frontendUrl := frontendBaseUrl + "/" + project.HashID + "/" + hashID + "/out/"
 	if env == "production" {
-		url = "https://" + hashID + ".workspace.superagi.com/?folder=/workspaces/story" + hashID
+		url = "https://" + hashID + ".workspace.superagi.com/?folder=/workspaces/stories/" + hashID
 	}
 
 	story := &models.Story{

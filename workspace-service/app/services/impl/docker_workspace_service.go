@@ -46,12 +46,13 @@ func (ws DockerWorkspaceService) CreateWorkspace(workspaceId string, backendTemp
 }
 
 func (ws DockerWorkspaceService) CreateFrontendWorkspace(storyHashId, workspaceId string, frontendTemplate string) (*dto.WorkspaceDetails, error) {
+	fmt.Println("aaaa_____frontend__template___", frontendTemplate)
 	err := ws.checkAndCreateFrontendWorkspaceFromTemplate(storyHashId, workspaceId, frontendTemplate)
 	if err != nil {
 		ws.logger.Error("Failed to check and create workspace from template", zap.Error(err))
 		return nil, err
 	}
-	workspaceUrl := "http://localhost:8081/?folder=/workspaces/stories" + workspaceId
+	workspaceUrl := "http://localhost:8081/?folder=/workspaces/stories/" + workspaceId
 	frontendUrl := "http://localhost:3000"
 
 	return &dto.WorkspaceDetails{
@@ -216,6 +217,8 @@ func (ws DockerWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId
 }
 
 func (ws DockerWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyHashId string, workspaceId string, frontendTemplate string) error {
+	frontendPath := "/workspaces/stories/" + workspaceId + "/" + storyHashId
+
 	exists, err := utils.CheckIfFrontendWorkspaceExists(storyHashId, workspaceId)
 	if err != nil {
 		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
@@ -228,13 +231,19 @@ func (ws DockerWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(sto
 	}
 
 	ws.logger.Info("Creating workspace from template", zap.String("workspaceId", workspaceId), zap.String("frontendTemplate", frontendTemplate))
+	err = os.MkdirAll(frontendPath, os.ModePerm)
+	if err != nil {
+		fmt.Println("Error creating directory:", err)
+		return err
+	}
 
-	err = utils.SudoRsyncFolders("/templates/"+frontendTemplate+"/", "/workspaces/"+workspaceId+"/"+storyHashId)
+	fmt.Println("_____frontend template____",frontendTemplate)
+	err = utils.SudoRsyncFolders("/templates/"+frontendTemplate+"/", "/workspaces/stories/"+workspaceId+"/"+storyHashId)
 	if err != nil {
 		ws.logger.Error("Failed to rsync folders", zap.Error(err))
 		return err
 	}
-	workspacePath := "/workspaces/stories" + workspaceId + "/" + storyHashId
+	workspacePath := "/workspaces/stories/" + workspaceId + "/" + storyHashId
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))

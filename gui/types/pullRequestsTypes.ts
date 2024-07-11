@@ -53,3 +53,9 @@ export interface CommitLogsProps {
 export interface FilesChangedProps {
   diff: string;
 }
+
+export interface CreatePullRequestPayload {
+  project_id: number;
+  title: string;
+  description: string;
+}

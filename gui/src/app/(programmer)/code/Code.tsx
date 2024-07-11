@@ -7,6 +7,7 @@ import CustomImage from '@/components/ImageComponents/CustomImage';
 import imagePath from '@/app/imagePath';
 import CustomModal from '@/components/CustomModal/CustomModal';
 import CustomInput from '@/components/CustomInput/CustomInput';
+import { createPullRequest } from '@/api/DashboardService';
 
 export default function Code() {
   const [projectURL, setProjectURL] = useState('');
@@ -59,23 +60,45 @@ export default function Code() {
     };
   }, [projectURL, isIframeLoaded]);
 
+  const handleCreatePRClick = () => {
+    toCreatePullRequest().then().catch();
+  };
+
+  async function toCreatePullRequest() {
+    try {
+      const payload = {
+        project_id: Number(localStorage.getItem('projectId')),
+        title: prTitle,
+        description: prDescription,
+      };
+
+      const response = await createPullRequest(payload);
+      if (response) {
+        const data = response.data;
+        console.log(data);
+      }
+    } catch (error) {
+      console.error('Error while creating a Pull Request: ', error);
+    }
+  }
+
   const iframeElement = useMemo(() => {
     return (
-        <iframe
-            ref={iframeRef}
-            src={projectURL}
-            allow={'clipboard-read; clipboard-write;'}
-            title={'Embedded Workspace'}
-            style={{
-              width: '100%',
-              height: 'calc(100vh - 92px)',
-              border: 'none',
-              position: pathName === '/code' ? 'relative' : 'absolute',
-              top: pathName === '/code' ? '0' : '-9999px',
-              left: pathName === '/code' ? '0' : '-9999px',
-              visibility: pathName === '/code' ? 'visible' : 'hidden',
-            }}
-        />
+      <iframe
+        ref={iframeRef}
+        src={projectURL}
+        allow={'clipboard-read; clipboard-write;'}
+        title={'Embedded Workspace'}
+        style={{
+          width: '100%',
+          height: 'calc(100vh - 92px)',
+          border: 'none',
+          position: pathName === '/code' ? 'relative' : 'absolute',
+          top: pathName === '/code' ? '0' : '-9999px',
+          left: pathName === '/code' ? '0' : '-9999px',
+          visibility: pathName === '/code' ? 'visible' : 'hidden',
+        }}
+      />
     );
   }, [projectURL, pathName]);
 
@@ -118,7 +141,12 @@ export default function Code() {
           </div>
         </CustomModal.Body>
         <CustomModal.Footer>
-          <Button className={'primary_medium w-fit'}>Raise Request</Button>
+          <Button
+            className={'primary_medium w-fit'}
+            onClick={handleCreatePRClick}
+          >
+            Raise Request
+          </Button>
         </CustomModal.Footer>
       </CustomModal>
 

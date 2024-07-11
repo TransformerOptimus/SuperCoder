@@ -7,6 +7,7 @@ import { FormStoryPayload } from '../../types/storyTypes';
 import {
   CommentReBuildPayload,
   CommentReBuildDesignStoryPayload,
+  CreatePullRequestPayload,
 } from '../../types/pullRequestsTypes';
 import { CreateOrUpdateLLMAPIKeyPayload } from '../../types/modelsTypes';
 import {
@@ -79,6 +80,10 @@ export const getActivityLogs = (story_id: string) => {
 
 export const deleteStory = (story_id: number) => {
   return api.delete(`/stories/${story_id}`);
+};
+
+export const createPullRequest = (payload: CreatePullRequestPayload) => {
+  return api.post(`/pull-requests/create`, payload);
 };
 
 export const getProjectPullRequests = (project_id: string, status: string) => {

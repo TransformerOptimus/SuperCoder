@@ -1,3 +1,5 @@
+import { b } from '@nextui-org/slider/dist/use-slider-a94a4c83';
+
 export interface StoryDetailsWorkbenchProps {
   id: string;
 }
@@ -32,7 +34,8 @@ export interface ActiveWorkbenchProps {
 
 export interface BackendWorkbenchProps {
   activityLogs: ActivityItem[];
-  selectedStoryId: string;
+  selectedStoryId: string | number;
+  status: boolean;
 }
 
 export interface DesignWorkbenchProps {

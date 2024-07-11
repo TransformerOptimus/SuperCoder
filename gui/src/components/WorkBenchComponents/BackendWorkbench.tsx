@@ -11,6 +11,7 @@ import { BackendWorkbenchProps } from '../../../types/workbenchTypes';
 const BackendWorkbench: React.FC<BackendWorkbenchProps> = ({
   activityLogs,
   selectedStoryId,
+  status,
 }) => {
   const backendURL = useRef('');
   const frontendURL = useRef('');
@@ -26,16 +27,17 @@ const BackendWorkbench: React.FC<BackendWorkbenchProps> = ({
         key: 'backend',
         text: 'Backend',
         icon: imagePath.browserIconDark,
-        content: <Browser url={backendURL.current} />,
+        content: <Browser url={backendURL.current} status={status} />,
       },
       {
         key: 'frontend',
         text: 'Frontend',
         icon: imagePath.browserIconDark,
-        content: <Browser url={frontendURL.current} />,
+        content: <Browser url={frontendURL.current} status={status} />,
       },
     ],
   };
+
   return (
     <div
       id={'active_workbench_content'}

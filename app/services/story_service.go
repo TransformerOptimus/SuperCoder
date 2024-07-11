@@ -95,7 +95,7 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 	url := "http://localhost:8081/?folder=/workspaces/stories/" + hashID
 	env := config.Get("app.env")
 	frontendBaseUrl := config.WorkspaceStaticFrontendUrl()
-	frontendUrl := frontendBaseUrl + "/" + project.HashID + "/" + hashID + "/out/"
+	frontendUrl := frontendBaseUrl + "/stories/" + project.HashID + "/" + hashID + "/out/"
 	if env == "production" {
 		url = "https://" + hashID + ".workspace.superagi.com/?folder=/workspaces/stories/" + hashID
 	}
@@ -433,7 +433,7 @@ func (s *StoryService) GetCodeForDesignStory(storyId int) ([]*response.GetCodeFo
 	if err != nil {
 		return nil, err
 	}
-	folderPath := config.WorkspaceWorkingDirectory() + "/" + project.HashID + "/" + story.HashID + "/app/"
+	folderPath := config.WorkspaceWorkingDirectory() + "/stories/" + project.HashID + "/" + story.HashID + "/app/"
 	var fileData []*response.GetCodeForDesignStory
 	files, err := os.ReadDir(folderPath)
 	if err != nil {

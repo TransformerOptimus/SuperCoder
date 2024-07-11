@@ -164,7 +164,7 @@ func (c *GitnessClient) CreatePullRequest(repoPath, sourceBranch, targetBranch, 
 		Description:  description,
 		IsDraft:      isDraft,
 	}
-
+	//fmt.Println("__token___", c.authToken)
 	headers := map[string]string{
 		"Accept":        "*/*",
 		"Content-Type":  "application/json",

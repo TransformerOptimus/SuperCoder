@@ -61,7 +61,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	fmt.Printf("Is Retry : %v\n", step.Retry)
 	fmt.Printf("File Name: %s\n", step.File)
 
-	storyDir := config.WorkspaceWorkingDirectory() + "/" + step.Project.HashID + "/" + step.Story.HashID + "/app"
+	storyDir := config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID + "/" + step.Story.HashID + "/app"
 	fmt.Println("____________Project Directory: ", storyDir)
 	fmt.Println("___________Checking for Max Retry______________")
 	count, err := openAiCodeGenerator.executionStepService.CountExecutionStepsOfName(step.Execution.ID, steps.CODE_GENERATE_STEP.String())

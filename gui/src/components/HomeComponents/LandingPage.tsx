@@ -23,6 +23,7 @@ export default function LandingPage() {
   const [isEmailRegistered, setIsEmailRegistered] = useState<boolean | null>(
     null,
   );
+  const [passwordErrorMsg, setPasswordErrorMsg] = useState<string>('');
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
   const router = useRouter();
@@ -30,6 +31,25 @@ export default function LandingPage() {
   useEffect(() => {
     toCheckHealth().then().catch();
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Enter') {
+        if (isEmailRegistered === null) {
+          toCheckUserEmail().then().catch();
+        } else if (isEmailRegistered) {
+          loginUser().then().catch();
+        } else {
+          createAccount().then().catch();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [toCheckUserEmail, loginUser, createAccount]);
 
   async function toCheckHealth() {
     try {
@@ -55,6 +75,11 @@ export default function LandingPage() {
     setIsEmailRegistered(null);
     setPassword('');
     setShowPassword(false);
+  };
+
+  const onSetPassword = (value: string) => {
+    setPassword(value);
+    setPasswordErrorMsg('');
   };
 
   const toSetUserData = (user, access_token: string) => {
@@ -99,6 +124,8 @@ export default function LandingPage() {
         if (data.success) {
           toSetUserData(data.user, data.access_token);
           router.push('/projects');
+        } else {
+          setPasswordErrorMsg('Password entered is incorrect.');
         }
       }
       setIsButtonLoading(false);
@@ -195,16 +222,19 @@ export default function LandingPage() {
                   placeholder={'Enter your email'}
                   format={showPassword ? 'text' : 'password'}
                   value={password}
-                  setter={setPassword}
+                  setter={onSetPassword}
                   endIcon={
                     showPassword
                       ? imagePath.passwordUnhidden
                       : imagePath.passwordHidden
                   }
+                  alt={'password_icons'}
                   endIconSize={'size-4'}
                   endIconClick={() =>
                     setShowPassword((prevState) => !prevState)
                   }
+                  errorMessage={passwordErrorMsg}
+                  isError={passwordErrorMsg !== ''}
                 />
               </div>
             )}

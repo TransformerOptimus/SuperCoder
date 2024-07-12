@@ -1,18 +1,23 @@
 import React from 'react';
 import { useTerminal } from '@/hooks/useTerminal';
 
-type Command = {
-  content: string;
-  type: 'input' | 'output';
+const commands = {
+  help: 'Available commands: help, echo, clear',
+  'echo Hello': 'Hello',
+  clear: '\x1Bc',
 };
 
 const TerminalComponent: React.FC = () => {
-  const commands: Command[] = [
-    { content: 'echo Hello, World!', type: 'output' },
-  ];
   const terminalRef = useTerminal(commands);
 
-  return <div ref={terminalRef} style={{ height: '100%', width: '100%' }} />;
+  return (
+    <div className="h-full w-full">
+      <div
+        ref={terminalRef}
+        className="h-full w-full rounded-lg bg-black shadow-lg"
+      ></div>
+    </div>
+  );
 };
 
 export default TerminalComponent;

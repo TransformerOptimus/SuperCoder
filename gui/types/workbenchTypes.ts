@@ -1,7 +1,5 @@
-import { b } from '@nextui-org/slider/dist/use-slider-a94a4c83';
-
 export interface StoryDetailsWorkbenchProps {
-  id: string;
+  id: string | number;
 }
 
 export interface StoryListItems {
@@ -11,13 +9,13 @@ export interface StoryListItems {
 
 export interface StoryList {
   IN_PROGRESS: StoryListItems[];
-  DONE: StoryListItems[];
   IN_REVIEW: StoryListItems[];
+  DONE: StoryListItems[];
 }
 
 export interface BrowserProps {
   url: string;
-  status: boolean;
+  status?: boolean;
   showUrl?: boolean;
 }
 

@@ -2,39 +2,45 @@ package controllers
 
 import (
 	"ai-developer/app/services"
+	"ai-developer/app/types/response"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 type OrganizationController struct {
 	jwtService          *services.JWTService
 	userService         *services.UserService
 	organizationService *services.OrganisationService
-	redirectUrl         string
 }
 
 func (controller *OrganizationController) FetchOrganizationUsers(c *gin.Context) {
-	var organizationId = c.GetInt("organization_id")
-	var users, err = controller.organizationService.GetOrganizationUsers(uint(organizationId))
-
+	var users []*response.UserResponse
+	var organizationId = c.Param("organisation_id")
+	var organizationIdInt, err = strconv.Atoi(organizationId)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "users": nil, "error": err.Error()})
+		c.JSON(http.StatusOK, &response.FetchOrganisationUserResponse{Success: false, Error: "Invalid input for organisation_id", User: nil})
+	}
+
+	fmt.Println("Fetching org users: ", organizationId)
+	users, err = controller.organizationService.GetOrganizationUsers(uint(organizationIdInt))
+	if err != nil {
+		c.JSON(http.StatusOK, &response.FetchOrganisationUserResponse{Success: false, Error: err.Error(), User: nil})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "users": users, "error": nil})
+	c.JSON(http.StatusOK, &response.FetchOrganisationUserResponse{Success: true, Error: nil, User: users})
 }
 
 func NewOrganizationController(
 	jwtService *services.JWTService,
 	userService *services.UserService,
 	organizationService *services.OrganisationService,
-	redirectUrl string,
 ) *OrganizationController {
 	return &OrganizationController{
 		jwtService:          jwtService,
 		userService:         userService,
 		organizationService: organizationService,
-		redirectUrl:         redirectUrl,
 	}
 }

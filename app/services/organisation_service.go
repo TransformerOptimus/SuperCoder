@@ -4,6 +4,7 @@ import (
 	"ai-developer/app/models"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/types/response"
 	"fmt"
 	"math/rand"
 	"time"
@@ -59,10 +60,11 @@ func (s *OrganisationService) GetOrganisationByID(organisationID uint) (*models.
 	return s.organisationRepo.GetOrganisationByID(organisationID)
 }
 
-func NewOrganisationService(organisationRepo *repositories.OrganisationRepository, gitnessService *git_providers.GitnessService) *OrganisationService {
+func NewOrganisationService(organisationRepo *repositories.OrganisationRepository, gitnessService *git_providers.GitnessService, userRepository *repositories.UserRepository) *OrganisationService {
 	return &OrganisationService{
 		organisationRepo: organisationRepo,
 		gitnessService:   gitnessService,
+		userRepository:   userRepository,
 	}
 }
 
@@ -70,6 +72,22 @@ func (s *OrganisationService) GetOrganisationByName(organisationName string) (*m
 	return s.organisationRepo.GetOrganisationByName(organisationName)
 }
 
-func (s *OrganisationService) GetOrganizationUsers(organizationID uint) ([]models.User, error) {
-	return s.userRepository.FetchAllUsersByOrganizationId(organizationID)
+func (s *OrganisationService) GetOrganizationUsers(organizationID uint) ([]*response.UserResponse, error) {
+	var users, err = s.userRepository.FetchAllUsersByOrganizationId(organizationID)
+	if err != nil {
+		return nil, err
+	}
+	var usersResponse []*response.UserResponse
+
+	for _, user := range users {
+		mappedUser := &response.UserResponse{
+			ID:             user.ID,
+			Name:           user.Name,
+			Email:          user.Email,
+			OrganisationID: user.OrganisationID,
+		}
+		usersResponse = append(usersResponse, mappedUser)
+	}
+
+	return usersResponse, nil
 }

@@ -198,8 +198,8 @@ func main() {
 		panic(err)
 	}
 	err = c.Provide(func(organisationRepo *repositories.OrganisationRepository,
-		gitnessService *git_providers.GitnessService) *services.OrganisationService {
-		return services.NewOrganisationService(organisationRepo, gitnessService)
+		gitnessService *git_providers.GitnessService, userRepository *repositories.UserRepository) *services.OrganisationService {
+		return services.NewOrganisationService(organisationRepo, gitnessService, userRepository)
 	})
 	if err != nil {
 		panic(err)
@@ -325,6 +325,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService, organizationService *services.OrganisationService) *controllers.OrganizationController {
+		return controllers.NewOrganizationController(jwtService, userService, organizationService)
+	})
+	if err != nil {
+		panic(err)
+	}
 	err = c.Provide(func(executionOutputPullRequestService *services.PullRequestService, userService *services.UserService,
 		executionOutputService *services.ExecutionOutputService) *controllers.PullRequestController {
 		return controllers.NewPullRequestController(executionOutputPullRequestService, userService, executionOutputService)
@@ -379,6 +385,7 @@ func main() {
 		health *controllers.HealthController,
 		oauth *controllers.OauthController,
 		userController *controllers.UserController,
+		organizationController *controllers.OrganizationController,
 		middleware *middleware.JWTClaims,
 		projectsController *controllers.ProjectController,
 		storiesController *controllers.StoryController,
@@ -495,6 +502,10 @@ func main() {
 		user.GET("/check_user", userController.CheckUser)
 		user.POST("/sign_in", userController.SignIn)
 		user.POST("/sign_up", userController.SignUp)
+
+		organizations := api.Group("/organisation", middleware.AuthenticateJWT())
+		organization := organizations.Group("/:organisation_id", orgAuthMiddleware.Authorize())
+		organization.GET("/fetch_users", organizationController.FetchOrganizationUsers)
 
 		// Wrap the socket.io server as Gin handlers for specific routes
 		r.GET("/api/socket.io/*any", middleware.AuthenticateJWT(), gin.WrapH(ioServer))

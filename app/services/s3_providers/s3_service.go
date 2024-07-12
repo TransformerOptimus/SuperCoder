@@ -34,8 +34,7 @@ func (service *S3Service) UploadFileToS3(fileBytes []byte, fileName string, proj
 		Bucket:      aws.String(service.bucketName),
 		Key:         aws.String(objectKey),
 		Body:        bytes.NewReader(fileBytes),
-		ContentType: aws.String("application/octet-stream"), // You may want to determine the correct MIME type
-		ACL:         aws.String("public-read"),              // Make the object publicly accessible
+		ContentType: aws.String("application/octet-stream"), // You may want to determine the correct MIME type             // Make the object publicly accessible
 	})
 	if err != nil {
 		return "", err

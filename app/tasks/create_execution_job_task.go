@@ -151,6 +151,8 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	createJobRequest.WithExecutionId(int64(execution.ID))
 	if story.Type == "frontend" {
 		fmt.Println("Project Framework", project.FrontendFramework)
+		mountPath := "/workspaces/stories/" + project.HashID + "/" + story.HashID
+		createJobRequest.WithWorkspaceMountPath(mountPath)
 		createJobRequest.WithExecutorImage("node")
 		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.FrontendFramework))
 	} else {
@@ -158,7 +160,10 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 		createJobRequest.WithPullRequestId(int64(payload.PullRequestId))
 		createJobRequest.WithProjectId(project.HashID)
 		createJobRequest.WithExecutorImage("python")
+		mountPath := "/workspaces/" + project.HashID
+		createJobRequest.WithWorkspaceMountPath(mountPath)
 		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.Framework))
+
 	}
 
 	h.logger.Info("Payload for create job request", zap.Any("createJobRequest", createJobRequest))

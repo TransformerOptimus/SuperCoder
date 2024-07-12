@@ -86,7 +86,7 @@ func (js K8sJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Create
 							VolumeMounts: []v13.VolumeMount{
 								{
 									Name:      "workspace",
-									MountPath: fmt.Sprintf("/workspaces/%s", request.ProjectId),
+									MountPath: request.WorkspaceMountPath,
 								},
 							},
 						},

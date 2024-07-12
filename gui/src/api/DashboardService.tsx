@@ -104,3 +104,21 @@ export const createOrUpdateLLMAPIKey = (
 ) => {
   return api.post(`/llm_api_key`, payload);
 };
+
+
+// Teams APIS
+export const getOrganisationMembers = () => {
+  return api.get(`/team_members`);
+}
+
+export const addUserToOrganisation = (email: string) => {
+  return api.post(`/team_add`, {email: email})
+}
+
+export const removeUserFromOrganisation = (email: string) => {
+  return api.post('/team_remove', {email: email})
+}
+
+export const revokeUserInvite = (email: string) => {
+  return api.post(`/team_revoke`, {email: email})
+}

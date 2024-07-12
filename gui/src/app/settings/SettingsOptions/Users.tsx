@@ -7,39 +7,96 @@ import imagePath from '@/app/imagePath';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
 import CustomModal from '@/components/CustomModal/CustomModal';
 import CustomInput from '@/components/CustomInput/CustomInput';
+import {
+  addUserToOrganisation,
+  getOrganisationMembers,
+  removeUserFromOrganisation,
+  revokeUserInvite,
+} from '@/api/DashboardService';
+
+interface user {
+  email: string;
+  isAdmin: boolean;
+  inviteAccepted: boolean;
+}
 
 export default function Users() {
   const [openInviteUserModal, setOpenInviteUserModal] =
     useState<boolean>(false);
   const [openRemoveUserModal, setOpenRemoveUserModal] =
     useState<boolean>(false);
+
+  const email = [
+    { email: 'admin@test.com', isAdmin: true, inviteAccepted: true },
+    { email: 'random@email.com', isAdmin: false, inviteAccepted: true },
+    { email: 'moin@mail.com', isAdmin: false, inviteAccepted: false },
+  ];
+
+  const [userList, setUserList] = useState<user[]>(email);
   const [inviteUserEmail, setInviteUserEmail] = useState<string>('');
   const [removeUserEmail, setRemoveUserEmail] = useState<string>('');
-  const email = ['admin@test.com', 'random@email.com', 'moin@mail.com'];
+
   useEffect(() => {
     setInviteUserEmail('');
+    if (!openInviteUserModal) {
+      fetchUsersFromOrganisation().catch();
+    }
   }, [openInviteUserModal]);
 
-  const handleRemoveUser = () => {
-    console.log('call remove user api');
-    setOpenRemoveUserModal(false);
-    setRemoveUserEmail('');
-  };
+  async function fetchUsersFromOrganisation() {
+    try {
+      const response = await getOrganisationMembers();
+      if (response) {
+        const data = response.data;
+        setUserList(data.user);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
-  const handleOpenRemoveModal = (email) => {
-    console.log(email);
+  async function sendInvite() {
+    try {
+      const response = await addUserToOrganisation(inviteUserEmail);
+      if (response) {
+        const data = response.data;
+        setOpenInviteUserModal(false);
+      }
+    } catch (error) {
+      console.error(error);
+      setOpenInviteUserModal(false);
+    }
+  }
+
+  async function toRevokeUserInvite(email: string) {
+    try {
+      const response = await revokeUserInvite(email);
+      if (response) {
+        const data = response.data;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  async function toRemoveUserFromOrganisation() {
+    try {
+      const response = await removeUserFromOrganisation(removeUserEmail);
+      if (response) {
+        const data = response.data;
+        setOpenRemoveUserModal(false);
+        setRemoveUserEmail('');
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  const handleOpenRemoveModal = (email: string) => {
     setRemoveUserEmail(email);
     setOpenRemoveUserModal(true);
   };
 
-  const handleSendInvite = () => {
-    console.log(inviteUserEmail);
-    setOpenInviteUserModal(false);
-  };
-
-  const handleRevokeInvite = (email) => {
-    console.log(email);
-  };
   return (
     <div id={'users'} className={'proxima_nova flex flex-col gap-6'}>
       <CustomModal
@@ -60,7 +117,7 @@ export default function Users() {
           </div>
         </CustomModal.Body>
         <CustomModal.Footer>
-          <Button className={'primary_medium'} onClick={handleSendInvite}>
+          <Button className={'primary_medium'} onClick={sendInvite}>
             Invite User
           </Button>
         </CustomModal.Footer>
@@ -78,7 +135,10 @@ export default function Users() {
           </span>
         </CustomModal.Body>
         <CustomModal.Footer>
-          <Button className={'primary_medium'} onClick={handleRemoveUser}>
+          <Button
+            className={'primary_medium'}
+            onClick={toRemoveUserFromOrganisation}
+          >
             Remove
           </Button>
         </CustomModal.Footer>
@@ -96,48 +156,49 @@ export default function Users() {
         <div className={`${styles.heading} rounded-t-lg px-3 py-2`}>
           <span className={'secondary_color text-sm'}>Email</span>
         </div>
-        {email.map((item, index) => {
-          return (
-            <div className={`px-3 py-4 ${styles.item} flex justify-between`}>
-              <span className={`text-sm text-white`}>{item}</span>
-              {index !== 0 && index !== 2 ? (
-                <CustomDropdown
-                  trigger={
-                    <CustomImage
-                      className={'size-5 cursor-pointer'}
-                      src={imagePath.verticalThreeDots}
-                      alt={'three_dots_icon'}
-                    />
-                  }
-                  maxHeight={'200px'}
-                  gap={'10px'}
-                  position={'start'}
-                >
-                  <CustomDropdown.Item
-                    key={'1'}
-                    onClick={() => handleOpenRemoveModal(item)}
-                  >
-                    <div
-                      className={
-                        'flex flex-row items-center justify-center gap-2'
-                      }
-                    >
+        {userList &&
+          userList.map((item, index) => {
+            return (
+              <div className={`px-3 py-4 ${styles.item} flex justify-between`}>
+                <span className={`text-sm text-white`}>{item.email}</span>
+                {!item.isAdmin && item.inviteAccepted && (
+                  <CustomDropdown
+                    trigger={
                       <CustomImage
-                        className={'size-4'}
-                        src={imagePath.closeCircleIcon}
-                        alt={'close_icon'}
+                        className={'size-5 cursor-pointer'}
+                        src={imagePath.verticalThreeDots}
+                        alt={'three_dots_icon'}
                       />
-                      Remove
-                    </div>
-                  </CustomDropdown.Item>
-                </CustomDropdown>
-              ) : (
-                index === 2 && (
+                    }
+                    maxHeight={'200px'}
+                    gap={'10px'}
+                    position={'start'}
+                  >
+                    <CustomDropdown.Item
+                      key={'1'}
+                      onClick={() => handleOpenRemoveModal(item.email)}
+                    >
+                      <div
+                        className={
+                          'flex flex-row items-center justify-center gap-2'
+                        }
+                      >
+                        <CustomImage
+                          className={'size-4'}
+                          src={imagePath.closeCircleIcon}
+                          alt={'close_icon'}
+                        />
+                        Remove
+                      </div>
+                    </CustomDropdown.Item>
+                  </CustomDropdown>
+                )}{' '}
+                {!item.inviteAccepted && index === 2 && (
                   <Button
                     className={
                       'flex h-fit flex-row gap-1 border-none bg-transparent p-0'
                     }
-                    onClick={() => handleRevokeInvite(item)}
+                    onClick={() => toRevokeUserInvite(item.email)}
                   >
                     <CustomImage
                       className={'size-4'}
@@ -148,11 +209,10 @@ export default function Users() {
                       Revoke Invite
                     </span>
                   </Button>
-                )
-              )}
-            </div>
-          );
-        })}
+                )}
+              </div>
+            );
+          })}
       </div>
     </div>
   );

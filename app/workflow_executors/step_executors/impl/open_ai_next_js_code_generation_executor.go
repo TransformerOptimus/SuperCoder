@@ -61,27 +61,57 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	fmt.Printf("Is Retry : %v\n", step.Retry)
 	fmt.Printf("File Name: %s\n", step.File)
 	fmt.Printf("\n-----------------------\n")
-	lsCmd := exec.Command("ls", "-lah")
-	lsOutput, err := lsCmd.CombinedOutput()
-	fmt.Println(lsOutput)
+	fmt.Println("________________Running command_____________ : ")
+	cmd := exec.Command("ls", "-lah")
+	// Set the environment variables
+	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH"))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Error running command: ", string(output))
+		return fmt.Errorf("failed to run command: %s", err)
+	}
+	fmt.Println("Command output: ", string(output))
 	fmt.Printf("\n-----------------------\n")
-	lsCmd1 := exec.Command("pwd")
-	lsOutput1, err := lsCmd1.CombinedOutput()
-	fmt.Println(lsOutput1)
+	fmt.Println("________________Running command_____________ : ")
+	cmd = exec.Command("pwd")
+	// Set the environment variables
+	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH"))
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Error running command: ", string(output))
+		return fmt.Errorf("failed to run command: %s", err)
+	}
+	fmt.Println("Command output: ", string(output))
+	fmt.Printf("\n-----------------------\n")
 
 	storyDir := config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID + "/" + step.Story.HashID + "/app"
 
 	fmt.Println("____________Project Directory: ", storyDir)
 	fmt.Println("___________Checking for Max Retry______________")
-	lsCmd3 := exec.Command("ls", "-lah")
-	lsCmd3.Dir = storyDir
-	lsOutput3, err := lsCmd3.CombinedOutput()
-	fmt.Println(lsOutput3)
+	fmt.Println("________________Running command_____________ : ")
+	cmd = exec.Command("ls", "-lah")
+	cmd.Dir = storyDir
+	// Set the environment variables
+	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH"))
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Error running command: ", string(output))
+		return fmt.Errorf("failed to run command: %s", err)
+	}
+	fmt.Println("Command output: ", string(output))
 	fmt.Printf("\n-----------------------\n")
-	lsCmd4 := exec.Command("pwd")
-	lsCmd4.Dir = storyDir
-	lsOutput4, err := lsCmd4.CombinedOutput()
-	fmt.Println(lsOutput4)
+	fmt.Println("________________Running command_____________ : ")
+	cmd = exec.Command("pwd")
+	cmd.Dir = storyDir
+	// Set the environment variables
+	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH"))
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Error running command: ", string(output))
+		return fmt.Errorf("failed to run command: %s", err)
+	}
+	fmt.Println("Command output: ", string(output))
+	fmt.Printf("\n-----------------------\n")
 	count, err := openAiCodeGenerator.executionStepService.CountExecutionStepsOfName(step.Execution.ID, steps.CODE_GENERATE_STEP.String())
 	if err != nil {
 		fmt.Printf("Error checking max retry for generation: %s\n", err.Error())

@@ -171,7 +171,7 @@ services:
     working_dir: /workspaces
     ports:
       - 8081:8080
-      - 5000:5000
+      - 5001:5000
     volumes:
       - workspaces:/workspaces
 
@@ -181,7 +181,7 @@ services:
       context: ./gui
       dockerfile: Dockerfile
     ports:
-      - 3000:3000
+      - 3001:3001
     volumes:
       - ./gui:/app
       - /app/node_modules/

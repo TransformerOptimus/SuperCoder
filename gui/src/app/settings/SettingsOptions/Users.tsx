@@ -110,8 +110,10 @@ export default function Users() {
                 </CustomDropdown>
               ) : (
                 index === 2 && (
-                  <div
-                    className={' flex flex-row gap-1'}
+                  <Button
+                    className={
+                      'flex h-fit flex-row gap-1 border-none bg-transparent p-0'
+                    }
                     onClick={() => handleRevokeInvite(item)}
                   >
                     <CustomImage
@@ -122,7 +124,7 @@ export default function Users() {
                     <span className={`text-[13px] ${styles.revoke_color}`}>
                       Revoke Invite
                     </span>
-                  </div>
+                  </Button>
                 )
               )}
             </div>

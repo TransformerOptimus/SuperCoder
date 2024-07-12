@@ -9,5 +9,4 @@ WHERE frontend_framework IS NULL;
 
 -- Alter the column to set NOT NULL constraint
 ALTER TABLE projects
-MODIFY COLUMN frontend_framework VARCHAR(100) NOT NULL;
-
+ALTER COLUMN frontend_framework SET NOT NULL;

@@ -9,4 +9,4 @@ WHERE pr_type IS NULL;
 
 -- Alter the column to set NOT NULL constraint
 ALTER TABLE pull_requests
-MODIFY COLUMN pr_type VARCHAR(50) NOT NULL;
+ALTER COLUMN pr_type SET NOT NULL;

@@ -1,12 +1,12 @@
--- Add the type column without a default value
-ALTER TABLE stories
-ADD COLUMN type VARCHAR(255);
+-- Add the pr_type column without a default value
+ALTER TABLE pull_requests
+ADD COLUMN "type" VARCHAR(50);
 
--- Update existing records to set type to 'backend'
-UPDATE stories
-SET type = 'backend'
-WHERE type IS NULL;
+-- Update existing records to set pr_type to 'automated'
+UPDATE pull_requests
+SET "type" = 'automated'
+WHERE "type" IS NULL;
 
 -- Alter the column to set NOT NULL constraint
-ALTER TABLE stories
-MODIFY COLUMN type VARCHAR(255) NOT NULL;
+ALTER TABLE pull_requests
+ALTER COLUMN "type" SET NOT NULL;

@@ -144,13 +144,13 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	}
 
 	createJobRequest := request.NewCreateJobRequest()
-	createJobRequest.WithProjectId(string(project.ID))
 	createJobRequest.WithBranch(branchName)
 	createJobRequest.WithStoryId(int64(payload.StoryID))
 	createJobRequest.WithIsReExecution(payload.ReExecute)
 	createJobRequest.WithExecutionId(int64(execution.ID))
 	if story.Type == "frontend" {
 		fmt.Println("Project Framework", project.FrontendFramework)
+		createJobRequest.WithProjectId(project.HashID)
 		createJobRequest.WithExecutorImage("node")
 		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.FrontendFramework))
 	} else {

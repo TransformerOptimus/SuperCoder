@@ -144,7 +144,6 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	}
 
 	createJobRequest := request.NewCreateJobRequest()
-	createJobRequest.WithProjectId(string(project.ID))
 	createJobRequest.WithBranch(branchName)
 	createJobRequest.WithStoryId(int64(payload.StoryID))
 	createJobRequest.WithIsReExecution(payload.ReExecute)
@@ -153,6 +152,7 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 		fmt.Println("Project Framework", project.FrontendFramework)
 		mountPath := "/workspaces/stories/" + project.HashID + "/" + story.HashID
 		createJobRequest.WithWorkspaceMountPath(mountPath)
+		createJobRequest.WithProjectId(project.HashID)
 		createJobRequest.WithExecutorImage("node")
 		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.FrontendFramework))
 	} else {

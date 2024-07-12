@@ -62,7 +62,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	fmt.Printf("File Name: %s\n", step.File)
 	fmt.Printf("\n-----------------------\n")
 	fmt.Println("________________Running command_____________ : ")
-	cmd := exec.Command("ls", "-lah", "/*")
+	cmd := exec.Command("ls", "-lah", "/")
 	// Set the environment variables
 	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH"))
 	output, err := cmd.CombinedOutput()
@@ -89,11 +89,30 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	fmt.Println("____________Project Directory: ", storyDir)
 	fmt.Println("___________Checking for Max Retry______________")
 	fmt.Println("________________Running command_____________ : ")
-	cmd = exec.Command("ls", "-lah", "/*")
+	cmd = exec.Command("ls", "-lah", "/workspaces")
 	cmd.Dir = storyDir
 	// Set the environment variables
 	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH"))
 	output, err = cmd.CombinedOutput()
+
+	cmd = exec.Command("ls", "-lah", "/workspaces/stories/")
+	cmd.Dir = storyDir
+	// Set the environment variables
+	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH"))
+	output, err = cmd.CombinedOutput()
+
+	cmd = exec.Command("ls", "-lah", "/workspaces"+"/stories/"+step.Project.HashID+"/")
+	cmd.Dir = storyDir
+	// Set the environment variables
+	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH"))
+	output, err = cmd.CombinedOutput()
+
+	cmd = exec.Command("ls", "-lah", "/workspaces"+"/stories/"+step.Project.HashID+"/"+step.Story.HashID+"/")
+	cmd.Dir = storyDir
+	// Set the environment variables
+	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH"))
+	output, err = cmd.CombinedOutput()
+
 	if err != nil {
 		fmt.Println("Error running command: ", string(output))
 		return fmt.Errorf("failed to run command: %s", err)

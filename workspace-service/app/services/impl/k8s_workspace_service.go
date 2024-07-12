@@ -149,6 +149,7 @@ func (ws K8sWorkspaceService) CreateFrontendWorkspace(workspaceId string, fronte
 func (ws K8sWorkspaceService) checkAndCreateWorkspacePVC(workspaceId string) (err error) {
 	pvc, err := ws.clientset.CoreV1().PersistentVolumeClaims(ws.workspaceServiceConfig.WorkspaceNamespace()).Get(context.Background(), workspaceId, v12.GetOptions{})
 	if err != nil || pvc == nil {
+		ws.logger.Error("Failed to get PVC", zap.Error(err))
 		err = ws.createWorkspacePVC(workspaceId)
 		if err != nil {
 			ws.logger.Error("Failed to create PVC", zap.Error(err))

@@ -60,6 +60,10 @@ func (js K8sJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Create
 	js.logger.Info("Creating job 111111111111", zap.Any("request", request))
 	var ttlSecondsAfterFinished int32 = 86400 * 2
 	jobName := createJobName(request.ProjectId, request.StoryId, request.ExecutionId)
+	claimName := request.ProjectId
+	if request.ExecutorImage == "node" {
+		claimName = "workspaces-pvc"
+	}
 	job := &v1.Job{
 		ObjectMeta: v12.ObjectMeta{
 			Name: jobName,
@@ -96,7 +100,7 @@ func (js K8sJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Create
 							Name: "workspace",
 							VolumeSource: v13.VolumeSource{
 								PersistentVolumeClaim: &v13.PersistentVolumeClaimVolumeSource{
-									ClaimName: request.ProjectId,
+									ClaimName: claimName,
 								},
 							},
 						},

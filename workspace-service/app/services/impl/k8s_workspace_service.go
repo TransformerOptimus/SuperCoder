@@ -118,7 +118,7 @@ func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplat
 }
 
 func (ws K8sWorkspaceService) CreateFrontendWorkspace(workspaceId string, frontendTemplate string, remoteUrl string) (*dto.WorkspaceDetails, error) {
-	err := ws.checkAndCreateFrontendWorkspaceFromTemplate(workspaceId, frontendTemplate, remoteUrl)
+	err := ws.checkAndCreateFrontendWorkspaceFromTemplate(workspaceId, frontendTemplate+"-node", remoteUrl)
 	if err != nil {
 		ws.logger.Error("Failed to check and create workspace from template", zap.Error(err))
 		return nil, err

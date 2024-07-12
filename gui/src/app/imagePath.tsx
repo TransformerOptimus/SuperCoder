@@ -36,6 +36,7 @@ export default {
   discordIcon: '/icons/application_icons/discord_icon.svg',
   githubIcon: '/icons/application_icons/github_icon.svg',
   closeIcon: '/icons/close_icon.svg',
+  closeCircleIcon: '/icons/close_circle_icon.svg',
   addIcon: '/icons/add_icon.svg',
   prReadyIcon: '/icons/pull_requests/pr_ready_icon.svg',
   prOpenIcon: '/icons/pull_requests/pr_open_icon.svg',

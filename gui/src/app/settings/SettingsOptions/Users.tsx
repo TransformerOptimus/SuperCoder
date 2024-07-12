@@ -11,21 +11,25 @@ import CustomInput from '@/components/CustomInput/CustomInput';
 export default function Users() {
   const [openInviteUserModal, setOpenInviteUserModal] =
     useState<boolean>(false);
+  const [openRemoveUserModal, setOpenRemoveUserModal] =
+    useState<boolean>(false);
   const [inviteUserEmail, setInviteUserEmail] = useState<string>('');
+  const [removeUserEmail, setRemoveUserEmail] = useState<string>('');
   const email = ['admin@test.com', 'random@email.com', 'moin@mail.com'];
   useEffect(() => {
     setInviteUserEmail('');
   }, [openInviteUserModal]);
-  const dropdownItems = [
-    {
-      key: '1',
-      text: 'Remove',
-      icon: null,
-      action: (email) => handleRemoveUser(email),
-    },
-  ];
-  const handleRemoveUser = (email) => {
+
+  const handleRemoveUser = () => {
+    console.log('call remove user api');
+    setOpenRemoveUserModal(false);
+    setRemoveUserEmail('');
+  };
+
+  const handleOpenRemoveModal = (email) => {
     console.log(email);
+    setRemoveUserEmail(email);
+    setOpenRemoveUserModal(true);
   };
 
   const handleSendInvite = () => {
@@ -61,6 +65,24 @@ export default function Users() {
           </Button>
         </CustomModal.Footer>
       </CustomModal>
+
+      <CustomModal
+        isOpen={openRemoveUserModal}
+        onClose={() => setOpenRemoveUserModal(false)}
+        width={'30vw'}
+      >
+        <CustomModal.Header title={'Remove User'} />
+        <CustomModal.Body padding={'24px 16px'}>
+          <span className={'secondary_color text-sm font-normal'}>
+            Are you sure you want to remove {removeUserEmail}?
+          </span>
+        </CustomModal.Body>
+        <CustomModal.Footer>
+          <Button className={'primary_medium'} onClick={handleRemoveUser}>
+            Remove
+          </Button>
+        </CustomModal.Footer>
+      </CustomModal>
       <div className={'flex flex-row justify-between'}>
         <span className={'text-xl text-white'}>Users</span>
         <Button
@@ -91,22 +113,23 @@ export default function Users() {
                   gap={'10px'}
                   position={'start'}
                 >
-                  {dropdownItems &&
-                    dropdownItems.map((item) => (
-                      <CustomDropdown.Item
-                        key={item.key}
-                        onClick={() => item.action(item)}
-                      >
-                        <div
-                          className={
-                            'flex flex-row items-center justify-center gap-2'
-                          }
-                        >
-                          {item.icon}
-                          {item.text}
-                        </div>
-                      </CustomDropdown.Item>
-                    ))}
+                  <CustomDropdown.Item
+                    key={'1'}
+                    onClick={() => handleOpenRemoveModal(item)}
+                  >
+                    <div
+                      className={
+                        'flex flex-row items-center justify-center gap-2'
+                      }
+                    >
+                      <CustomImage
+                        className={'size-4'}
+                        src={imagePath.closeCircleIcon}
+                        alt={'close_icon'}
+                      />
+                      Remove
+                    </div>
+                  </CustomDropdown.Item>
                 </CustomDropdown>
               ) : (
                 index === 2 && (

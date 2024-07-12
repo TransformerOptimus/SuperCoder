@@ -49,7 +49,15 @@ const CustomSidebar: React.FC<CustomSidebarProps> = ({
                   }
                   alt={`${option.key}_icon`}
                 />
-                <span className={'pt-[1px]'}>{option.text}</span>
+                <span
+                  className={`${
+                    selectedKey === option.key
+                      ? 'text-white'
+                      : 'secondary_color'
+                  } pt-[1px]`}
+                >
+                  {option.text}
+                </span>
               </div>
             ))}
         </div>

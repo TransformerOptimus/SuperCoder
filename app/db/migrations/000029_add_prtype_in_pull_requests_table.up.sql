@@ -1,10 +1,12 @@
+-- Add the pr_type column without a default value
 ALTER TABLE pull_requests
-ADD COLUMN pr_type VARCHAR(50) NOT NULL DEFAULT 'automated';
+ADD COLUMN pr_type VARCHAR(50);
 
--- Update existing rows to have the value 'automated' for prtype
+-- Update existing records to set pr_type to 'automated'
 UPDATE pull_requests
-SET pr_type = 'automated';
+SET pr_type = 'automated'
+WHERE pr_type IS NULL;
 
--- Remove the default constraint if it's not needed for future inserts
+-- Alter the column to set NOT NULL constraint
 ALTER TABLE pull_requests
-ALTER COLUMN pr_type DROP DEFAULT;
+MODIFY COLUMN pr_type VARCHAR(50) NOT NULL;

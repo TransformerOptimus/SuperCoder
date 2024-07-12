@@ -12,8 +12,8 @@ type Story struct {
 	Status       string    `gorm:"type:varchar(50)"`
 	IsDeleted    bool      `gorm:"default:false"`
 	HashID       string    `gorm:"type:varchar(100);unique"`
-	Url          string    `gorm:"type:varchar(100)"`
-	FrontendURL  string    `gorm:"type:varchar(255)"`
+	Url         string     `gorm:"type:varchar(500)"`
+	FrontendURL string     `gorm:"type:varchar(500)"`
 	ReviewViewed bool      `gorm:"default:false"`
 	CreatedAt    time.Time `gorm:"autoCreateTime"`
 	UpdatedAt    time.Time `gorm:"autoUpdateTime"`

@@ -4,7 +4,7 @@
       {
         "label": "Run Python App",
         "type": "shell",
-        "command": "(ps -ef | grep 'python3 manage.py runserver 0.0.0.0:5000' | grep -v grep | awk '{print $2}' | xargs -r kill -9 || true) && python3 manage.py runserver 0.0.0.0:5000",
+        "command": "(ps -ef | grep 'python3 manage.py runserver 0.0.0.0:5001' | grep -v grep | awk '{print $2}' | xargs -r kill -9 || true) && python3 manage.py runserver 0.0.0.0:5001",
         "options": {
           "shell": {
             "executable": "/bin/bash",

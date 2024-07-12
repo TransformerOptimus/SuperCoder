@@ -17,7 +17,7 @@ RUN yarn install
 COPY . .
 
 # Build your Next.js application
-#RUN npm run build
+#RUN yarn build
 
 # Start the Next.js application
 #CMD ["yarn", "start"]

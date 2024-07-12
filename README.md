@@ -46,6 +46,9 @@
 <a href="https://twitter.com/ishaanbhola" target="blank">
 <img src="https://img.shields.io/twitter/follow/ishaanbhola?label=Follow: ishaanbhola&style=social" alt="Follow ishaanbhola"/>
 </a>
+<a href="https://twitter.com/mukundns" target="blank">
+<img src="https://img.shields.io/twitter/follow/mukundns?label=Follow: mukundns&style=social" alt="Follow mukundns"/>
+</a>
 </p>
 
 <p align="center"><b>Share SuperCoder Repository</b></p>
@@ -66,7 +69,7 @@
 
 # SuperCoder: Open Source Autonomous Software Development System
 
-## What are we?
+## What is SuperCoder?
 
 SuperCoder is an autonomous software development system that leverages advanced AI tools and agents to streamline and automate coding, testing, and deployment tasks, enhancing efficiency and reliability.
 

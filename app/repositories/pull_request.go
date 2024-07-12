@@ -3,9 +3,11 @@ package repositories
 import (
 	"ai-developer/app/constants"
 	"ai-developer/app/models"
+	"errors"
 	"fmt"
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type PullRequestRepository struct {
@@ -57,6 +59,14 @@ func (r *PullRequestRepository) UpdatePullRequestStatus(pullRequest *models.Pull
 		return err
 	}
 	return nil
+}
+
+func (r* PullRequestCommentsRepository) UpdatePullRequestSourceSHA(pullRequest *models.PullRequest, source string) error{
+	pullRequest.SourceSHA = source
+    if err := r.db.Save(pullRequest).Error; err!= nil {
+        return err
+    }
+    return nil
 }
 
 func (r *PullRequestRepository) GetAllPullRequestsByStoryIDs(storyIDs []uint, status string) ([]*models.PullRequest, error) {
@@ -129,4 +139,16 @@ func (r *PullRequestRepository) GetPullRequestWithDetails(pullRequestID uint) (*
 		return nil, err
 	}
 	return &project, nil
+}
+
+func (r *PullRequestRepository) GetOpenPullRequestsByStoryID(storyID int) (*models.PullRequest, error) {
+	var pullRequest *models.PullRequest
+	err := r.db.Where("story_id =? AND status =?", storyID, constants.Open).First(&pullRequest).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return pullRequest, nil
 }

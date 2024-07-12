@@ -1,6 +1,7 @@
 package services
 
 import (
+	"ai-developer/app/config"
 	"ai-developer/app/constants"
 	"ai-developer/app/models"
 	"ai-developer/app/models/dtos/gitness"
@@ -44,6 +45,7 @@ func NewPullRequestService(pullRequestRepo *repositories.PullRequestRepository, 
 func (s *PullRequestService) GetAllPullRequests(projectID int, status string) ([]*response.GetAllPullRequests, error) {
 	storyType := "backend"
 	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
+	// fmt.Println("____stories_____", stories)
 	if err != nil {
 		return nil, err
 	}
@@ -52,6 +54,7 @@ func (s *PullRequestService) GetAllPullRequests(projectID int, status string) ([
 		storyIDs[i] = story.ID
 	}
 	pullRequests, err := s.pullRequestRepo.GetAllPullRequestsByStoryIDs(storyIDs, status)
+	// fmt.Println("____pullRequests_____", pullRequests)
 	var allPullRequests []*response.GetAllPullRequests
 	if err != nil {
 		return nil, err
@@ -121,6 +124,10 @@ func (s *PullRequestService) MergePullRequestByID(pullRequestID int, organisatio
 
 func (s *PullRequestService) GetPullRequestsCommits(pullRequestID int, organisationID int) ([]*response.GetAllCommitsResponse, error) {
 	organisation, err := s.organisationRepo.GetOrganisationByID(uint(organisationID))
+	if err!=nil{
+		fmt.Println("Error fetching Organisation by ID")
+        return nil, err
+	}
 	pullRequest, err := s.pullRequestRepo.GetPullRequestByID(uint(pullRequestID))
 	if err != nil {
 		fmt.Println("Error fetching Pull Request by ID")
@@ -142,6 +149,9 @@ func (s *PullRequestService) GetPullRequestsCommits(pullRequestID int, organisat
 	}
 	spaceOrProjectName := s.gitService.GetSpaceOrProjectName(organisation)
 	commitsResponse, err := s.gitService.FetchPullRequestCommits(spaceOrProjectName, project.Name, pullRequest.PullRequestNumber)
+	if err!=nil{
+		return nil, err
+	}
 	commits, err := s.FetchCommitsResponse(commitsResponse)
 	if err != nil {
 		return nil, err
@@ -150,7 +160,12 @@ func (s *PullRequestService) GetPullRequestsCommits(pullRequestID int, organisat
 }
 
 func (s *PullRequestService) GetPullRequestDiffByPullRequestID(pullRequestID uint) (string, error) {
-	executionOutput, err := s.executionOutputRepo.GetExecutionOutputByID(pullRequestID)
+	pullRequest, err := s.pullRequestRepo.GetPullRequestByID(pullRequestID)
+	if err!=nil{
+		return "", err
+	}
+
+	executionOutput, err := s.executionOutputRepo.GetExecutionOutputByID(pullRequest.ExecutionOutputID)
 	if err != nil {
 		return "", err
 	}
@@ -158,8 +173,6 @@ func (s *PullRequestService) GetPullRequestDiffByPullRequestID(pullRequestID uin
 	if executionOutput == nil {
 		return "", errors.New("execution output not found")
 	}
-
-	pullRequest, err := s.pullRequestRepo.GetPullRequestByID(pullRequestID)
 
 	if err != nil {
 		return "", err
@@ -276,8 +289,6 @@ func (s *PullRequestService) UpdatePullRequestSourceSHA(pullRequest *models.Pull
 	return s.pullRequestRepo.UpdatePullRequestSourceSHA(pullRequest, sourceSHA)
 }
 func (s *PullRequestService) CreatePullRequestFromCodeEditor(projectID int, title string, description string) (int, error){
-	//git add and commit
-	//create pr
 	project, err := s.projectRepo.GetProjectById(projectID)
 	if err!= nil {
 		fmt.Println("failed to fetch project", err)
@@ -300,12 +311,23 @@ func (s *PullRequestService) CreatePullRequestFromCodeEditor(projectID int, titl
         fmt.Println("failed to configure git safe dir", err)
         return -1, err
     }
+
 	currentBranch, err := utils.GetCurrentBranch(workingDir)
 	if err!=nil{
 		fmt.Println("failed to get current branch", err)
         return -1, err
 	}
 	fmt.Printf("-------Current branch: %s----- ", currentBranch)
+	if currentBranch=="main"{
+		return -1, errors.New("current branch is main can not raise a pr")
+	}
+	execution, err := s.executionRepo.GetExecutionsByBranchName(currentBranch)
+	if err!= nil {
+        fmt.Println("failed to fetch executions by branch name", err)
+        return -1, err
+    }
+	storyID := execution.StoryID
+
 	output, err := utils.GitAddToTrackFiles(workingDir, nil)
 	if err != nil {
 		fmt.Printf("Error adding files to track: %s\n", err.Error())
@@ -328,21 +350,53 @@ func (s *PullRequestService) CreatePullRequestFromCodeEditor(projectID int, titl
 	organisationID := project.OrganisationID
 	organisation, err := s.organisationRepo.GetOrganisationByID(uint(organisationID))
 	if err!= nil {
-        fmt.Println("failed to fetch organisation", err)
+		fmt.Println("failed to fetch organisation", err)
+		return -1, err
+	}
+	spaceOrProjectName := s.gitService.GetSpaceOrProjectName(organisation)
+	openPullRequest, err := s.pullRequestRepo.GetOpenPullRequestsByStoryID(int(storyID))
+	if err!= nil {
+        fmt.Println("failed to fetch open pull requests by story id", err)
         return -1, err
     }
-	spaceOrProjectName := s.gitService.GetSpaceOrProjectName(organisation)
-	pr, err := s.gitService.CreatePullRequest(spaceOrProjectName, project.Name, currentBranch, "main", "Pull Request: "+title, description)
-	if err != nil {
-		fmt.Printf("Error creating pull request: %s\n", err.Error())
+
+	httpPrefix := "https"
+	if config.AppEnv() == constants.Development {
+		httpPrefix = "http"
+	}
+	origin := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
+	err = utils.GitPush(workingDir, origin, currentBranch)
+	if err!=nil{
+		fmt.Printf("Error pushing changes: %s\n", err.Error())
 		return -1, err
 	}
 
-	pullRequest, err := s.CreatePullRequest(pr.Title, pr.Description, strconv.Itoa(pr.Number), "GITNESS", pr.SourceSHA, "sample", pr.MergeBaseSHA, pr.Number, uint(projectID), 0)
-	if err!= nil {
-        fmt.Printf("Error creating pull request in database: %s\n", err.Error())
-        return -1, err
-    }
-	fmt.Println("Pull Request created successfully", pullRequest)
-	return int(pullRequest.ID), nil
+	if openPullRequest == nil {
+		fmt.Println("____no open pull requests, creating a new one____")
+		pr, err := s.gitService.CreatePullRequest(spaceOrProjectName, project.Name, currentBranch, "main", "Pull Request: "+title, description)
+		if err != nil {
+			fmt.Printf("Error creating pull request: %s\n", err.Error())
+			return -1, err
+		}
+		pullRequest, err := s.CreatePullRequest(pr.Title, pr.Description, strconv.Itoa(pr.Number), "GITNESS", pr.SourceSHA, "sample", pr.MergeBaseSHA, pr.Number, storyID, 0)
+		if err!= nil {
+			fmt.Printf("Error creating pull request in database: %s\n", err.Error())
+			return -1, err
+		}
+		fmt.Println("Pull Request created successfully", pullRequest)
+		return int(pullRequest.ID), nil
+	} else {
+		fmt.Println("______found an open pull request pushing changes in it______")
+		latestCommitID, err := utils.GetLatestCommitID(workingDir, err)
+		if err!= nil{
+            fmt.Printf("Error getting latest commit id: %s\n", err.Error())
+            return -1, err
+        }
+		err = s.UpdatePullRequestSourceSHA(openPullRequest, latestCommitID)
+		if err!= nil {
+            fmt.Printf("Error updating pull request source sha: %s\n", err.Error())
+            return -1, err
+        }
+		return int(openPullRequest.ID), nil
+	}
 }

@@ -163,7 +163,7 @@ export default function LandingPage() {
         <div className={'mt-20 flex w-full flex-col gap-6'}>
           <Button
             onClick={() => forGithubSignIn()}
-            className={`${styles.button} w-full`}
+            className={`primary_medium`}
           >
             <CustomImage
               className={'size-5'}
@@ -211,7 +211,7 @@ export default function LandingPage() {
           </div>
           <Button
             onClick={getButtonFields().onClick}
-            className={`${styles.button} w-full`}
+            className={`primary_medium`}
             isLoading={isButtonLoading}
           >
             {getButtonFields().text}

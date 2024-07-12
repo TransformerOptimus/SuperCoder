@@ -60,10 +60,28 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	fmt.Printf("Is re-execution: %v\n", step.Execution.ReExecution)
 	fmt.Printf("Is Retry : %v\n", step.Retry)
 	fmt.Printf("File Name: %s\n", step.File)
+	fmt.Printf("\n-----------------------\n")
+	lsCmd := exec.Command("ls", "-lah")
+	lsOutput, err := lsCmd.CombinedOutput()
+	fmt.Println(lsOutput)
+	fmt.Printf("\n-----------------------\n")
+	lsCmd1 := exec.Command("pwd")
+	lsOutput1, err := lsCmd1.CombinedOutput()
+	fmt.Println(lsOutput1)
 
 	storyDir := config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID + "/" + step.Story.HashID + "/app"
+
 	fmt.Println("____________Project Directory: ", storyDir)
 	fmt.Println("___________Checking for Max Retry______________")
+	lsCmd3 := exec.Command("ls", "-lah")
+	lsCmd3.Dir = storyDir
+	lsOutput3, err := lsCmd3.CombinedOutput()
+	fmt.Println(lsOutput3)
+	fmt.Printf("\n-----------------------\n")
+	lsCmd4 := exec.Command("pwd")
+	lsCmd4.Dir = storyDir
+	lsOutput4, err := lsCmd4.CombinedOutput()
+	fmt.Println(lsOutput4)
 	count, err := openAiCodeGenerator.executionStepService.CountExecutionStepsOfName(step.Execution.ID, steps.CODE_GENERATE_STEP.String())
 	if err != nil {
 		fmt.Printf("Error checking max retry for generation: %s\n", err.Error())
@@ -181,10 +199,10 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildFinalInstructionForGe
 	step steps.GenerateCodeStep, storyDir string) (map[string]string, error) {
 	// Initialize the final instruction string
 	finalInstruction, err := openAiCodeGenerator.buildInstructionForFirstExecution(step, storyDir)
-	if err!= nil {
-        fmt.Printf("Error building instruction for first execution: %s\n", err.Error())
-        return nil, err
-    }
+	if err != nil {
+		fmt.Printf("Error building instruction for first execution: %s\n", err.Error())
+		return nil, err
+	}
 	if step.Retry {
 		fmt.Println("Building instruction on retry limit reached for LLM steps")
 		finalInstruction, err = openAiCodeGenerator.buildInstructionOnRetry(step, storyDir)
@@ -229,7 +247,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 	}
 
 	code, err := openAiCodeGenerator.getFilesContent(storyDir)
-	if err!=nil{
+	if err != nil {
 		return nil, err
 	}
 
@@ -250,7 +268,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getFilesContent(folderPath
 	}
 
 	var fileData string
-	
+
 	for _, file := range files {
 		if !file.IsDir() && (strings.HasSuffix(file.Name(), ".css") || strings.HasSuffix(file.Name(), ".tsx")) {
 			fullPath := filepath.Join(folderPath, file.Name())
@@ -259,7 +277,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getFilesContent(folderPath
 				fmt.Printf("Error reading file %s: %s\n", fullPath, err)
 				return "", err
 			}
-			fileData += string("Code for:"+file.Name()+":\n"+ string(content)+"\n\n")
+			fileData += string("Code for:" + file.Name() + ":\n" + string(content) + "\n\n")
 		}
 	}
 

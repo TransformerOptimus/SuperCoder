@@ -1,2 +1,2 @@
 ALTER TABLE stories
-DROP COLUMN type;
+DROP COLUMN "type";

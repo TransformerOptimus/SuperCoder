@@ -62,7 +62,7 @@ func (js K8sJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Create
 	jobName := createJobName(request.ProjectId, request.StoryId, request.ExecutionId)
 	claimName := request.ProjectId
 	if request.ExecutorImage == "node" {
-		claimName = "workspaces-pvc"
+		claimName = request.ProjectId + "-node"
 	}
 	job := &v1.Job{
 		ObjectMeta: v12.ObjectMeta{

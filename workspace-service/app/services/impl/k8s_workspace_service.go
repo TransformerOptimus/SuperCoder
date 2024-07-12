@@ -124,12 +124,11 @@ func (ws K8sWorkspaceService) CreateFrontendWorkspace(workspaceId string, fronte
 		return nil, err
 	}
 
-	err = ws.checkAndCreateWorkspacePVC(workspaceId)
+	err = ws.checkAndCreateWorkspacePVC(frontendTemplate + "-node")
 	if err != nil {
 		ws.logger.Error("Failed to check and create workspace PVC", zap.Error(err))
 		return nil, err
 	}
-
 	workspaceHost := ws.workspaceServiceConfig.WorkspaceHostName()
 	workspaceUrl := fmt.Sprintf("https://%s.%s/?folder=/workspaces/stories/%s", workspaceId, workspaceHost, workspaceId)
 	frontendUrl := fmt.Sprintf("https://fe-%s.%s", workspaceId, workspaceHost)
@@ -147,8 +146,10 @@ func (ws K8sWorkspaceService) CreateFrontendWorkspace(workspaceId string, fronte
 }
 
 func (ws K8sWorkspaceService) checkAndCreateWorkspacePVC(workspaceId string) (err error) {
+	ws.logger.Info("Checking if PVC exists", zap.String("workspaceId", workspaceId))
 	pvc, err := ws.clientset.CoreV1().PersistentVolumeClaims(ws.workspaceServiceConfig.WorkspaceNamespace()).Get(context.Background(), workspaceId, v12.GetOptions{})
 	if err != nil || pvc == nil {
+		ws.logger.Info("PVC does not exist", zap.String("workspaceId", workspaceId))
 		ws.logger.Error("Failed to get PVC", zap.Error(err))
 		err = ws.createWorkspacePVC(workspaceId)
 		if err != nil {
@@ -177,6 +178,8 @@ func (ws K8sWorkspaceService) createWorkspacePVC(workspaceId string) (err error)
 			},
 		},
 	}
+	ws.logger.Info("Creating PVC", zap.Any("pvc", pvc))
+	ws.logger.Info("namespace", zap.String("namespace", ws.workspaceServiceConfig.WorkspaceNamespace()))
 	_, err = ws.clientset.CoreV1().PersistentVolumeClaims(ws.workspaceServiceConfig.WorkspaceNamespace()).Create(context.Background(), pvc, v12.CreateOptions{})
 	if err != nil {
 		ws.logger.Error("Failed to create PVC", zap.Error(err))

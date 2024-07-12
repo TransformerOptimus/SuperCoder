@@ -171,7 +171,7 @@ services:
     working_dir: /workspaces
     ports:
       - 8081:8080
-      - 5000:5000
+      - 5001:5001
     volumes:
       - workspaces:/workspaces
 

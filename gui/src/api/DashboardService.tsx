@@ -6,14 +6,25 @@ import {
 import { FormStoryPayload } from '../../types/storyTypes';
 import { CommentReBuildPayload } from '../../types/pullRequestsTypes';
 import { CreateOrUpdateLLMAPIKeyPayload } from '../../types/modelsTypes';
+import { authPayload } from '../../types/authTypes';
 
 export const checkHealth = () => {
   return api.get(`/health`);
 };
 
-// GitHub Sign In
-export const githubSignIn = () => {
-  return api.get(`/github/signin`);
+// Auth APIS
+export const checkUserEmailExists = (user_email: string) => {
+  return api.get(`/user/check_user`, {
+    params: { user_email },
+  });
+};
+
+export const login = (payload: authPayload) => {
+  return api.post(`/user/sign_in`, payload);
+};
+
+export const signUp = (payload: authPayload) => {
+  return api.post(`/user/sign_up`, payload);
 };
 
 // Project APIs

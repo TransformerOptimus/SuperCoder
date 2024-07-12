@@ -71,4 +71,6 @@ export default {
   browserIconDark: '/icons/browser_icon_dark.svg',
   settingsIcon: '/icons/settings_icon.svg',
   logoutIcon: '/icons/logout_icon.svg',
+  passwordHidden: 'icons/password_hidden.svg',
+  passwordUnhidden: 'icons/password_unhidden.svg',
 };

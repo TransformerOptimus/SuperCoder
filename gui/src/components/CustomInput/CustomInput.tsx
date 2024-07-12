@@ -16,6 +16,10 @@ interface CustomInputProps {
   size?: string;
   iconCSS?: string;
   alt?: string;
+  endIcon?: string;
+  endIconSize?: string;
+  endIconBackCSS?: string;
+  endIconClick?: () => void;
 }
 
 const CustomInput: React.FC<CustomInputProps> = ({
@@ -32,6 +36,10 @@ const CustomInput: React.FC<CustomInputProps> = ({
   size,
   iconCSS,
   alt,
+  endIcon,
+  endIconSize,
+  endIconBackCSS,
+  endIconClick,
 }) => {
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value;
@@ -67,6 +75,14 @@ const CustomInput: React.FC<CustomInputProps> = ({
           className={`w-full ${types[type].text} outline-0`}
           disabled={disabled}
         />
+        {endIcon && (
+          <CustomImage
+            className={`${endIconSize} ${endIconBackCSS}`}
+            src={endIcon}
+            alt={alt}
+            onClick={endIconClick}
+          />
+        )}
       </div>
       {isError && errorMessage && (
         <div className={styles.error_message}>{errorMessage}</div>

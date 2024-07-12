@@ -172,8 +172,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(func(userRepo *repositories.UserRepository) *services.UserService {
-		return services.NewUserService(userRepo)
+	err = c.Provide(func(userRepo *repositories.UserRepository, orgService *services.OrganisationService, jwtService *services.JWTService) *services.UserService {
+		return services.NewUserService(userRepo, orgService, jwtService)
 	})
 
 	err = c.Provide(services.NewLLMAPIKeyService)
@@ -319,6 +319,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService) *controllers.UserController {
+		return controllers.NewUserController(jwtService, userService, config.LoginRedirectUrl())
+	})
+	if err != nil {
+		panic(err)
+	}
 	err = c.Provide(func(executionOutputPullRequestService *services.PullRequestService, userService *services.UserService,
 		executionOutputService *services.ExecutionOutputService) *controllers.PullRequestController {
 		return controllers.NewPullRequestController(executionOutputPullRequestService, userService, executionOutputService)
@@ -372,6 +378,7 @@ func main() {
 	err = c.Invoke(func(
 		health *controllers.HealthController,
 		oauth *controllers.OauthController,
+		userController *controllers.UserController,
 		middleware *middleware.JWTClaims,
 		projectsController *controllers.ProjectController,
 		storiesController *controllers.StoryController,
@@ -483,6 +490,11 @@ func main() {
 		llmApiKeys.POST("/", llm_api_key.CreateLLMAPIKey)
 
 		llmApiKeys.GET("/:organisation_id", orgAuthMiddleware.Authorize(), llm_api_key.FetchAllLLMAPIKeyByOrganisationID)
+
+		user := api.Group("/user")
+		user.GET("/check_user", userController.CheckUser)
+		user.POST("/sign_in", userController.SignIn)
+		user.POST("/sign_up", userController.SignUp)
 
 		// Wrap the socket.io server as Gin handlers for specific routes
 		r.GET("/api/socket.io/*any", middleware.AuthenticateJWT(), gin.WrapH(ioServer))

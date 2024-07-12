@@ -33,6 +33,7 @@ func LoadConfig() (*koanf.Koanf, error) {
 				"dir": "/workspaces",
 			},
 		},
+		"login.redirect.url": "http://localhost:3000/projects",
 	}, "."), nil)
 	if err != nil {
 		return nil, err

@@ -3,7 +3,7 @@ package response
 type FetchOrganisationUserResponse struct {
 	Success bool            `json:"success"`
 	Error   interface{}     `json:"error,omitempty"`
-	User    []*UserResponse `json:"user,omitempty"`
+	Users   []*UserResponse `json:"users,omitempty"`
 }
 
 type UserResponse struct {

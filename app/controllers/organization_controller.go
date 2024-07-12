@@ -20,17 +20,17 @@ func (controller *OrganizationController) FetchOrganizationUsers(c *gin.Context)
 	var organizationId = c.Param("organisation_id")
 	var organizationIdInt, err = strconv.Atoi(organizationId)
 	if err != nil {
-		c.JSON(http.StatusOK, &response.FetchOrganisationUserResponse{Success: false, Error: "Invalid input for organisation_id", User: nil})
+		c.JSON(http.StatusOK, &response.FetchOrganisationUserResponse{Success: false, Error: "Invalid input for organisation_id", Users: nil})
 	}
 
 	fmt.Println("Fetching org users: ", organizationId)
 	users, err = controller.organizationService.GetOrganizationUsers(uint(organizationIdInt))
 	if err != nil {
-		c.JSON(http.StatusOK, &response.FetchOrganisationUserResponse{Success: false, Error: err.Error(), User: nil})
+		c.JSON(http.StatusOK, &response.FetchOrganisationUserResponse{Success: false, Error: err.Error(), Users: nil})
 		return
 	}
 
-	c.JSON(http.StatusOK, &response.FetchOrganisationUserResponse{Success: true, Error: nil, User: users})
+	c.JSON(http.StatusOK, &response.FetchOrganisationUserResponse{Success: true, Error: nil, Users: users})
 }
 
 func NewOrganizationController(

@@ -67,7 +67,7 @@ func (controller *UserController) SignIn(c *gin.Context) {
 	}
 
 	if existingUser == nil || existingUser.Password != userSignInRequest.Password {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "user": nil, "error": "Invalid Credentials"})
+		c.JSON(http.StatusOK, gin.H{"success": false, "user": nil, "error": "Invalid Credentials"})
 		return
 	}
 

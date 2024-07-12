@@ -14,7 +14,7 @@ import { API_BASE_URL } from '@/api/apiConfig';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import { authPayload, userData } from '../../../types/authTypes';
 import { useRouter } from 'next/navigation';
-import { setUserData } from '@/app/utils';
+import { setUserData, validateEmail } from '@/app/utils';
 
 export default function LandingPage() {
   const [email, setEmail] = useState<string>('');
@@ -23,6 +23,7 @@ export default function LandingPage() {
   const [isEmailRegistered, setIsEmailRegistered] = useState<boolean | null>(
     null,
   );
+  const [emailErrorMsg, setEmailErrorMsg] = useState<string>('');
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string>('');
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
@@ -75,6 +76,7 @@ export default function LandingPage() {
     setIsEmailRegistered(null);
     setPassword('');
     setShowPassword(false);
+    setEmailErrorMsg('');
   };
 
   const onSetPassword = (value: string) => {
@@ -94,6 +96,10 @@ export default function LandingPage() {
 
   async function toCheckUserEmail() {
     try {
+      if (!validateEmail(email)) {
+        setEmailErrorMsg('Enter a Valid Email.');
+        return;
+      }
       setIsButtonLoading(true);
       const response = await checkUserEmailExists(email);
       if (response) {
@@ -213,6 +219,8 @@ export default function LandingPage() {
                 value={email}
                 setter={onSetEmail}
                 disabled={false}
+                isError={emailErrorMsg !== ''}
+                errorMessage={emailErrorMsg}
               />
             </div>
             {isEmailRegistered !== null && (

@@ -148,7 +148,7 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	createJobRequest.WithStoryId(int64(payload.StoryID))
 	createJobRequest.WithIsReExecution(payload.ReExecute)
 	createJobRequest.WithExecutionId(int64(execution.ID))
-	if story.Type == "frontend"{
+	if story.Type == "frontend" {
 		fmt.Println("Project Framework", project.FrontendFramework)
 		createJobRequest.WithExecutorImage("node")
 		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.FrontendFramework))
@@ -160,6 +160,7 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.Framework))
 	}
 
+	h.logger.Info("Payload for create job request", zap.Any("createJobRequest", createJobRequest))
 	fmt.Println("__payload_____12july", createJobRequest)
 
 	job, err := h.workspaceServiceClient.CreateJob(createJobRequest)

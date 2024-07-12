@@ -160,6 +160,8 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.Framework))
 	}
 
+	fmt.Println("__payload_____12july", createJobRequest)
+
 	job, err := h.workspaceServiceClient.CreateJob(createJobRequest)
 	if err != nil {
 		tx.Rollback()

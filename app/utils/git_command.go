@@ -105,6 +105,18 @@ func PullBranch(workingDir string, origin string, branchName string) error {
 	return nil
 }
 
+func PullOriginMain(workingDir string, origin string) error {
+	fmt.Printf("Executing git pull origin main --no-rebase",)
+	cmd := exec.Command("git", "pull", origin, "main", "--no-rebase")
+	cmd.Dir = workingDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git pull error: %s, output: %s", err.Error(), string(output))
+	}
+	fmt.Printf("Output: %s\n", string(output))
+	return nil
+}
+
 func PullOriginBranch(workingDir string, project *models.Project, GitnessSpaceOrProjectName string) error {
 	branchName := "main"
 	httpPrefix := "https"

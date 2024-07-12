@@ -140,8 +140,9 @@ func (e *GitnessMakePullRequestExecutor) handleExecutionOutput(executionID uint,
 		if err != nil {
 			return err
 		}
+		prType := "automated"
 		pullRequest, err2 := e.pullRequestService.CreatePullRequest(prName, prDescription, strconv.Itoa(prNumber), "GITNESS",
-			sourceSHA, mergeTargetSHA, mergeBaseSHA, prNumber, storyID, executionOutput.ID)
+			sourceSHA, mergeTargetSHA, mergeBaseSHA, prNumber, storyID, executionOutput.ID, prType)
 		if err2 != nil {
 			fmt.Printf("Error creating execution output: %s\n", err2.Error())
 			return err2

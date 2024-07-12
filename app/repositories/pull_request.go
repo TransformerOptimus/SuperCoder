@@ -19,7 +19,7 @@ func NewPullRequestRepository(db *gorm.DB) *PullRequestRepository {
 }
 
 func (r *PullRequestRepository) CreatePullRequest(prTitle, prDescription, prID, remoteType string,
-	sourceSHA, mergeTargetSHA, mergeBaseSHA string, prNumber int, storyID uint, executionOutputId uint) (*models.PullRequest, error) {
+	sourceSHA, mergeTargetSHA, mergeBaseSHA string, prNumber int, storyID uint, executionOutputId uint, prType string) (*models.PullRequest, error) {
 	pullRequest := &models.PullRequest{
 		StoryID:                storyID,
 		PullRequestTitle:       prTitle,
@@ -34,6 +34,7 @@ func (r *PullRequestRepository) CreatePullRequest(prTitle, prDescription, prID, 
 		ExecutionOutputID:      executionOutputId,
 		CreatedAt:              time.Now(),
 		UpdatedAt:              time.Now(),
+		PRType: 				prType,
 	}
 	if err := r.db.Create(pullRequest).Error; err != nil {
 		return nil, err

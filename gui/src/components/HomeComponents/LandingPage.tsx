@@ -21,7 +21,7 @@ export default function LandingPage() {
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isEmailRegistered, setIsEmailRegistered] = useState<boolean | null>(
-    false,
+    null,
   );
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 

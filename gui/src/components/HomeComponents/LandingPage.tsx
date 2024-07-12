@@ -143,6 +143,10 @@ export default function LandingPage() {
 
   async function createAccount() {
     try {
+      if (password.length < 8) {
+        setPasswordErrorMsg('Password must be atleast 8 characters');
+        return;
+      }
       setIsButtonLoading(true);
       const payload: authPayload = {
         email: email,

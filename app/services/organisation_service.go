@@ -12,6 +12,7 @@ import (
 type OrganisationService struct {
 	organisationRepo *repositories.OrganisationRepository
 	gitnessService   *git_providers.GitnessService
+	userRepository   *repositories.UserRepository
 }
 
 func (s *OrganisationService) CreateOrganisationName() string {
@@ -67,4 +68,8 @@ func NewOrganisationService(organisationRepo *repositories.OrganisationRepositor
 
 func (s *OrganisationService) GetOrganisationByName(organisationName string) (*models.Organisation, error) {
 	return s.organisationRepo.GetOrganisationByName(organisationName)
+}
+
+func (s *OrganisationService) GetOrganizationUsers(organizationID uint) ([]models.User, error) {
+	return s.userRepository.FetchAllUsersByOrganizationId(organizationID)
 }

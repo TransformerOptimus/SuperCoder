@@ -144,6 +144,7 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	}
 
 	createJobRequest := request.NewCreateJobRequest()
+	createJobRequest.WithProjectId(string(project.ID))
 	createJobRequest.WithBranch(branchName)
 	createJobRequest.WithStoryId(int64(payload.StoryID))
 	createJobRequest.WithIsReExecution(payload.ReExecute)

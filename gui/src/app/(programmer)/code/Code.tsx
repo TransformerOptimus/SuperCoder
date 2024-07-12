@@ -8,6 +8,7 @@ import imagePath from '@/app/imagePath';
 import CustomModal from '@/components/CustomModal/CustomModal';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import { createPullRequest } from '@/api/DashboardService';
+import toast from 'react-hot-toast';
 
 export default function Code() {
   const [projectURL, setProjectURL] = useState('');
@@ -75,10 +76,14 @@ export default function Code() {
       const response = await createPullRequest(payload);
       if (response) {
         const data = response.data;
+        toast.success('Pull Request created Successfully!!');
         console.log(data);
       }
     } catch (error) {
+      toast.error('Pull Request was not Created!!');
       console.error('Error while creating a Pull Request: ', error);
+    } finally {
+      setIsCreatePRModalOpen(false);
     }
   }
 

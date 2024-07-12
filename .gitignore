@@ -30,6 +30,4 @@ Thumbs.db
 
 #workspace virtual environment
 workspace/venv/
-.env
-.envrc
 gui/.husky/pre-commit

@@ -249,3 +249,13 @@ body {
 .custom-skeleton {
   animation: pulse 1.5s ease-in-out infinite;
 }
+
+.code_header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--white-opacity-12);
+  background: var(--white-opacity-12);
+  border-radius: 8px 0 0;
+}

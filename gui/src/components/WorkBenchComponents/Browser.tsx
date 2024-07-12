@@ -1,10 +1,20 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import imagePath from '@/app/imagePath';
-import { BrowserProps } from '../../../../../types/workbenchTypes';
+import { BrowserProps } from '../../../types/workbenchTypes';
 
-export default function Browser({ url, showUrl = true }: BrowserProps) {
+export default function Browser({
+  url,
+  status = false,
+  showUrl = true,
+}: BrowserProps) {
+  const [iframeKey, setIframeKey] = useState(0);
+
+  useEffect(() => {
+    setIframeKey((prevKey) => prevKey + 1);
+  }, [status]);
+
   return (
     <div
       id={'browser'}
@@ -21,12 +31,13 @@ export default function Browser({ url, showUrl = true }: BrowserProps) {
         />
       )}
       <div
-        className="relative w-full overflow-hidden"
+        className={'relative w-full overflow-hidden'}
         style={{
           height: showUrl ? 'calc(30vh)' : 'calc(35vh)',
         }}
       >
         <iframe
+          key={iframeKey}
           src={url}
           className={
             'h-[200%] w-[200%] origin-top-left scale-50 border-none bg-white'

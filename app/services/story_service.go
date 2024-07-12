@@ -45,6 +45,7 @@ func (s *StoryService) GetStoryById(storyId int64) (*models.Story, error) {
 }
 
 func (s *StoryService) CreateStoryForProject(requestData request.CreateStoryRequest) (int, error) {
+	storyType := "backend"
 	hashID := s.hashIdGenerator.Generate() + "-" + uuid.New().String()
 	story := &models.Story{
 		ProjectID:   uint(requestData.ProjectId),
@@ -52,6 +53,7 @@ func (s *StoryService) CreateStoryForProject(requestData request.CreateStoryRequ
 		Description: requestData.Description,
 		Status:      constants.Todo,
 		HashID:      hashID,
+		Type:        storyType,
 	}
 
 	// create a story
@@ -84,18 +86,18 @@ func (s *StoryService) CreateStoryForProject(requestData request.CreateStoryRequ
 	return int(createdStory.ID), nil
 }
 
-func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName, title string, projectID int) (uint, error) {
+func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName, title string, projectID int, storyType string) (uint, error) {
 	hashID := s.hashIdGenerator.Generate() + "-" + uuid.New().String()
 	project, err := s.projectService.GetProjectById(uint(projectID))
 	if err != nil {
 		return 0, err
 	}
-	url := "http://localhost:8082/?folder=/workspaces/story" + hashID
+	url := "http://localhost:8081/?folder=/workspaces/stories/" + hashID
 	env := config.Get("app.env")
 	frontendBaseUrl := config.WorkspaceStaticFrontendUrl()
-	frontendUrl := frontendBaseUrl + "/" + project.HashID + "/" + hashID + "/out/"
+	frontendUrl := frontendBaseUrl + "/stories/" + project.HashID + "/" + hashID + "/out/"
 	if env == "production" {
-		url = "https://" + hashID + ".workspace.superagi.com/?folder=/workspaces/story" + hashID
+		url = "https://" + hashID + ".workspace.superagi.com/?folder=/workspaces/stories/" + hashID
 	}
 
 	story := &models.Story{
@@ -105,6 +107,7 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 		HashID:      hashID,
 		Url:         url,
 		FrontendURL: frontendUrl,
+		Type:        storyType,
 	}
 
 	frontendService := "nextjs"
@@ -132,6 +135,10 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 	s3Url, err := s.UploadFileBytesToS3(file, fileName, projectID, int(createdStory.ID))
 	if err != nil {
 		fmt.Println("Error uploading file to S3", err.Error())
+		err := s.DeleteStoryByID(int(createdStory.ID))
+		if err!=nil{
+			fmt.Println("Error deleting story")
+		}
 		return 0, err
 	}
 
@@ -276,8 +283,8 @@ func (s *StoryService) UpdateStoryTestCases(newTestCases []string, storyID int) 
 	return nil
 }
 
-func (s *StoryService) GetAllStoriesOfProject(projectId int, searchValue string) (*response.GetAllStoriesByProjectIDResponse, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectIdAndSearch(projectId, searchValue)
+func (s *StoryService) GetAllStoriesOfProject(projectId int, searchValue string, storyType string) (*response.GetAllStoriesByProjectIDResponse, error) {
+	stories, err := s.storyRepo.GetStoriesByProjectIdAndSearch(projectId, searchValue, storyType)
 	if err != nil {
 		return &response.GetAllStoriesByProjectIDResponse{}, err
 	}
@@ -333,8 +340,8 @@ func (s *StoryService) GetAllStoriesOfProject(projectId int, searchValue string)
 	return responseData, nil
 }
 
-func (s *StoryService) GetDesignStoriesOfProject(projectId int) ([]*response.GetDesignStoriesOfProjectId, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectId)
+func (s *StoryService) GetDesignStoriesOfProject(projectId int, storyType string) ([]*response.GetDesignStoriesOfProjectId, error) {
+	stories, err := s.storyRepo.GetStoriesByProjectId(projectId, storyType)
 	fmt.Println(stories)
 	if err != nil {
 		return nil, err
@@ -426,7 +433,7 @@ func (s *StoryService) GetCodeForDesignStory(storyId int) ([]*response.GetCodeFo
 	if err != nil {
 		return nil, err
 	}
-	folderPath := config.WorkspaceWorkingDirectory() + "/" + project.HashID + "/" + story.HashID + "/app/"
+	folderPath := config.WorkspaceWorkingDirectory() + "/stories/" + project.HashID + "/" + story.HashID + "/app/"
 	var fileData []*response.GetCodeForDesignStory
 	files, err := os.ReadDir(folderPath)
 	if err != nil {
@@ -605,7 +612,8 @@ func (s *StoryService) UpdateStoryStatus(storyID int, status string) error {
 }
 
 func (s *StoryService) GetStoriesByProjectId(projectID int) ([]models.Story, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectID)
+	storyType := "backend"
+	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +621,8 @@ func (s *StoryService) GetStoriesByProjectId(projectID int) ([]models.Story, err
 }
 
 func (s *StoryService) GetDesignStoriesByProjectId(projectID int) ([]models.Story, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectID)
+	storyType := "frontend"
+	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
 	if err != nil {
 		return nil, err
 	}

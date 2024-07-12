@@ -148,14 +148,16 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	createJobRequest.WithStoryId(int64(payload.StoryID))
 	createJobRequest.WithIsReExecution(payload.ReExecute)
 	createJobRequest.WithExecutionId(int64(execution.ID))
-	createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.Framework))
-	fmt.Println("Project Framework", project.Framework)
-	if project.Framework == constants.NextJs {
+	if story.Type == "frontend"{
+		fmt.Println("Project Framework", project.FrontendFramework)
 		createJobRequest.WithExecutorImage("node")
+		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.FrontendFramework))
 	} else {
+		fmt.Println("Project Framework", project.Framework)
 		createJobRequest.WithPullRequestId(int64(payload.PullRequestId))
 		createJobRequest.WithProjectId(project.HashID)
 		createJobRequest.WithExecutorImage("python")
+		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.Framework))
 	}
 
 	job, err := h.workspaceServiceClient.CreateJob(createJobRequest)

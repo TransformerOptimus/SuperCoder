@@ -7,6 +7,7 @@ import { FormStoryPayload } from '../../types/storyTypes';
 import {
   CommentReBuildPayload,
   CommentReBuildDesignStoryPayload,
+  CreatePullRequestPayload,
 } from '../../types/pullRequestsTypes';
 import { CreateOrUpdateLLMAPIKeyPayload } from '../../types/modelsTypes';
 import {
@@ -52,9 +53,10 @@ export const editStory = (payload: FormStoryPayload) => {
 export const getAllStoriesOfProject = (
   project_id: string,
   search: string = '',
+  story_type: string = 'backend',
 ) => {
   return api.get(`/projects/${project_id}/stories`, {
-    params: { search },
+    params: { search, story_type },
   });
 };
 
@@ -80,8 +82,8 @@ export const deleteStory = (story_id: number) => {
   return api.delete(`/stories/${story_id}`);
 };
 
-export const getAllExecutionOutputs = (id: string) => {
-  return api.get(`/stories/${id}/execution-outputs`);
+export const createPullRequest = (payload: CreatePullRequestPayload) => {
+  return api.post(`/pull-requests/create`, payload);
 };
 
 export const getProjectPullRequests = (project_id: string, status: string) => {

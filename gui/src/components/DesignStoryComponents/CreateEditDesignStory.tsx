@@ -109,7 +109,10 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
       }
       const fileType = file.type.toLowerCase();
       const fileName = file.name.toLowerCase();
-      if (fileType === 'image/png' || (fileType === 'image/jpeg' && fileName.endsWith('.jpg'))) {
+      if (
+        fileType === 'image/png' ||
+        (fileType === 'image/jpeg' && fileName.endsWith('.jpg'))
+      ) {
         setUploadedImage(file);
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -190,8 +193,8 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
                   <span className="text-[13px] font-normal opacity-40">
                     {imageName && imageName}
                   </span>
-                  <button
-                    className={`flex h-fit gap-1 bg-transparent p-0 text-[13px] font-normal ${styles.red_color}`}
+                  <Button
+                    className={`flex h-fit flex-row items-center gap-1 bg-transparent p-0 text-[13px] font-normal ${styles.red_color}`}
                     onClick={removeImage}
                   >
                     <CustomImage
@@ -200,19 +203,18 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
                       alt={'remove'}
                     />
                     Remove
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
               <div
-                className={`${styles.upload_button} flex h-32 flex-row items-center justify-center gap-2 rounded-lg border-2 border-dashed`}
+                className={`${styles.upload_button} flex h-32 cursor-pointer flex-row items-center justify-center gap-2 rounded-lg border-2 border-dashed`}
                 onClick={triggerFileInput}
               >
-                <img
+                <CustomImage
+                  className={'size-5'}
                   src={imagePath.uploadIcon}
-                  alt="upload_icon"
-                  width={16}
-                  height={16}
+                  alt={'upload_icon'}
                 />
                 <span>Upload Image</span>
               </div>

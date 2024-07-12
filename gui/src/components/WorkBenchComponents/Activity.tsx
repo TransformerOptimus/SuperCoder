@@ -1,12 +1,12 @@
 'use client';
 import React, { useRef, useEffect } from 'react';
-import styles from '../workbench.module.css';
+import styles from './workbenchComponents.module.css';
 import imagePath from '@/app/imagePath';
 import SyntaxDisplay from '@/components/SyntaxDisplay/SyntaxDisplay';
 import { formatTimeAgo } from '@/app/utils';
 import CustomImage from '@/components/ImageComponents/CustomImage';
-import { ActivityItem } from '../../../../../types/workbenchTypes';
-import {ActivityLogType} from "@/app/constants/ActivityLogType";
+import { ActivityItem } from '../../../types/workbenchTypes';
+import { ActivityLogType } from '@/app/constants/ActivityLogType';
 
 interface ActivityProps {
   activity: ActivityItem[];
@@ -43,7 +43,7 @@ const Activity: React.FC<ActivityProps> = ({ activity, fullScreen = true }) => {
         activity.length > 0 &&
         activity.map((item, index) => (
           <div key={index} className={styles.activity_container}>
-            { isCodeOrError(item.Type) ? (
+            {isCodeOrError(item.Type) ? (
               <SyntaxDisplay msg={item.LogMessage} type={item.Type} />
             ) : (
               <div

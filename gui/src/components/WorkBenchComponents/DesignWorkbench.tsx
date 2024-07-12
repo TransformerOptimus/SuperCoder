@@ -1,34 +1,30 @@
 import React, { useEffect, useRef, useState } from 'react';
 import CustomContainers from '@/components/CustomContainers/CustomContainers';
-import Activity from '@/app/(programmer)/workbench/WorkBenchComponents/Activity';
-import Browser from '@/app/(programmer)/workbench/WorkBenchComponents/Browser';
-import { DesignStoryItem } from '../../../../types/designStoryTypes';
+import Activity from '@/components/WorkBenchComponents/Activity';
+import Browser from '@/components/WorkBenchComponents/Browser';
+import { DesignStoryItem } from '../../../types/designStoryTypes';
 import { getFrontendCode, getDesignStoryDetails } from '@/api/DashboardService';
 import FrontendCodeSection from '@/components/DesignStoryComponents/FrontendCodeSection';
-import styles from './workbench.module.css';
+import styles from './workbenchComponents.module.css';
 import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
-import { CodeFile } from '../../../../types/customComponentTypes';
-import { useWorkbenchContext } from '@/context/Workbench';
+import { CodeFile } from '../../../types/customComponentTypes';
 import { storyStatus } from '@/app/constants/BoardConstants';
+import { DesignWorkbenchProps } from '../../../types/workbenchTypes';
 
-const ActiveDesignWorkbench: React.FC = () => {
+const ActiveDesignWorkbench: React.FC<DesignWorkbenchProps> = ({
+  activityLogs,
+  selectedStoryId,
+  executionInProcess,
+}) => {
   const [selectedStory, setSelectedStory] = useState<DesignStoryItem | null>(
     null,
   );
   const [codeFiles, setCodeFiles] = useState<CodeFile[] | null>(null);
-  const { executionInProcess, activityLogs, selectedStoryId } =
-    useWorkbenchContext();
   const frontendURL = useRef('');
 
   useEffect(() => {
     getStoryDetails(selectedStoryId).then().catch();
-  }, [selectedStoryId]);
-
-  useEffect(() => {
-    if (executionInProcess === false) {
-      getStoryDetails(selectedStoryId).then().catch();
-    }
-  }, [executionInProcess]);
+  }, [selectedStoryId, executionInProcess]);
 
   async function getCode(story_id) {
     try {
@@ -49,7 +45,11 @@ const ActiveDesignWorkbench: React.FC = () => {
         const data = response.data;
         setSelectedStory(data.story);
         frontendURL.current = data.story ? data.story.frontend_url : '';
-        if (data.story.status === storyStatus.DONE) {
+        if (
+          data.story.status === storyStatus.DONE ||
+          data.story.status === storyStatus.IN_REVIEW ||
+          data.story.status === storyStatus.MAX_LOOP_ITERATIONS
+        ) {
           getCode(story_id).then().catch();
         } else {
           setCodeFiles(null);

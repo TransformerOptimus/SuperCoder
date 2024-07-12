@@ -8,7 +8,6 @@ import { removeCookie } from '@/utils/CookieUtils';
 import { ProjectTypes } from '../../types/projectsTypes';
 import toast from 'react-hot-toast';
 import { storyStatus } from '@/app/constants/BoardConstants';
-import { frameworkOptions } from '@/app/constants/ProjectConstants';
 
 export const logout = () => {
   if (typeof window !== 'undefined') {
@@ -24,6 +23,7 @@ export const logout = () => {
     localStorage.removeItem('projectName');
     localStorage.removeItem('storyId');
     localStorage.removeItem('organisationId');
+    localStorage.removeItem('projectFrontendFramework');
   }
 
   window.location.replace('/');
@@ -35,6 +35,7 @@ export const handleStoryStatus = (status: string) => {
     IN_PROGRESS: { text: 'In Progress', color: 'purple' },
     IN_REVIEW: { text: 'In Review', color: 'yellow' },
     DONE: { text: 'Done', color: 'green' },
+    MAX_LOOP_ITERATION_REACHED: { text: 'In Review', color: 'yellow' },
   };
 
   return storyStatus[status] || { text: 'Default ', color: 'grey' };
@@ -87,10 +88,14 @@ export async function handleInProgressStoryStatus(
   }
 }
 
-export async function toGetAllStoriesOfProjectUtils(setter, search = '') {
+export async function toGetAllStoriesOfProjectUtils(
+  setter,
+  search = '',
+  type = 'backend',
+) {
   try {
     const project_id = localStorage.getItem('projectId');
-    const response = await getAllStoriesOfProject(project_id, search);
+    const response = await getAllStoriesOfProject(project_id, search, type);
     if (response) {
       const data = response.data;
       setter(data.stories);
@@ -138,6 +143,10 @@ export function formatTimeAgo(timestamp: string): string {
 
 export function setProjectDetails(project: ProjectTypes) {
   localStorage.setItem('projectFramework', project.project_framework);
+  localStorage.setItem(
+    'projectFrontendFramework',
+    project.project_frontend_framework,
+  );
   localStorage.setItem('projectId', project.project_id.toString());
   localStorage.setItem('projectURL', project.project_url);
   localStorage.setItem('projectURLFrontend', project.project_frontend_url);
@@ -160,9 +169,4 @@ export async function checkModelNotAdded() {
     console.error('Error while fetching LLM API Keys: ', error);
     return true;
   }
-}
-
-export function getProjectTypeFromFramework(id) {
-  const framework = frameworkOptions.find((option) => option.id === id);
-  return framework ? framework.type : 'DEFAULT';
 }

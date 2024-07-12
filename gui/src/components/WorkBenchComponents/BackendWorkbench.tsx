@@ -1,41 +1,42 @@
-'use client';
-import imagePath from '@/app/imagePath';
 import CustomContainers from '@/components/CustomContainers/CustomContainers';
-import StoryDetailsWorkbench from '@/app/(programmer)/workbench/WorkBenchComponents/StoryDetailsWorkbench';
-import Browser from '@/app/(programmer)/workbench/WorkBenchComponents/Browser';
-import Activity from '@/app/(programmer)/workbench/WorkBenchComponents/Activity';
-import React, { useEffect, useRef, useState } from 'react';
+import Activity from '@/components/WorkBenchComponents/Activity';
 import { BoardProvider } from '@/context/Boards';
-import { CustomTabsNewProps } from '../../../../types/customComponentTypes';
-import { useWorkbenchContext } from '@/context/Workbench';
+import StoryDetailsWorkbench from '@/components/WorkBenchComponents/StoryDetailsWorkbench';
+import React, { useEffect, useRef } from 'react';
+import { CustomTabsNewProps } from '../../../types/customComponentTypes';
+import imagePath from '@/app/imagePath';
+import Browser from '@/components/WorkBenchComponents/Browser';
+import { BackendWorkbenchProps } from '../../../types/workbenchTypes';
 
-const ActiveWorkbench: React.FC = () => {
+const BackendWorkbench: React.FC<BackendWorkbenchProps> = ({
+  activityLogs,
+  selectedStoryId,
+  status,
+}) => {
   const backendURL = useRef('');
   const frontendURL = useRef('');
-  const { activityLogs, selectedStoryId } = useWorkbenchContext();
-  const tabsProps: CustomTabsNewProps = {
-    options: [
-      {
-        key: 'backend',
-        text: 'Backend',
-        icon: imagePath.browserIconDark,
-        content: <Browser url={backendURL.current} />,
-      },
-      {
-        key: 'frontend',
-        text: 'Frontend',
-        icon: imagePath.browserIconDark,
-        content: <Browser url={frontendURL.current} />,
-      },
-    ],
-  };
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
       backendURL.current = localStorage.getItem('projectURLBackend');
       frontendURL.current = localStorage.getItem('projectURLFrontend');
     }
   }, []);
+  const tabsProps: CustomTabsNewProps = {
+    options: [
+      {
+        key: 'backend',
+        text: 'Backend',
+        icon: imagePath.browserIconDark,
+        content: <Browser url={backendURL.current} status={status} />,
+      },
+      {
+        key: 'frontend',
+        text: 'Frontend',
+        icon: imagePath.browserIconDark,
+        content: <Browser url={frontendURL.current} status={status} />,
+      },
+    ],
+  };
 
   return (
     <div
@@ -49,9 +50,10 @@ const ActiveWorkbench: React.FC = () => {
           header={'Activity'}
           height={'calc(100vh - 126px)'}
         >
-          <Activity activity={activityLogs} fullScreen={true} />
+          <Activity activity={activityLogs} />
         </CustomContainers>
       </div>
+
       <div
         className={'col-span-6 flex flex-col gap-2'}
         style={{ height: 'calc(100vh - 126px)' }}
@@ -83,4 +85,4 @@ const ActiveWorkbench: React.FC = () => {
   );
 };
 
-export default ActiveWorkbench;
+export default BackendWorkbench;

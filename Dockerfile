@@ -2,6 +2,15 @@ FROM public.ecr.aws/docker/library/golang:1.22.3-bookworm AS build-base
 
 RUN apt-get update && apt-get install -y jq postgresql-client && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+RUN useradd -m coder
+
+USER coder
+WORKDIR /home/coder
+
+RUN git config --global --add safe.directory /workspaces
+RUN git config --global user.email "supercoder@superagi.com"
+RUN git config --global user.name "SuperCoder"
+
 WORKDIR $GOPATH/src/packages/ai-developer/
 
 COPY go.mod .

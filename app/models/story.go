@@ -17,4 +17,5 @@ type Story struct {
 	ReviewViewed bool      `gorm:"default:false"`
 	CreatedAt    time.Time `gorm:"autoCreateTime"`
 	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
+	Type         string    `gorm:"type;not null"`
 }

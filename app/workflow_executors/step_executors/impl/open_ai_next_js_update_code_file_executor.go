@@ -87,9 +87,9 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 	var llmResponse map[string]interface{}
 	var filePath string
 	if strings.Contains(response.FileName, "app/") {
-		filePath = config.WorkspaceWorkingDirectory() + "/" + step.Project.HashID + "/" + step.Story.HashID + "/" + response.FileName
+		filePath = config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID + "/" + step.Story.HashID + "/" + response.FileName
 	} else {
-		filePath = config.WorkspaceWorkingDirectory() + "/" + step.Project.HashID + "/" + step.Story.HashID + "/app/" + response.FileName
+		filePath = config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID + "/" + step.Story.HashID + "/app/" + response.FileName
 	}
 	err := json.Unmarshal([]byte(response.LLMResponse), &llmResponse)
 	if err != nil {
@@ -229,8 +229,9 @@ func (e NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName strin
 		}
 	}
 
+	fmt.Println("___file name___",fileName)
 	if step.File != "" {
-		storyDir := config.WorkspaceWorkingDirectory() + "/" + step.Project.HashID + "/" + step.Story.HashID + "/app/" + fileName
+		storyDir := config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID + "/" + step.Story.HashID + "/app/" + fileName
 		err := os.WriteFile(storyDir, []byte(llmResponse), 0644)
 		if err != nil {
 			return err

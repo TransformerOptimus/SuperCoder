@@ -1,21 +1,18 @@
 'use client';
+import React from 'react';
 import CustomContainers from '@/components/CustomContainers/CustomContainers';
 import { Button } from '@nextui-org/react';
 import { Suspense, useEffect, useState } from 'react';
-import CreateEditStory from '@/components/StoryComponents/CreateEditStory';
 import ActiveWorkbench from '@/components/WorkBenchComponents/ActiveWorkbench';
-import CustomDrawer from '@/components/CustomDrawer/CustomDrawer';
 import { useRouter } from 'next/navigation';
-import { useWorkbenchContext, WorkbenchProvider } from '@/context/Workbench';
 import { toGetAllStoriesOfProjectUtils } from '@/app/utils';
+import { StoryList } from '../../../../types/workbenchTypes';
 import { storyTypes } from '@/app/constants/ProjectConstants';
 
-export default function WorkBench() {
-  const [isModalOpen, setIsModalOpen] = useState<boolean | null>(false);
-  const { storiesList, setStoriesList } = useWorkbenchContext();
+const DesignWorkBenchPage: React.FC = () => {
+  const [storiesList, setStoriesList] = useState<StoryList | null>(null);
   const router = useRouter();
-
-  const activeWorkbenchCondition = () => {
+  const activeDesignWorkbenchCondition = () => {
     return (
       storiesList &&
       (storiesList.IN_PROGRESS || storiesList.DONE) &&
@@ -24,19 +21,23 @@ export default function WorkBench() {
   };
 
   useEffect(() => {
-    toGetAllStoriesOfProjectUtils(setStoriesList).then().catch();
+    toGetAllStoriesOfProjectUtils(setStoriesList, '', 'frontend')
+      .then()
+      .catch();
     setTimeout(() => {
-      toGetAllStoriesOfProjectUtils(setStoriesList).then().catch();
+      toGetAllStoriesOfProjectUtils(setStoriesList, '', 'frontend')
+        .then()
+        .catch();
     }, 10000);
   }, []);
 
   return (
     <div id={'workbench'} className={'proxima_nova p-4'}>
-      {activeWorkbenchCondition() ? (
+      {activeDesignWorkbenchCondition() ? (
         <Suspense fallback={<div>Loading....</div>}>
           <ActiveWorkbench
             storiesList={storiesList}
-            storyType={storyTypes.BACKEND}
+            storyType={storyTypes.DESIGN}
           />
         </Suspense>
       ) : (
@@ -52,28 +53,14 @@ export default function WorkBench() {
             </span>
             <Button
               className={'primary_medium w-fit'}
-              onClick={() => router.push('/board')}
+              onClick={() => router.push('/design')}
             >
-              Go to Board
+              Go to Design Board
             </Button>
-
-            <CustomDrawer
-              open={isModalOpen}
-              onClose={() => setIsModalOpen(false)}
-              direction={'right'}
-              width={'40vw'}
-              top={'50px'}
-              contentCSS={'rounded-l-2xl'}
-            >
-              <CreateEditStory
-                id={'workbench'}
-                close={() => setIsModalOpen(false)}
-                top={'50px'}
-              />
-            </CustomDrawer>
           </div>
         </CustomContainers>
       )}
     </div>
   );
-}
+};
+export default DesignWorkBenchPage;

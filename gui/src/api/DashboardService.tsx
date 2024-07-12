@@ -13,6 +13,12 @@ export const checkHealth = () => {
 };
 
 // Auth APIS
+export const checkUserEmailExists = (user_email: string) => {
+  return api.get(`/user/check_user`, {
+    params: { user_email },
+  });
+};
+
 export const login = (payload: authPayload) => {
   return api.post(`/user/sign_in`, payload);
 };

@@ -2,7 +2,12 @@
 import CustomImage from '@/components/ImageComponents/CustomImage';
 import imagePath from '@/app/imagePath';
 import styles from './home.module.css';
-import { checkHealth, login, signUp } from '@/api/DashboardService';
+import {
+  checkHealth,
+  checkUserEmailExists,
+  login,
+  signUp,
+} from '@/api/DashboardService';
 import { Button } from '@nextui-org/react';
 import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '@/api/apiConfig';
@@ -16,7 +21,7 @@ export default function LandingPage() {
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isEmailRegistered, setIsEmailRegistered] = useState<boolean | null>(
-    null,
+    false,
   );
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
@@ -45,24 +50,30 @@ export default function LandingPage() {
     }
   }
 
-  const onSetEmail = (value) => {
+  const onSetEmail = (value: string) => {
     setEmail(value);
     setIsEmailRegistered(null);
     setPassword('');
     setShowPassword(false);
   };
 
+  const toSetUserData = (user, access_token: string) => {
+    const userData: userData = {
+      userEmail: user.Email,
+      userName: user.Name,
+      organisationId: user.OrganisationID,
+      accessToken: access_token,
+    };
+    setUserData(userData);
+  };
+
   async function toCheckUserEmail() {
     try {
       setIsButtonLoading(true);
-      const payload: authPayload = {
-        email: email,
-        password: '',
-      };
-      const response = await signUp(payload);
+      const response = await checkUserEmailExists(email);
       if (response) {
         const data = response.data;
-        if (data.ExistingUser) {
+        if (data.user_exists) {
           setIsEmailRegistered(true);
         } else {
           setIsEmailRegistered(false);
@@ -86,13 +97,7 @@ export default function LandingPage() {
       if (response) {
         const data = response.data;
         if (data.success) {
-          const userData: userData = {
-            userEmail: data.user.email,
-            userName: data.user.name,
-            organisationId: data.user.organisation_id,
-            accessToken: data.access_token,
-          };
-          setUserData(userData);
+          toSetUserData(data.user, data.access_token);
           router.push('/projects');
         }
       }
@@ -114,13 +119,7 @@ export default function LandingPage() {
       if (response) {
         const data = response.data;
         if (data.success) {
-          const userData: userData = {
-            userEmail: data.user.email,
-            userName: data.user.name,
-            organisationId: data.user.organisation_id,
-            accessToken: data.access_token,
-          };
-          setUserData(userData);
+          toSetUserData(data.user, data.access_token);
           router.push('/projects');
         }
       }

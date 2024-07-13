@@ -130,7 +130,7 @@ func (ws K8sWorkspaceService) CreateFrontendWorkspace(storyHashId, workspaceId s
 		return nil, err
 	}
 	workspaceHost := ws.workspaceServiceConfig.WorkspaceHostName()
-	workspaceUrl := fmt.Sprintf("https://%s.%s/?folder=/workspaces/stories/%s", workspaceId, workspaceHost, workspaceId)
+	workspaceUrl := fmt.Sprintf("https://%s.%s/?folder=/workspaces/%s", workspaceId, workspaceHost, workspaceId)
 	frontendUrl := fmt.Sprintf("https://fe-%s.%s", workspaceId, workspaceHost)
 
 	response := &dto.WorkspaceDetails{
@@ -358,19 +358,19 @@ func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyH
 		return err
 	}
 	if !exists {
-		frontendPath := "/workspaces/stories/" + workspaceId + "/" + storyHashId
+		frontendPath := workspaceconfig.FrontendWorkspacePath(workspaceId, storyHashId)
 		err = os.MkdirAll(frontendPath, os.ModePerm)
 		if err != nil {
 			fmt.Println("Error creating directory:", err)
 			return err
 		}
-		err = utils.RsyncFolders("/templates/"+frontendTemplate+"/", "/workspaces/stories/"+workspaceId+"/"+storyHashId)
+		err = utils.RsyncFolders("/templates/"+frontendTemplate+"/", frontendPath)
 		if err != nil {
 			ws.logger.Error("Failed to rsync folders", zap.Error(err))
 			return err
 		}
 	}
-	workspacePath := "/workspaces/stories/" + workspaceId + "/" + storyHashId
+	workspacePath := workspaceconfig.FrontendWorkspacePath(workspaceId, storyHashId)
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))

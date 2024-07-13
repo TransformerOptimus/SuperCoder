@@ -43,3 +43,5 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+.stories/

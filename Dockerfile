@@ -60,6 +60,9 @@ ENTRYPOINT ["go", "run", "worker.go"]
 
 FROM superagidev/supercoder-python-ide:latest AS python-executor
 
+WORKDIR /home/coder
+
+RUN git config --global --add safe.directory /workspaces
 RUN git config --global user.email "supercoder@superagi.com"
 RUN git config --global user.name "SuperCoder"
 
@@ -74,6 +77,11 @@ ENTRYPOINT ["bash", "-c", "/entrypoint.d/initialise.sh && /go/executor"]
 
 FROM superagidev/supercoder-node-ide:latest AS node-executor
 
+USER coder
+
+WORKDIR /home/coder
+
+RUN git config --global --add safe.directory /workspaces
 RUN git config --global user.email "supercoder@superagi.com"
 RUN git config --global user.name "SuperCoder"
 

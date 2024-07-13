@@ -57,7 +57,6 @@ func getKubernetesEnvVars(request dto.CreateJobRequest) []v13.EnvVar {
 
 func (js K8sJobService) CreateJob(request dto.CreateJobRequest) (res *dto.CreateJobResponse, err error) {
 	fmt.Println("____creating job____")
-	js.logger.Info("Creating job 111111111111", zap.Any("request", request))
 	var ttlSecondsAfterFinished int32 = 86400 * 2
 	jobName := createJobName(request.ProjectId, request.StoryId, request.ExecutionId)
 	job := &v1.Job{

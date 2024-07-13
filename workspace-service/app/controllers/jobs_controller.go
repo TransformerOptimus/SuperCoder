@@ -13,11 +13,9 @@ type JobsController struct {
 }
 
 func (wc *JobsController) CreateWorkspace(c *gin.Context) {
-	wc.logger.Info("Creating job 444444444444444444", zap.Any("request", c.Request))
 	body := dto.CreateJobRequest{
 		ExecutorImage: "python",
 	}
-	wc.logger.Info("Creating job 555555555555555555", zap.Any("body", body))
 
 	if err := c.BindJSON(&body); err != nil {
 		wc.logger.Error("Failed to bind json", zap.Error(err))
@@ -26,7 +24,6 @@ func (wc *JobsController) CreateWorkspace(c *gin.Context) {
 		})
 		return
 	}
-	wc.logger.Info("Creating job 6666666666666666666", zap.Any("body", body))
 
 	jobDetails, err := wc.jobService.CreateJob(body)
 	if err != nil {

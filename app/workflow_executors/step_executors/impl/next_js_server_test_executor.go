@@ -296,6 +296,16 @@ func (e NextJsServerStartTestExecutor) ensureNoEslintFile(projectDir string) err
         if err != nil {
             return fmt.Errorf("failed to delete .eslintrc.json: %w", err)
         }
+		output, err := utils.GitAddToTrackFiles(projectDir, err)
+		if err!= nil {
+            return fmt.Errorf("failed to add .eslintrc.json to git: %w", err)
+        }
+		fmt.Println(output)
+		output, err = utils.GitCommitWithMessage(projectDir, "Removed .eslintrc.json", err)
+		if err!= nil {
+            return fmt.Errorf("failed to commit .eslintrc.json to git: %w", err)
+        }
+		fmt.Println(output)
         return nil
     } else if os.IsNotExist(err) {
         return nil

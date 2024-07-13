@@ -44,7 +44,7 @@ WORKDIR $GOPATH/src/packages/ai-developer/
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/server server.go
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/worker worker.go
-RUN #CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/executor executor.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/executor executor.go
 
 
 FROM build-base AS executor-base

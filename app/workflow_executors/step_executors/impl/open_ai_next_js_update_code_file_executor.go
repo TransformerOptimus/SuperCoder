@@ -87,9 +87,9 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 	var llmResponse map[string]interface{}
 	var filePath string
 	if strings.Contains(response.FileName, "app/") {
-		filePath = config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID + step.Story.HashID + "/" + response.FileName
+		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/" + response.FileName
 	} else {
-		filePath = config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID + step.Story.HashID + "/app/" + response.FileName
+		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/app/" + response.FileName
 	}
 	err := json.Unmarshal([]byte(response.LLMResponse), &llmResponse)
 	if err != nil {

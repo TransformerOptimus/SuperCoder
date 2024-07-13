@@ -84,7 +84,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	//fmt.Println("Command output: ", string(output))
 	//fmt.Printf("\n-----------------------\n")
 
-	storyDir := config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID + step.Story.HashID + "/app"
+	storyDir := config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID)
 
 	fmt.Println("____________Project Directory: ", storyDir)
 	fmt.Println("___________Checking for Max Retry______________")

@@ -433,7 +433,7 @@ func (s *StoryService) GetCodeForDesignStory(storyId int) ([]*response.GetCodeFo
 	if err != nil {
 		return nil, err
 	}
-	folderPath := config.WorkspaceWorkingDirectory() + "/stories/" + project.HashID + "/" + story.HashID + "/app/"
+	folderPath := config.FrontendWorkspacePath(project.HashID, story.HashID) + "/app/"
 	var fileData []*response.GetCodeForDesignStory
 	files, err := os.ReadDir(folderPath)
 	if err != nil {

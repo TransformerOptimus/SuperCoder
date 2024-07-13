@@ -114,7 +114,7 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	}
 	branchName := fmt.Sprintf("branch_%s_%d", branchPrefix, story.ID)
 
-	if payload.ReExecute && project.Framework != constants.NextJs {
+	if payload.ReExecute && story.Type != "frontend" {
 		pullRequest, _ := h.pullRequestService.GetPullRequestByID(payload.PullRequestId)
 		executionOutput, _ := h.executionOutputService.GetExecutionOutputByID(pullRequest.ExecutionOutputID)
 		existingPullRequestExecution, _ := h.executionService.GetExecutionByID(executionOutput.ExecutionID)

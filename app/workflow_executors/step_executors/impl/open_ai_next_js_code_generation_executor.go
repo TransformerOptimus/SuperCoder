@@ -333,8 +333,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecut
 		feedback = comments[len(comments)-1].Comment
 	}
 	fmt.Println("Feedback:", feedback)
-	//storyDir = config.WorkspaceWorkingDirectory() + "/story/" + step.Story.HashID
-	filePath := filepath.Join(storyDir, step.File)
+	filePath := filepath.Join(storyDir, "app", step.File)
 	code, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %v", err)

@@ -231,7 +231,7 @@ func (e NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName strin
 
 	fmt.Println("___file name___",fileName)
 	if step.File != "" {
-		storyDir := config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID + step.Story.HashID + "/app/" + fileName
+		storyDir := config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/app/" + fileName
 		err := os.WriteFile(storyDir, []byte(llmResponse), 0644)
 		if err != nil {
 			return err

@@ -117,14 +117,14 @@ func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplat
 	return response, nil
 }
 
-func (ws K8sWorkspaceService) CreateFrontendWorkspace(workspaceId string, frontendTemplate string, remoteUrl string) (*dto.WorkspaceDetails, error) {
-	err := ws.checkAndCreateFrontendWorkspaceFromTemplate(workspaceId, frontendTemplate+"-node", remoteUrl)
+func (ws K8sWorkspaceService) CreateFrontendWorkspace(storyHashId, workspaceId string, frontendTemplate string) (*dto.WorkspaceDetails, error) {
+	err := ws.checkAndCreateFrontendWorkspaceFromTemplate(storyHashId, workspaceId, frontendTemplate)
 	if err != nil {
 		ws.logger.Error("Failed to check and create workspace from template", zap.Error(err))
 		return nil, err
 	}
 
-	err = ws.checkAndCreateWorkspacePVC(frontendTemplate + "-node")
+	err = ws.checkAndCreateWorkspacePVC(frontendTemplate)
 	if err != nil {
 		ws.logger.Error("Failed to check and create workspace PVC", zap.Error(err))
 		return nil, err

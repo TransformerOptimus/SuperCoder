@@ -126,7 +126,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	}
 	llmAPIKey, err := openAiCodeGenerator.llmAPIKeyService.GetLLMAPIKeyByModelName("claude-3", organisationId)
 	if err != nil {
-		fmt.Println("Error getting openai api key: ", err)
+		fmt.Println("Error getting claude api key: ", err)
 	}
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API KEY_________", apiKey)

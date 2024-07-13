@@ -352,7 +352,7 @@ func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId st
 }
 
 func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyHashId string, workspaceId string, frontendTemplate string) error {
-	exists, err := utils.CheckIfWorkspaceExists(workspaceId)
+	exists, err := utils.CheckIfFrontendWorkspaceExists(storyHashId, workspaceId)
 	if err != nil {
 		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
 		return err
@@ -371,6 +371,7 @@ func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyH
 		}
 	}
 	workspacePath := workspaceconfig.FrontendWorkspacePath(workspaceId, storyHashId)
+	ws.logger.Info("Checking if Git repository exists", zap.String("workspacePath", workspacePath))
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))

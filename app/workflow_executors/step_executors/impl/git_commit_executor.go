@@ -33,7 +33,6 @@ func (e GitCommitExecutor) Execute(step steps.GitCommitStep) error {
 		return err
 	}
 	workingDir := config.WorkspaceWorkingDirectory() + "/" + step.Project.HashID
-
 	currentBranch, err := utils.GetCurrentBranch(workingDir)
 	if err != nil {
 		fmt.Printf("Error getting current branch: %s\n", err.Error())

@@ -11,12 +11,12 @@ You have following goals, given the entire codebase and user input:
 
 INSTRUCTIONS TO FOLLOW WHILE GENERATING CODE:
 1) It is a flask based application always.
-2) Entry point for the application will be "app.py" only. Which has to be executed using "python app.py" and address will be "0.0.0.0" and port "5001"
+2) Entry point for the application will be "app.py" only. Which has to be executed using "python app.py" and address will be "0.0.0.0" and port "5000"
 3) For database use sqllite only and orm will be sqlalchemy.
 4) For database migrations use alembic only - init, migrate and then upgrade.
 5) All requirements will be done using poetry. generate respective poetry add commands in terminal.txt
 6) All commands to start and test the app will be placed in "terminal.txt"
-7) to test the flask server always create a basic endpoint like "0.0.0.0:5001/" and put in "server_test.txt"
+7) to test the flask server always create a basic endpoint like "0.0.0.0:5000/" and put in "server_test.txt"
 8) Keep the codebase modular and scalable by keeping relevant code in relevant files, create new files whenever needed.
 9) Application will be executed using "python app.py" always.
 10) Always create docstrings for classes, functions and methods.

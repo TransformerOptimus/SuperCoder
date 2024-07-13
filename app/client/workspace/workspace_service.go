@@ -130,7 +130,6 @@ func (ws *WorkspaceServiceClient) DeleteWorkspace(workspaceId string) (err error
 }
 
 func (ws *WorkspaceServiceClient) CreateJob(createJobRequest *request.CreateJobRequest) (createJobResponse *request.CreateJobResponse, err error) {
-	fmt.Println("___creating job___")
 	payload, err := json.Marshal(createJobRequest)
 	if err != nil {
 		log.Printf("failed to marshal create job request: %v", err)

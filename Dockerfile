@@ -100,6 +100,11 @@ RUN apt-get update &&  \
     apt-get install -y git zip \
     && apt-get clean
 
+RUN useradd -m coder
+
+USER coder
+
+RUN git config --global --add safe.directory /workspaces
 RUN git config --global user.email "supercoder@superagi.com"
 RUN git config --global user.name "SuperCoder"
 

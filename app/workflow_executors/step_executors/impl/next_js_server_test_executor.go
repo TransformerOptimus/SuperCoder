@@ -64,7 +64,7 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 		return err
 	}
 
-	projectDir := config.WorkspaceWorkingDirectory() + "/stories/" + step.Project.HashID
+	projectDir := config.WorkspaceWorkingDirectory() + "/" +step.Project.HashID + "/frontend"
 	err = e.ensureNoEslintFile(projectDir)
 	if err!=nil{
 		fmt.Println("Error while removing root eslint json file" + err.Error())
@@ -241,7 +241,7 @@ func (e NextJsServerStartTestExecutor) runCommand(codeFolder string, executionId
 		cmd.Dir = codeFolder
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
-		basePath := "/stories/" + projectHashID + "/" + storyHashID + "/out"
+		basePath := "/" + projectHashID + "/frontend/.stories/" + storyHashID + "/out"
 		cmd.Env = append(os.Environ(), "NEXT_PUBLIC_BASE_PATH="+basePath)
 		// fmt.Println(cmd.Env)
 		if err := cmd.Run(); err != nil {

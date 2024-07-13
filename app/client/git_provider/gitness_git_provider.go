@@ -84,6 +84,7 @@ func (c *GitnessClient) CreateRepository(parentRef, uid, description, defaultBra
 		Readme:        readme,
 		ParentRef:     parentRef,
 	}
+
 	headers := map[string]string{
 		"Accept":        "*/*",
 		"Content-Type":  "application/json",
@@ -164,7 +165,7 @@ func (c *GitnessClient) CreatePullRequest(repoPath, sourceBranch, targetBranch, 
 		Description:  description,
 		IsDraft:      isDraft,
 	}
-	//fmt.Println("__token___", c.authToken)
+
 	headers := map[string]string{
 		"Accept":        "*/*",
 		"Content-Type":  "application/json",
@@ -296,7 +297,6 @@ func (c *GitnessClient) GetPullRequestCommits(repoPath string, pullRequestNumber
 	fmt.Println("BaseURL: ", c.baseURL)
 	fmt.Println("RepoPath: ", repoPath)
 	fmt.Println("PullRequestNumber: ", pullRequestNumber)
-	fmt.Println("____AuthToken: ___", c.authToken)
 
 	headers := map[string]string{
 		"Accept":        "*/*",

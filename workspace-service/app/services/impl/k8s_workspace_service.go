@@ -124,7 +124,7 @@ func (ws K8sWorkspaceService) CreateFrontendWorkspace(storyHashId, workspaceId s
 		return nil, err
 	}
 
-	err = ws.checkAndCreateWorkspacePVC(frontendTemplate)
+	err = ws.checkAndCreateWorkspacePVC(workspaceId)
 	if err != nil {
 		ws.logger.Error("Failed to check and create workspace PVC", zap.Error(err))
 		return nil, err
@@ -352,7 +352,7 @@ func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId st
 }
 
 func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyHashId string, workspaceId string, frontendTemplate string) error {
-	exists, err := utils.CheckIfFrontendWorkspaceExists(storyHashId, workspaceId)
+	exists, err := utils.CheckIfWorkspaceExists(workspaceId)
 	if err != nil {
 		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
 		return err

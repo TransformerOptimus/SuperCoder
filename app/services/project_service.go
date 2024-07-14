@@ -56,6 +56,8 @@ func (s *ProjectService) GetAllProjectsOfOrganisation(organisationId int) ([]res
 			ProjectId:          project.ID,
 			ProjectName:        project.Name,
 			ProjectDescription: project.Description,
+			ProjectFramework:   project.Framework,
+			ProjectFrontendFramework: project.FrontendFramework,
 			ProjectHashID:      project.HashID,
 			ProjectUrl:         project.Url,
 			ProjectBackendURL:  project.BackendURL,
@@ -92,14 +94,15 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 		frontend_url = fmt.Sprintf("https://fe-%s.%s", hashID, host)
 	}
 	project := &models.Project{
-		OrganisationID: uint(organisationID),
-		Name:           requestData.Name,
-		Framework:      requestData.Framework,
-		Description:    requestData.Description,
-		HashID:         hashID,
-		Url:            url,
-		BackendURL:     backend_url,
-		FrontendURL:    frontend_url,
+		OrganisationID:    uint(organisationID),
+		Name:              requestData.Name,
+		Framework:         requestData.Framework,
+		FrontendFramework: requestData.FrontendFramework,
+		Description:       requestData.Description,
+		HashID:            hashID,
+		Url:               url,
+		BackendURL:        backend_url,
+		FrontendURL:       frontend_url,
 	}
 
 	organisation, err := s.organisationRepository.GetOrganisationByID(uint(int(project.OrganisationID)))
@@ -117,12 +120,13 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 
 	remoteGitURL := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
 	backendService := requestData.Framework
+	frontendService := requestData.FrontendFramework
 	//Making Call to Workspace Service to create workspace on project level
 	_, err = s.workspaceServiceClient.CreateWorkspace(
 		&request.CreateWorkspaceRequest{
 			WorkspaceId:     hashID,
 			BackendTemplate: &backendService,
-			//FrontendTemplate: &backendService,
+			FrontendTemplate: &frontendService,
 			RemoteURL:       remoteGitURL,
 			GitnessUserName: config.GitnessUser(),
 			GitnessToken:    config.GitnessToken(),

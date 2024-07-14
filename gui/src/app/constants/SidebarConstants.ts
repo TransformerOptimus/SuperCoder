@@ -10,6 +10,20 @@ export const sidebarOptions: SidebarOption[] = [
     route: `/board`,
   },
   {
+    id: 'design',
+    text: 'Design',
+    selected: imagePath.designIconSelected,
+    unselected: imagePath.designIconUnselected,
+    route: '/design',
+  },
+  {
+    id: 'design_workbench',
+    text: 'Design Workbench',
+    selected: imagePath.workbenchIconSelected,
+    unselected: imagePath.workbenchIconUnselected,
+    route: `/design_workbench`,
+  },
+  {
     id: 'workbench',
     text: 'Workbench',
     selected: imagePath.workbenchIconSelected,

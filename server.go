@@ -14,6 +14,7 @@ import (
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/services/s3_providers"
 	"context"
 	"errors"
 	"fmt"
@@ -104,6 +105,7 @@ func main() {
 
 	// Provide GitnessClient
 	err = c.Provide(func(logger *zap.Logger, slackAlert *monitoring.SlackAlert) *gitness_git_provider.GitnessClient {
+		fmt.Println("___token in server____", config.GitnessToken())
 		return gitness_git_provider.NewGitnessClient(config.GitnessURL(), config.GitnessToken(),
 			client.NewHttpClient(), logger, slackAlert)
 	})
@@ -117,6 +119,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = c.Provide(s3_providers.NewS3Service)
 
 	// Provide Repositories
 	err = c.Provide(func(db *gorm.DB) (
@@ -134,6 +137,7 @@ func main() {
 		*repositories.PullRequestRepository,
 		*repositories.PullRequestCommentsRepository,
 		*repositories.LLMAPIKeyRepository,
+		*repositories.DesignStoryReviewRepository,
 	) {
 		return repositories.NewExecutionOutputRepository(db),
 			repositories.NewProjectRepository(db),
@@ -148,7 +152,8 @@ func main() {
 			repositories.NewUserRepository(db),
 			repositories.NewPullRequestRepository(db),
 			repositories.NewPullRequestCommentsRepository(db),
-			repositories.NewLLMAPIKeyRepository(db)
+			repositories.NewLLMAPIKeyRepository(db),
+			repositories.NewDesignStoryReviewRepository(db)
 	})
 	if err != nil {
 		panic(err)
@@ -194,6 +199,10 @@ func main() {
 			redirectURL,
 		)
 	})
+	if err != nil {
+		panic(err)
+	}
+	err = c.Provide(services.NewDesignStoryReviewService)
 	if err != nil {
 		panic(err)
 	}
@@ -319,10 +328,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(func(executionOutputPullRequestService *services.PullRequestService, userService *services.UserService,
-		executionOutputService *services.ExecutionOutputService) *controllers.PullRequestController {
-		return controllers.NewPullRequestController(executionOutputPullRequestService, userService, executionOutputService)
-	})
+	err = c.Provide(controllers.NewDesignStoryReviewController)
+	err = c.Provide(controllers.NewPullRequestController)
 	err = c.Provide(controllers.NewLLMAPIKeyController)
 
 	if err = c.Provide(services.NewCodeDownloadService); err != nil {
@@ -375,6 +382,7 @@ func main() {
 		middleware *middleware.JWTClaims,
 		projectsController *controllers.ProjectController,
 		storiesController *controllers.StoryController,
+		designStoryReviewCtrl *controllers.DesignStoryReviewController,
 		llm_api_key *controllers.LLMAPIKeyController,
 		asynqClient *asynq.Client,
 		activityLogCtrl *controllers.ActivityLogController,
@@ -390,6 +398,7 @@ func main() {
 		organisationService *services.OrganisationService,
 		ioServer *socketio.Server,
 		nrApp *newrelic.Application,
+		designStoryCtrl *controllers.DesignStoryReviewController,
 		logger *zap.Logger,
 	) error {
 
@@ -402,6 +411,7 @@ func main() {
 
 		env := config.Get("app.env")
 		if env == constants.Development {
+			fmt.Println("____RUNNING INITIALIZE SCRIPT______")
 			err := InitializeSuperCoderData(userService, organisationService)
 			if err != nil {
 				log.Fatalf("Failed to initialize SuperCoder data: %v", err)
@@ -450,11 +460,19 @@ func main() {
 		project.GET("/pull-requests", pullRequestCtrl.GetAllPullRequestsByProjectID)
 		project.GET("/stories", storiesController.GetAllStoriesOfProject)
 		project.GET("/stories/in-progress", storiesController.GetInProgressStoriesByProjectId)
+		project.GET("/design/stories", storiesController.GetDesignStoriesOfProject)
 
 		stories := api.Group("/stories", middleware.AuthenticateJWT())
 
 		stories.POST("", storiesController.CreateStory)
 		stories.POST("/", storiesController.CreateStory)
+
+		designStory := stories.Group("/design", middleware.AuthenticateJWT())
+
+		designStory.POST("", storiesController.CreateDesignStory)
+		designStory.POST("/", storiesController.CreateDesignStory)
+		designStory.PUT("/edit", storiesController.EditDesignStoryById)
+		designStory.PUT("/review_viewed/:story_id", storiesController.UpdateStoryIsReviewed)
 
 		story := stories.Group("/:story_id", storyAuthMiddleware.Authorize())
 
@@ -466,12 +484,20 @@ func main() {
 		story.POST("/", storiesController.EditStoryByID)
 		story.DELETE("/", storiesController.DeleteStoryById)
 
+		story.GET("/code", storiesController.GetCodeForDesignStory)
+		story.GET("/design", storiesController.GetDesignStoryByID)
+
 		story.GET("/execution-outputs", executionOutputCtrl.GetExecutionOutputsByStoryID)
 		story.GET("/activity-logs", activityLogCtrl.GetActivityLogsByStoryID)
 		story.PUT("/status", storiesController.UpdateStoryStatus)
 
+		designReview := api.Group("/design/review", middleware.AuthenticateJWT())
+		designReview.POST("", designStoryReviewCtrl.CreateCommentForDesignStory)
+		designReview.POST("/", designStoryReviewCtrl.CreateCommentForDesignStory)
+
 		pullRequests := api.Group("/pull-requests", middleware.AuthenticateJWT())
 
+		pullRequests.POST("/create", pullRequestCtrl.CreatePullRequestFromCodeEditor)
 		pullRequest := pullRequests.Group("/:pull_request_id", pullRequestAuthMiddleware.Authorize())
 		pullRequest.GET("/diff", pullRequestCtrl.GetPullRequestDiffByPullRequestID)
 		pullRequest.GET("/commits", pullRequestCtrl.FetchPullRequestCommits)

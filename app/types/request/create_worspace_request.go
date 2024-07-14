@@ -1,6 +1,7 @@
 package request
 
 type CreateWorkspaceRequest struct {
+	StoryHashId      string  `json:"storyHashId"`
 	WorkspaceId      string  `json:"workspaceId"`
 	RemoteURL        string  `json:"remoteURL"`
 	BackendTemplate  *string `json:"backendTemplate,omitempty"`

@@ -6,7 +6,8 @@ import {
 } from '@/api/DashboardService';
 import { removeCookie } from '@/utils/CookieUtils';
 import { ProjectTypes } from '../../types/projectsTypes';
-import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+import { storyStatus } from '@/app/constants/BoardConstants';
 
 export const logout = () => {
   if (typeof window !== 'undefined') {
@@ -22,6 +23,7 @@ export const logout = () => {
     localStorage.removeItem('projectName');
     localStorage.removeItem('storyId');
     localStorage.removeItem('organisationId');
+    localStorage.removeItem('projectFrontendFramework');
   }
 
   window.location.replace('/');
@@ -33,6 +35,7 @@ export const handleStoryStatus = (status: string) => {
     IN_PROGRESS: { text: 'In Progress', color: 'purple' },
     IN_REVIEW: { text: 'In Review', color: 'yellow' },
     DONE: { text: 'Done', color: 'green' },
+    MAX_LOOP_ITERATION_REACHED: { text: 'In Review', color: 'yellow' },
   };
 
   return storyStatus[status] || { text: 'Default ', color: 'grey' };
@@ -51,13 +54,48 @@ export async function toGetProjectPullRequests(setter, status: string = 'ALL') {
   }
 }
 
+export async function handleInProgressStoryStatus(
+  setOpenSetupModelModal,
+  number_of_stories_in_progress: number,
+  toUpdateStoryStatus,
+) {
+  try {
+    const modelNotAdded = await checkModelNotAdded();
+    if (modelNotAdded) {
+      setOpenSetupModelModal(true);
+      return false;
+    }
+    if (number_of_stories_in_progress >= 1) {
+      toast.error('Cannot have two stories simultaneously In Progress', {
+        style: {
+          border: '1px solid #713200',
+          padding: '16px',
+          color: '#713200',
+          maxWidth: 'none',
+          whiteSpace: 'nowrap',
+        },
+      });
+      return false;
+    }
+
+    if (typeof window !== 'undefined') {
+      toUpdateStoryStatus(storyStatus.IN_PROGRESS).then().catch();
+      return true;
+    }
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
 export async function toGetAllStoriesOfProjectUtils(
   setter,
-  search: string = '',
+  search = '',
+  type = 'backend',
 ) {
   try {
     const project_id = localStorage.getItem('projectId');
-    const response = await getAllStoriesOfProject(project_id, search);
+    const response = await getAllStoriesOfProject(project_id, search, type);
     if (response) {
       const data = response.data;
       setter(data.stories);
@@ -104,6 +142,11 @@ export function formatTimeAgo(timestamp: string): string {
 }
 
 export function setProjectDetails(project: ProjectTypes) {
+  localStorage.setItem('projectFramework', project.project_framework);
+  localStorage.setItem(
+    'projectFrontendFramework',
+    project.project_frontend_framework,
+  );
   localStorage.setItem('projectId', project.project_id.toString());
   localStorage.setItem('projectURL', project.project_url);
   localStorage.setItem('projectURLFrontend', project.project_frontend_url);

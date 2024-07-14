@@ -1,0 +1,1 @@
+ALTER TABLE llm_api_keys ALTER COLUMN llm_api_key TYPE VARCHAR(255);

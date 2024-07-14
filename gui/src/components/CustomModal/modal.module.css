@@ -17,10 +17,10 @@
   border-radius: 10px;
   background: linear-gradient(
       0deg,
-      rgb(255 255 255 / 6%) 0%,
-      rgb(255 255 255 / 6%) 100%
+      rgb(255 255 255 / 2%) 0%,
+      rgb(255 255 255 / 2%) 100%
     ),
-    rgb(0 0 0 / 60%);
+    rgb(19 19 21 / 80%);
   box-shadow: -10px 10px 100px 0 rgb(0 0 0 / 40%);
   backdrop-filter: blur(50px);
 }

@@ -299,12 +299,12 @@ func (openAICodeGenerator *OpenAICodeGenerator) GenerateCode(apiKey string, fram
 	return response, nil
 }
 
-func (openAICodeGenerator *OpenAICodeGenerator) generateMessages(framework string, instruction string, executionId uint, projectDir string) []llms.ChatCompletionMessage {
+func (openAICodeGenerator *OpenAICodeGenerator) generateMessages(framework string, instruction string, executionId uint, projectDir string) []llms.OpenAiChatCompletionMessage {
 	inputContext, err := openAICodeGenerator.createInputContext(projectDir)
 	if err != nil {
 		fmt.Printf("Failed to create input context: %v\n", err)
 	}
-	messages := []llms.ChatCompletionMessage{
+	messages := []llms.OpenAiChatCompletionMessage{
 		{Role: "system", Content: openAICodeGenerator.getSystemPrompt(framework, projectDir)},
 		{Role: "user", Content: "The current codebase is:\n" + inputContext},
 		{Role: "user", Content: instruction},
@@ -323,11 +323,11 @@ func (openAICodeGenerator *OpenAICodeGenerator) generateMessages(framework strin
 		fmt.Println("__________LAST EXECUTION STEP : ________ ", lastExecutionStep)
 		if lastInput, ok := lastExecutionStep.Request["final_instruction"].(string); ok {
 			fmt.Println("__________LAST INPUT : ________ ", lastInput)
-			messages = append(messages, llms.ChatCompletionMessage{Role: "user", Content: "last input:\n" + lastInput})
+			messages = append(messages, llms.OpenAiChatCompletionMessage{Role: "user", Content: "last input:\n" + lastInput})
 		}
 		if lastOutput, ok := lastExecutionStep.Response["llm_response"].(string); ok {
 			fmt.Println("__________LAST OUTPUT : ________ ", lastOutput)
-			messages = append(messages, llms.ChatCompletionMessage{Role: "assistant", Content: "your last output was:\n" + lastOutput})
+			messages = append(messages, llms.OpenAiChatCompletionMessage{Role: "assistant", Content: "your last output was:\n" + lastOutput})
 		}
 	}
 
@@ -368,7 +368,7 @@ func (openAICodeGenerator *OpenAICodeGenerator) generateFileListForInputContext(
 			return err
 		}
 		// Skip .venv directory and any other directories you want to exclude
-		if info.IsDir() && (info.Name() == ".venv" || info.Name() == ".vscode" || info.Name() == "venv") {
+		if info.IsDir() && (info.Name() == ".venv" || info.Name() == ".vscode" || info.Name() == "venv" || info.Name() == "frontend" || info.Name() == ".stories"){
 			fmt.Printf("Skipping directory: %s\n", path)
 			return filepath.SkipDir
 		}
@@ -461,9 +461,6 @@ func (openAICodeGenerator *OpenAICodeGenerator) buildFinalInstructionForGenerati
 		}
 	}
 
-	// Print the final instruction
-	fmt.Println("Final Instruction:")
-	fmt.Println(finalInstruction)
 	return finalInstruction, nil
 }
 

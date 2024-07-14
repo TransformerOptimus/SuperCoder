@@ -1,0 +1,18 @@
+.activity_container {
+    border-radius: 8px;
+    background: rgb(255 255 255 / 3%);
+    display: flex;
+    padding: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.container_section {
+    border: 1px solid var(--white-opacity-8);
+    background: var(--layout-bg-color);
+}
+
+.container_header {
+    border-bottom: 1px solid var(--white-opacity-8);
+}

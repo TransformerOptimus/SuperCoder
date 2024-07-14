@@ -13,10 +13,11 @@ type PullRequestController struct {
 	pullRequestService     *services.PullRequestService
 	userService            *services.UserService
 	executionOutputService *services.ExecutionOutputService
+	storyService           *services.StoryService
 }
 
 func NewPullRequestController(service *services.PullRequestService, userService *services.UserService,
-	executionOutputService *services.ExecutionOutputService) *PullRequestController {
+	executionOutputService *services.ExecutionOutputService, storyService *services.StoryService) *PullRequestController {
 	return &PullRequestController{
 		pullRequestService:     service,
 		userService:            userService,
@@ -107,4 +108,23 @@ func (ctrl *PullRequestController) GetPullRequestDiffByPullRequestID(c *gin.Cont
 	}
 
 	c.JSON(http.StatusOK, gin.H{"diff": diff})
+}
+
+func (ctrl *PullRequestController) CreatePullRequestFromCodeEditor(c *gin.Context) {
+	var createPRRequest request.CreatePRFromCodeEditorRequest
+	if err := c.ShouldBindJSON(&createPRRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ProjectID := createPRRequest.ProjectID
+	Title := createPRRequest.Title
+	Description := createPRRequest.Description
+	fmt.Println("project id _____", ProjectID)
+	prId, err := ctrl.pullRequestService.CreatePullRequestFromCodeEditor(ProjectID, Title, Description)
+	if err !=nil{
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Pull Request"})
+        return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"pull_request_id": prId})
 }

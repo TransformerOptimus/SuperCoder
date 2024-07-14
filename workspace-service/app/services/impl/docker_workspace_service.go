@@ -85,9 +85,9 @@ func (ws DockerWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId
 		ws.logger.Error("Failed to rsync folders", zap.Error(err))
 		return err
 	}
-	if frontendTemplate != nil{
+	if frontendTemplate != nil {
 		//creating a frontend folder in the directory
-		frontendPath := "/workspaces/"+workspaceId+"/frontend"
+		frontendPath := "/workspaces/" + workspaceId + "/frontend"
 		err = os.MkdirAll(frontendPath, os.ModePerm)
 		if err != nil {
 			fmt.Println("Error creating directory:", err)
@@ -218,25 +218,35 @@ func (ws DockerWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(sto
 		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
 		return err
 	}
+	frontendPath := workspaceconfig.FrontendWorkspacePath(workspaceId, storyHashId)
+	fmt.Println("___frontend path___", frontendPath)
 
 	if exists {
 		ws.logger.Info("Workspace already exists", zap.String("workspaceId", workspaceId), zap.String("storyHashId", storyHashId))
 		return nil
 	}
 
-	ws.logger.Info("Creating workspace from template", zap.String("workspaceId", workspaceId), zap.String("frontendTemplate", frontendTemplate))
+	ws.logger.Info("Creating workspace from template", zap.String("workspaceId", workspaceId), zap.String("frontendTemplate", frontendTemplate), zap.String("storyHashId", storyHashId))
+	err = os.MkdirAll(frontendPath, os.ModePerm)
+	if err != nil {
+		fmt.Println("Error creating directory:", err)
+		return err
+	}
 
-	err = utils.SudoRsyncFolders("/templates/"+frontendTemplate+"/", "/workspaces/"+workspaceId+"/"+storyHashId)
+	fmt.Println("_____frontend template____",frontendTemplate)
+
+	err = utils.SudoRsyncFolders("/templates/"+frontendTemplate+"/", frontendPath)
 	if err != nil {
 		ws.logger.Error("Failed to rsync folders", zap.Error(err))
 		return err
 	}
-	workspacePath := "/workspaces/" + workspaceId + "/" + storyHashId
+	workspacePath := workspaceconfig.FrontendWorkspacePath(workspaceId, storyHashId)
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))
 		return err
 	}
+	fmt.Println("___completed____")
 	return nil
 }
 

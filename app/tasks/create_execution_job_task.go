@@ -112,7 +112,7 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	}
 	branchName := fmt.Sprintf("branch_%s_%d", branchPrefix, story.ID)
 
-	if payload.ReExecute {
+	if payload.ReExecute && story.Type != constants.Frontend {
 		pullRequest, _ := h.pullRequestService.GetPullRequestByID(payload.PullRequestId)
 		executionOutput, _ := h.executionOutputService.GetExecutionOutputByID(pullRequest.ExecutionOutputID)
 		existingPullRequestExecution, _ := h.executionService.GetExecutionByID(executionOutput.ExecutionID)
@@ -143,12 +143,29 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 
 	createJobRequest := request.NewCreateJobRequest()
 	createJobRequest.WithBranch(branchName)
-	createJobRequest.WithPullRequestId(int64(payload.PullRequestId))
 	createJobRequest.WithStoryId(int64(payload.StoryID))
-	createJobRequest.WithProjectId(project.HashID)
 	createJobRequest.WithIsReExecution(payload.ReExecute)
 	createJobRequest.WithExecutionId(int64(execution.ID))
-	createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.Framework))
+	if story.Type == constants.Frontend {
+		fmt.Println("Project Framework", project.FrontendFramework)
+		mountPath := "/workspaces/stories/" + project.HashID + "/" + story.HashID
+		createJobRequest.WithWorkspaceMountPath(mountPath)
+		createJobRequest.WithProjectId(project.HashID)
+		createJobRequest.WithExecutorImage("node")
+		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.FrontendFramework))
+	} else {
+		fmt.Println("Project Framework", project.Framework)
+		createJobRequest.WithPullRequestId(int64(payload.PullRequestId))
+		createJobRequest.WithProjectId(project.HashID)
+		createJobRequest.WithExecutorImage("python")
+		mountPath := "/workspaces/" + project.HashID
+		createJobRequest.WithWorkspaceMountPath(mountPath)
+		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.Framework))
+
+	}
+
+	h.logger.Info("Payload for create job request", zap.Any("createJobRequest", createJobRequest))
+	fmt.Println("__payload_____12july", createJobRequest)
 
 	job, err := h.workspaceServiceClient.CreateJob(createJobRequest)
 	if err != nil {

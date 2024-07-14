@@ -117,8 +117,8 @@ func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplat
 	return response, nil
 }
 
-func (ws K8sWorkspaceService) CreateFrontendWorkspace(workspaceId string, frontendTemplate string, remoteUrl string) (*dto.WorkspaceDetails, error) {
-	err := ws.checkAndCreateFrontendWorkspaceFromTemplate(workspaceId, frontendTemplate, remoteUrl)
+func (ws K8sWorkspaceService) CreateFrontendWorkspace(storyHashId, workspaceId string, frontendTemplate string) (*dto.WorkspaceDetails, error) {
+	err := ws.checkAndCreateFrontendWorkspaceFromTemplate(storyHashId, workspaceId, frontendTemplate)
 	if err != nil {
 		ws.logger.Error("Failed to check and create workspace from template", zap.Error(err))
 		return nil, err
@@ -129,7 +129,6 @@ func (ws K8sWorkspaceService) CreateFrontendWorkspace(workspaceId string, fronte
 		ws.logger.Error("Failed to check and create workspace PVC", zap.Error(err))
 		return nil, err
 	}
-
 	workspaceHost := ws.workspaceServiceConfig.WorkspaceHostName()
 	workspaceUrl := fmt.Sprintf("https://%s.%s/?folder=/workspaces/%s", workspaceId, workspaceHost, workspaceId)
 	frontendUrl := fmt.Sprintf("https://fe-%s.%s", workspaceId, workspaceHost)
@@ -147,8 +146,11 @@ func (ws K8sWorkspaceService) CreateFrontendWorkspace(workspaceId string, fronte
 }
 
 func (ws K8sWorkspaceService) checkAndCreateWorkspacePVC(workspaceId string) (err error) {
+	ws.logger.Info("Checking if PVC exists", zap.String("workspaceId", workspaceId))
 	pvc, err := ws.clientset.CoreV1().PersistentVolumeClaims(ws.workspaceServiceConfig.WorkspaceNamespace()).Get(context.Background(), workspaceId, v12.GetOptions{})
 	if err != nil || pvc == nil {
+		ws.logger.Info("PVC does not exist", zap.String("workspaceId", workspaceId))
+		ws.logger.Error("Failed to get PVC", zap.Error(err))
 		err = ws.createWorkspacePVC(workspaceId)
 		if err != nil {
 			ws.logger.Error("Failed to create PVC", zap.Error(err))
@@ -176,6 +178,8 @@ func (ws K8sWorkspaceService) createWorkspacePVC(workspaceId string) (err error)
 			},
 		},
 	}
+	ws.logger.Info("Creating PVC", zap.Any("pvc", pvc))
+	ws.logger.Info("namespace", zap.String("namespace", ws.workspaceServiceConfig.WorkspaceNamespace()))
 	_, err = ws.clientset.CoreV1().PersistentVolumeClaims(ws.workspaceServiceConfig.WorkspaceNamespace()).Create(context.Background(), pvc, v12.CreateOptions{})
 	if err != nil {
 		ws.logger.Error("Failed to create PVC", zap.Error(err))
@@ -221,9 +225,9 @@ func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId st
 			return err
 		}
 	}
-	if frontendTemplate != nil{
+	if frontendTemplate != nil {
 		//creating a frontend folder in the directory
-		frontendPath := "/workspaces/"+workspaceId+"/frontend"
+		frontendPath := "/workspaces/" + workspaceId + "/frontend"
 		err = os.MkdirAll(frontendPath, os.ModePerm)
 		if err != nil {
 			fmt.Println("Error creating directory:", err)
@@ -354,13 +358,20 @@ func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyH
 		return err
 	}
 	if !exists {
-		err = utils.RsyncFolders("/templates/"+frontendTemplate+"/", "/workspaces/"+workspaceId+"/"+storyHashId)
+		frontendPath := workspaceconfig.FrontendWorkspacePath(workspaceId, storyHashId)
+		err = os.MkdirAll(frontendPath, os.ModePerm)
+		if err != nil {
+			fmt.Println("Error creating directory:", err)
+			return err
+		}
+		err = utils.RsyncFolders("/templates/"+frontendTemplate+"/", frontendPath)
 		if err != nil {
 			ws.logger.Error("Failed to rsync folders", zap.Error(err))
 			return err
 		}
 	}
-	workspacePath := "/workspaces/" + workspaceId + "/" + storyHashId
+	workspacePath := workspaceconfig.FrontendWorkspacePath(workspaceId, storyHashId)
+	ws.logger.Info("Checking if Git repository exists", zap.String("workspacePath", workspacePath))
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))

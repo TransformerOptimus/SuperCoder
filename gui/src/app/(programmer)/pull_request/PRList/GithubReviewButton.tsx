@@ -17,6 +17,8 @@ const GithubReviewButton = styled.button`
   font-style: normal;
   font-weight: 600;
   line-height: normal;
+  height: 100%;
+  margin: auto 0;
 `;
 
 export default GithubReviewButton;

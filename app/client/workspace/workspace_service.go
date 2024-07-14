@@ -67,6 +67,45 @@ func (ws *WorkspaceServiceClient) CreateWorkspace(createWorkspaceRequest *reques
 	return
 }
 
+func (ws *WorkspaceServiceClient) CreateFrontendWorkspace(createWorkspaceRequest *request.CreateWorkspaceRequest) (createWorkspaceResponse *response.CreateWorkspaceResponse, err error) {
+	payload, err := json.Marshal(createWorkspaceRequest)
+	if err != nil {
+		log.Printf("failed to marshal create workspace request: %v", err)
+		return
+	}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/v1/frontend/workspaces", ws.endpoint), bytes.NewBuffer(payload))
+	if err != nil {
+		log.Printf("failed to create create workspace request: %v", err)
+		return
+	}
+	res, err := ws.client.Do(req)
+	if err != nil {
+		log.Printf("failed to send create workspace request: %v", err)
+		return
+	}
+
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return nil, errors.New(fmt.Sprintf("invalid res from workspace service for create workspace request"))
+	}
+
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(res.Body)
+
+	responseBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("failed to read res payload: %v", err)
+		return
+	}
+
+	createWorkspaceResponse = &response.CreateWorkspaceResponse{}
+	if err1 := json.Unmarshal(responseBody, &createWorkspaceResponse); err1 != nil {
+		log.Printf("failed to unmarshal create workspace res: %v", err1)
+		return
+	}
+	return
+}
+
 func (ws *WorkspaceServiceClient) DeleteWorkspace(workspaceId string) (err error) {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/v1/workspaces/%s", ws.endpoint, workspaceId), nil)
 	if err != nil {

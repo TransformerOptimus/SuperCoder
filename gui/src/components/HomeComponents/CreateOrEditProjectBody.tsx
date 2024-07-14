@@ -1,6 +1,9 @@
 import CustomModal from '@/components/CustomModal/CustomModal';
 import CustomImageSelector from '@/components/ImageComponents/CustomImageSelector';
-import { frameworkOptions } from '@/app/constants/ProjectConstants';
+import {
+  backendFrameworkOptions,
+  frontendFrameworkOptions,
+} from '@/app/constants/ProjectConstants';
 import { Button } from '@nextui-org/react';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -33,9 +36,10 @@ export default function CreateOrEditProjectBody({
   projectsList,
   edit = false,
 }: CreateOrEditProjectBodyProps) {
-  const [selectedFramework, setSelectedFramework] = useState<string>(
-    frameworkOptions[0].id,
-  );
+  const [selectedBackendFramework, setSelectedBackendFramework] =
+    useState<string>(backendFrameworkOptions[0].id);
+  const [selectedFrontendFramework, setSelectedFrontendFramework] =
+    useState<string>(frontendFrameworkOptions[0].id);
   const [projectName, setProjectName] = useState<string>('');
   const [projectDescription, setProjectDescription] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean | null>(false);
@@ -51,8 +55,12 @@ export default function CreateOrEditProjectBody({
     return projectsList.some((project) => project.project_name === projectName);
   };
 
-  const selectedOption = frameworkOptions.find(
-    (option) => option.id === selectedFramework,
+  const selectedBackendOption = backendFrameworkOptions.find(
+    (option) => option.id === selectedBackendFramework,
+  );
+
+  const selectedFrontendOption = frontendFrameworkOptions.find(
+    (option) => option.id === selectedFrontendFramework,
   );
 
   const handleCreateNewProject = async () => {
@@ -90,7 +98,8 @@ export default function CreateOrEditProjectBody({
     } else {
       const newProjectPayload = {
         name: projectName,
-        framework: selectedFramework,
+        framework: selectedBackendFramework,
+        frontend_framework: selectedFrontendFramework,
         description: projectDescription,
       };
       await toCreateNewProject(newProjectPayload);
@@ -108,7 +117,8 @@ export default function CreateOrEditProjectBody({
     if (openProjectModal && !edit) {
       setProjectName('');
       setProjectDescription('');
-      setSelectedFramework(frameworkOptions[0].id);
+      setSelectedBackendFramework(backendFrameworkOptions[0].id);
+      setSelectedFrontendFramework(frontendFrameworkOptions[0].id);
     }
   }, [openProjectModal]);
 
@@ -120,7 +130,8 @@ export default function CreateOrEditProjectBody({
           const data = response.data;
           setProjectName(data.Name);
           setProjectDescription(data.Description);
-          setSelectedFramework(data.Framework);
+          setSelectedBackendFramework(data.Framework);
+          setSelectedFrontendFramework(data.FrontendFramework);
         }
       }
     } catch (error) {
@@ -187,30 +198,66 @@ export default function CreateOrEditProjectBody({
               />
             )}
           </div>
-          <div className={'flex flex-col gap-1'} id={'framework_section'}>
+          <div
+            className={'flex flex-col gap-1'}
+            id={'backend_framework_section'}
+          >
             <span className={'secondary_color text-[13px] font-normal'}>
               {' '}
-              Framework{' '}
+              Backend Framework{' '}
             </span>
 
             {edit ? (
               <div className={'flex flex-row items-center gap-2'}>
                 <CustomImage
                   className={'size-6 rounded-[4px]'}
-                  src={selectedOption.src}
+                  src={selectedBackendOption.src}
                   alt={'selected_framework_icon'}
                 />
                 <span className={'text-sm font-normal'}>
-                  {selectedOption.text}
+                  {selectedBackendOption.text}
                 </span>
               </div>
             ) : (
               <CustomImageSelector
                 size={'70px'}
                 gap={'12px'}
-                imageOptions={frameworkOptions}
-                selectedOption={selectedFramework}
-                onSelectOption={setSelectedFramework}
+                imageOptions={backendFrameworkOptions}
+                selectedOption={selectedBackendFramework}
+                onSelectOption={setSelectedBackendFramework}
+              />
+            )}
+          </div>
+
+          <div
+            className={'flex flex-col gap-1'}
+            id={'frontend_framework_section'}
+          >
+            <span className={'secondary_color text-[13px] font-normal'}>
+              {' '}
+              Frontend Framework{' '}
+            </span>
+
+            {edit ? (
+              selectedFrontendFramework && (
+                <div className={'flex flex-row items-center gap-2'}>
+                  <CustomImage
+                    className={'size-6 rounded-[4px]'}
+                    src={selectedFrontendOption.src}
+                    alt={'selected_framework_icon'}
+                  />
+                  <span className={'text-sm font-normal'}>
+                    {selectedFrontendOption.text}
+                  </span>
+                </div>
+              )
+            ) : (
+              <CustomImageSelector
+                size={'70px'}
+                gap={'12px'}
+                imageOptions={frontendFrameworkOptions}
+                selectedOption={selectedFrontendFramework}
+                onSelectOption={setSelectedFrontendFramework}
               />
             )}
           </div>

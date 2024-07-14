@@ -159,3 +159,5 @@ cython_debug/
 
 # Ignore OS generated files
 .DS_Store
+
+frontend/.stories

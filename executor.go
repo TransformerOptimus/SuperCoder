@@ -20,6 +20,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
@@ -205,6 +206,11 @@ func main() {
 		log.Println("Error providing generate code step:", err)
 		panic(err)
 	}
+	err = c.Provide(impl.NewOpenAINextJsCodeGenerationExecutor)
+	if err != nil {
+		log.Println("Error providing generate code step:", err)
+		panic(err)
+	}
 	//UpdateCodeFilesStep
 	err = c.Provide(impl.NewUpdateCodeFileExecutor)
 	if err != nil {
@@ -224,7 +230,6 @@ func main() {
 
 	}
 	//FLASK serverStartTestStep
-	//FLASK serverStartTestStep
 	err = c.Provide(impl.NewFlaskServerStartTestExecutor)
 	if err != nil {
 		log.Println("Error providing server start test step:", err)
@@ -237,6 +242,12 @@ func main() {
 		log.Println("Error providing server start test step:", err)
 		panic(err)
 
+	}
+	//NEXT JS serverStartTestStep
+	err = c.Provide(impl.NewNextJsServerStartTestExecutor)
+	if err != nil {
+		log.Println("Error providing next js test step:", err)
+		panic(err)
 	}
 	//GitCommitStep
 	err = c.Provide(impl.NewGitCommitExecutor)
@@ -304,14 +315,12 @@ func main() {
 		) map[steps.StepName]step_executors.StepExecutor {
 			return map[steps.StepName]step_executors.StepExecutor{
 				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
-				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
 				steps.UPDATE_CODE_FILE_STEP:        *updateCodeFileExecutor,
 				steps.GIT_COMMIT_STEP:              *gitCommitExecutor,
 				steps.GIT_CREATE_BRANCH_STEP:       *gitMakeBranchExecutor,
 				steps.GIT_PUSH_STEP:                *gitPushExecutor,
 				steps.GIT_CREATE_PULL_REQUEST_STEP: *gitnessMakePullRequestExecutor,
 				steps.SERVER_START_STEP:            *flaskServerStartTestExecutor,
-				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
 				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
 				steps.RESET_DB_STEP:                *resetFlaskDBStepExecutor,
 				steps.PACKAGE_INSTALL_STEP:         *poetryPackageInstallStepExecutor,

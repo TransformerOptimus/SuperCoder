@@ -264,7 +264,7 @@ func (s *PullRequestService) GetPullRequestByID(pullRequestId uint) (*models.Pul
 func (s *PullRequestService) UpdatePullRequestSourceSHA(pullRequest *models.PullRequest, sourceSHA string) error {
 	return s.pullRequestRepo.UpdatePullRequestSourceSHA(pullRequest, sourceSHA)
 }
-func (s *PullRequestService) CreatePullRequestFromCodeEditor(projectID int, title string, description string) (int, error){
+func (s *PullRequestService) CreateManualPullRequest(projectID int, title string, description string) (int, error){
 	project, err := s.projectRepo.GetProjectById(projectID)
 	if err!= nil {
 		fmt.Println("failed to fetch project", err)

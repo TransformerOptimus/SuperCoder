@@ -538,7 +538,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetMessagesOnRetry(systemP
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getSystemPrompt(instruction map[string]string, step steps.GenerateCodeStep) (string, error) {
-	content, err := os.ReadFile("/go/prompts/ai_frontend_developer.txt")
+	content, err := os.ReadFile("/go/prompts/nextjs/ai_frontend_developer.txt")
 	if err != nil {
 		panic(fmt.Sprintf("failed to read system prompt: %v", err))
 	}
@@ -549,7 +549,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getSystemPrompt(instructio
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetRetrySystemPrompt(instruction map[string]string, directoryStructure string) (string, error) {
-	content, err := os.ReadFile("/go/prompts/ai_frontend_developer_edit_code.txt")
+	content, err := os.ReadFile("/go/prompts/nextjs/ai_frontend_developer_edit_code.txt")
 	if err != nil {
 		panic(fmt.Sprintf("failed to read system prompt: %v", err))
 		return "", err

@@ -28,10 +28,11 @@ import (
 
 type K8sWorkspaceService struct {
 	services.WorkspaceService
-	clientset              *kubernetes.Clientset
-	workspaceServiceConfig *workspaceconfig.WorkspaceServiceConfig
-	k8sControllerClient    client.Client
-	logger                 *zap.Logger
+	clientset                   *kubernetes.Clientset
+	workspaceServiceConfig      *workspaceconfig.WorkspaceServiceConfig
+	frontendWorkspacePathConfig *workspaceconfig.FrontendWorkspacePathConfig
+	k8sControllerClient          client.Client
+	logger                      *zap.Logger
 }
 
 func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplate string, frontendTemplate *string, remoteURL string, gitnessUser string, gitnessToken string) (*dto.WorkspaceDetails, error) {
@@ -352,13 +353,13 @@ func (ws K8sWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId st
 }
 
 func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyHashId string, workspaceId string, frontendTemplate string) error {
-	exists, err := utils.CheckIfFrontendWorkspaceExists(storyHashId, workspaceId)
+	frontendPath := ws.frontendWorkspacePathConfig.FrontendWorkspacePath(workspaceId, storyHashId)
+	exists, err := utils.CheckIfFrontendWorkspaceExists(frontendPath)
 	if err != nil {
 		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
 		return err
 	}
 	if !exists {
-		frontendPath := workspaceconfig.FrontendWorkspacePath(workspaceId, storyHashId)
 		err = os.MkdirAll(frontendPath, os.ModePerm)
 		if err != nil {
 			fmt.Println("Error creating directory:", err)
@@ -370,7 +371,7 @@ func (ws K8sWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyH
 			return err
 		}
 	}
-	workspacePath := workspaceconfig.FrontendWorkspacePath(workspaceId, storyHashId)
+	workspacePath := ws.frontendWorkspacePathConfig.FrontendWorkspacePath(workspaceId, storyHashId)
 	ws.logger.Info("Checking if Git repository exists", zap.String("workspacePath", workspacePath))
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {

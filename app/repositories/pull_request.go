@@ -34,7 +34,7 @@ func (r *PullRequestRepository) CreatePullRequest(prTitle, prDescription, prID, 
 		ExecutionOutputID:      executionOutputId,
 		CreatedAt:              time.Now(),
 		UpdatedAt:              time.Now(),
-		PRType: 				prType,
+		PRType: 		prType,
 	}
 	if err := r.db.Create(pullRequest).Error; err != nil {
 		return nil, err

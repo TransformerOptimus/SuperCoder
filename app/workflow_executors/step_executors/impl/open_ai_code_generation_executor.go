@@ -461,9 +461,6 @@ func (openAICodeGenerator *OpenAICodeGenerator) buildFinalInstructionForGenerati
 		}
 	}
 
-	// Print the final instruction
-	// fmt.Println("Final Instruction:")
-	// fmt.Println(finalInstruction)
 	return finalInstruction, nil
 }
 

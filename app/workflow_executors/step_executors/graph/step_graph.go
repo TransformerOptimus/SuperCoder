@@ -3,7 +3,6 @@ package graph
 import (
 	"ai-developer/app/workflow_executors/step_executors/steps"
 	"errors"
-	"fmt"
 )
 
 type StepGraph struct {
@@ -32,7 +31,6 @@ func (g *StepGraph) Walk(execute func(name steps.StepName, step steps.WorkflowSt
 		var executionState ExecutionState
 		if err != nil {
 			if errors.Is(err, steps.ErrReiterate) {
-				fmt.Println("Retry Execution - Server Run Failed")
 				executionState = ExecutionRetryState
 			} else {
 				executionState = ExecutionErrorState

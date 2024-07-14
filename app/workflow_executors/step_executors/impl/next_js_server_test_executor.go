@@ -203,15 +203,7 @@ func (e NextJsServerStartTestExecutor) CheckBuildResponse(response map[string]in
 }
 
 func (e NextJsServerStartTestExecutor) CreateMessage(buildLogs string, directoryPlan string) ([]llms.ClaudeChatCompletionMessage, error) {
-	// replacements := map[string]string{
-	// 	"BUILD_LOGS":          buildLogs,
-	// 	"DIRECTORY_STRUCTURE": directoryPlan,
-	// }
 	content, err := os.ReadFile("/go/prompts/next_js_build_checker.txt")
-	// var systemPrompt string
-	// for key, value := range replacements {
-	// 	systemPrompt = strings.ReplaceAll(string(content), key, value)
-	// }
 	fmt.Println("____build logs in create msg function___", buildLogs)
 	modifiedContent := strings.Replace(string(content), "{{BUILD_LOGS}}", buildLogs, -1)
 	modifiedContent = strings.Replace(string(modifiedContent), "{{DIRECTORY_STRUCTURE}}", directoryPlan, -1)
@@ -243,7 +235,6 @@ func (e NextJsServerStartTestExecutor) runCommand(codeFolder string, executionId
 		cmd.Stderr = &stderr
 		basePath := "/" + projectHashID + "/frontend/.stories/" + storyHashID + "/out"
 		cmd.Env = append(os.Environ(), "NEXT_PUBLIC_BASE_PATH="+basePath)
-		// fmt.Println(cmd.Env)
 		if err := cmd.Run(); err != nil {
 			fmt.Printf("failed to run command %s %v: %v", name, args, err.Error())
 		}
@@ -256,7 +247,6 @@ func (e NextJsServerStartTestExecutor) runCommand(codeFolder string, executionId
 		if err != nil {
 			return stdout.String(), stderr.String(), err
 		}
-		//fmt.Println(stdout.String(), stderr.String())
 		return stdout.String(), stderr.String(), nil
 }
 func (e NextJsServerStartTestExecutor) serverRunTest(codeFolder string, executionId, executionStepId uint, storyHashID string, projectHashID string) (string, error) {

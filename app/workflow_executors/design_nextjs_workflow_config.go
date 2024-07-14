@@ -97,9 +97,3 @@ var NextJsWorkflowConfig = &WorkflowConfig{
 		},
 	},
 }
-
-// generate code for file 1
-// update code for file 1
-// generate code for file 2
-// update code for file 2
-// generate

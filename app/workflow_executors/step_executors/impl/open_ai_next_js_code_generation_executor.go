@@ -549,12 +549,6 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getSystemPrompt(instructio
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetRetrySystemPrompt(instruction map[string]string, directoryStructure string) (string, error) {
-	// replacements := map[string]string{
-	// 	"FILE_NAME":           instruction["fileName"],
-	// 	"ERROR_DESCRIPTION":   instruction["description"],
-	// 	"DIRECTORY_STRUCTURE": directoryStructure,
-	// 	"CURRENT_CODE":        instruction["existingCode"],
-	// }
 	content, err := os.ReadFile("/go/prompts/ai_frontend_developer_edit_code.txt")
 	if err != nil {
 		panic(fmt.Sprintf("failed to read system prompt: %v", err))
@@ -564,10 +558,6 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetRetrySystemPrompt(instr
 	modifiedContent = strings.Replace(string(modifiedContent), "{{ERROR_DESCRIPTION}}", instruction["description"], -1)
 	modifiedContent = strings.Replace(string(modifiedContent), "{{DIRECTORY_STRUCTURE}}", directoryStructure, -1)
 	modifiedContent = strings.Replace(string(modifiedContent), "{{CURRENT_CODE}}", instruction["existingCode"], -1)
-	// var systemPrompt string
-	// for key, value := range replacements {
-	// 	systemPrompt = strings.ReplaceAll(string(content), key, value)
-	// }
 	return modifiedContent, nil
 }
 

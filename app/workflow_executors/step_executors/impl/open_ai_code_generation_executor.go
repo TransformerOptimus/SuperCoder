@@ -206,7 +206,7 @@ func (openAICodeGenerator OpenAICodeGenerator) Execute(step steps.GenerateCodeSt
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API_KEY_________", apiKey)
 
-	framework := project.Framework
+	framework := project.BackendFramework
 	fmt.Println("_________FRAMEWORK_________", framework)
 	// Generate code using the final instruction
 	code, err := openAICodeGenerator.GenerateCode(apiKey, framework, finalInstructionForGeneration, step.ExecutionStep, projectDir, step)
@@ -368,7 +368,7 @@ func (openAICodeGenerator *OpenAICodeGenerator) generateFileListForInputContext(
 			return err
 		}
 		// Skip .venv directory and any other directories you want to exclude
-		if info.IsDir() && (info.Name() == ".venv" || info.Name() == ".vscode" || info.Name() == "venv" || info.Name() == "frontend" || info.Name() == ".stories"){
+		if info.IsDir() && (info.Name() == ".venv" || info.Name() == ".vscode" || info.Name() == "venv" || info.Name() == "frontend" || info.Name() == ".stories") {
 			fmt.Printf("Skipping directory: %s\n", path)
 			return filepath.SkipDir
 		}

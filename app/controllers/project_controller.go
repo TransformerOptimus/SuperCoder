@@ -3,11 +3,12 @@ package controllers
 import (
 	"ai-developer/app/services"
 	"ai-developer/app/types/request"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type ProjectController struct {
@@ -77,8 +78,8 @@ func (controller *ProjectController) CreateProject(context *gin.Context) {
 		return
 	}
 	context.JSON(http.StatusOK, gin.H{"project_id": project.ID, "project_url": project.Url, "project_name": project.Name,
-		"project_frontend_url": project.FrontendURL, "project_backend_url": project.BackendURL, "project_framework": project.Framework, "project_frontend_framework": project.FrontendFramework})
-	return 
+		"project_frontend_url": project.FrontendURL, "project_backend_url": project.BackendURL, "project_framework": project.BackendFramework, "project_frontend_framework": project.FrontendFramework})
+	return
 }
 
 func (controller *ProjectController) UpdateProject(context *gin.Context) {

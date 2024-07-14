@@ -1,6 +1,6 @@
 package constants
 
 const (
-    Automated = "automated"
+	Automated = "automated"
 	Manual    = "manual"
 )

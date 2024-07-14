@@ -1,15 +1,17 @@
 package controllers
 
 import (
+	"ai-developer/app/constants"
 	"ai-developer/app/models/types"
 	"ai-developer/app/services"
 	"ai-developer/app/types/request"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"mime/multipart"
 	"net/http"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 type StoryController struct {
@@ -54,7 +56,7 @@ func (controller *StoryController) CreateDesignStory(context *gin.Context) {
 		}
 	}(uploadedFile)
 	projectIdStr := context.PostForm("project_id")
-	storyType := "frontend"
+	storyType := constants.Frontend
 	projectId, err := strconv.Atoi(projectIdStr)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project_id"})
@@ -93,7 +95,7 @@ func (controller *StoryController) GetDesignStoriesOfProject(context *gin.Contex
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
-	storyType := "frontend"
+	storyType := constants.Frontend
 	stories, err := controller.storyService.GetDesignStoriesOfProject(projectID, storyType)
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

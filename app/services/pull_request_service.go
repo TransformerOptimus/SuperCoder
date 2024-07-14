@@ -43,7 +43,7 @@ func NewPullRequestService(pullRequestRepo *repositories.PullRequestRepository, 
 }
 
 func (s *PullRequestService) GetAllPullRequests(projectID int, status string) ([]*response.GetAllPullRequests, error) {
-	storyType := "backend"
+	storyType := constants.Backend
 	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
 	// fmt.Println("____stories_____", stories)
 	if err != nil {
@@ -361,7 +361,7 @@ func (s *PullRequestService) CreatePullRequestFromCodeEditor(projectID int, titl
 			fmt.Printf("Error creating pull request: %s\n", err.Error())
 			return -1, err
 		}
-		prType := "manual"
+		prType := constants.Manual
 		pullRequest, err := s.CreatePullRequest(pr.Title, pr.Description, strconv.Itoa(pr.Number), "GITNESS", pr.SourceSHA, "sample", pr.MergeBaseSHA, pr.Number, storyID, 0, prType)
 		if err!= nil {
 			fmt.Printf("Error creating pull request in database: %s\n", err.Error())

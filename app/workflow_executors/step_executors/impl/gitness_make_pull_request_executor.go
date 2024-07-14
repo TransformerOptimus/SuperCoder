@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"ai-developer/app/constants"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
 	"ai-developer/app/workflow_executors/step_executors/steps"
@@ -140,7 +141,7 @@ func (e *GitnessMakePullRequestExecutor) handleExecutionOutput(executionID uint,
 		if err != nil {
 			return err
 		}
-		prType := "automated"
+		prType := constants.Automated
 		pullRequest, err2 := e.pullRequestService.CreatePullRequest(prName, prDescription, strconv.Itoa(prNumber), "GITNESS",
 			sourceSHA, mergeTargetSHA, mergeBaseSHA, prNumber, storyID, executionOutput.ID, prType)
 		if err2 != nil {

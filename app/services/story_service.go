@@ -45,7 +45,7 @@ func (s *StoryService) GetStoryById(storyId int64) (*models.Story, error) {
 }
 
 func (s *StoryService) CreateStoryForProject(requestData request.CreateStoryRequest) (int, error) {
-	storyType := "backend"
+	storyType := constants.Backend
 	hashID := s.hashIdGenerator.Generate() + "-" + uuid.New().String()
 	story := &models.Story{
 		ProjectID:   uint(requestData.ProjectId),
@@ -612,7 +612,7 @@ func (s *StoryService) UpdateStoryStatus(storyID int, status string) error {
 }
 
 func (s *StoryService) GetStoriesByProjectId(projectID int) ([]models.Story, error) {
-	storyType := "backend"
+	storyType := constants.Backend
 	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
 	if err != nil {
 		return nil, err
@@ -621,7 +621,7 @@ func (s *StoryService) GetStoriesByProjectId(projectID int) ([]models.Story, err
 }
 
 func (s *StoryService) GetDesignStoriesByProjectId(projectID int) ([]models.Story, error) {
-	storyType := "frontend"
+	storyType := constants.Frontend
 	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
 	if err != nil {
 		return nil, err

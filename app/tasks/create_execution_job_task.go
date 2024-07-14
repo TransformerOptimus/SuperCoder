@@ -114,7 +114,7 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	}
 	branchName := fmt.Sprintf("branch_%s_%d", branchPrefix, story.ID)
 
-	if payload.ReExecute && story.Type != "frontend" {
+	if payload.ReExecute && story.Type != constants.Frontend {
 		pullRequest, _ := h.pullRequestService.GetPullRequestByID(payload.PullRequestId)
 		executionOutput, _ := h.executionOutputService.GetExecutionOutputByID(pullRequest.ExecutionOutputID)
 		existingPullRequestExecution, _ := h.executionService.GetExecutionByID(executionOutput.ExecutionID)
@@ -148,7 +148,7 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	createJobRequest.WithStoryId(int64(payload.StoryID))
 	createJobRequest.WithIsReExecution(payload.ReExecute)
 	createJobRequest.WithExecutionId(int64(execution.ID))
-	if story.Type == "frontend" {
+	if story.Type == constants.Frontend {
 		fmt.Println("Project Framework", project.FrontendFramework)
 		mountPath := "/workspaces/stories/" + project.HashID + "/" + story.HashID
 		createJobRequest.WithWorkspaceMountPath(mountPath)

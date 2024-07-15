@@ -21,7 +21,6 @@ type NextJsServerStartTestExecutor struct {
 	executionStepService *services.ExecutionStepService
 	activityLogService   *services.ActivityLogService
 	logger               *zap.Logger
-	claudeClient         *llms.ClaudeClient
 	executionService     *services.ExecutionService
 	llmAPIKeyService     *services.LLMAPIKeyService
 	storyService         *services.StoryService
@@ -32,7 +31,6 @@ func NewNextJsServerStartTestExecutor(
 	executionStepService *services.ExecutionStepService,
 	activityLogService *services.ActivityLogService,
 	logger *zap.Logger,
-	claudeClient *llms.ClaudeClient,
 	llmAPIKeyService *services.LLMAPIKeyService,
 	executionService *services.ExecutionService,
 	storyService *services.StoryService,
@@ -42,7 +40,6 @@ func NewNextJsServerStartTestExecutor(
 		executionStepService: executionStepService,
 		activityLogService:   activityLogService,
 		logger:               logger,
-		claudeClient:         claudeClient,
 		llmAPIKeyService:     llmAPIKeyService,
 		executionService:     executionService,
 		storyService:         storyService,
@@ -166,8 +163,8 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 	if err != nil {
 		return false, nil, err
 	}
-	e.claudeClient.WithApiKey(apiKey)
-	response, err := e.claudeClient.ChatCompletion(messages)
+	claudeClient:= llms.NewClaudeClient(apiKey)
+	response, err := claudeClient.ChatCompletion(messages)
 	if err != nil {
 		fmt.Println("failed to generate code from OpenAI API")
 		return false, nil, fmt.Errorf("failed to generate code from OpenAI API: %w", err)

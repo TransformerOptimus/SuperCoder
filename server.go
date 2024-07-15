@@ -471,7 +471,6 @@ func main() {
 		designStory := stories.Group("/design", middleware.AuthenticateJWT())
 
 		designStory.POST("", storiesController.CreateDesignStory)
-		designStory.POST("/", storiesController.CreateDesignStory)
 		designStory.PUT("/edit", storiesController.EditDesignStoryById)
 		designStory.PUT("/review_viewed/:story_id", storiesController.UpdateStoryIsReviewed)
 
@@ -494,7 +493,6 @@ func main() {
 
 		designReview := api.Group("/design/review", middleware.AuthenticateJWT())
 		designReview.POST("", designStoryReviewCtrl.CreateCommentForDesignStory)
-		designReview.POST("/", designStoryReviewCtrl.CreateCommentForDesignStory)
 
 		pullRequests := api.Group("/pull-requests", middleware.AuthenticateJWT())
 

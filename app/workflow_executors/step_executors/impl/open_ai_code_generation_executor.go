@@ -17,7 +17,6 @@ import (
 )
 
 type OpenAICodeGenerator struct {
-	openAIClient              *llms.OpenAiClient
 	projectService            *services.ProjectService
 	executionStepService      *services.ExecutionStepService
 	executionService          *services.ExecutionService
@@ -29,7 +28,6 @@ type OpenAICodeGenerator struct {
 }
 
 func NewOpenAICodeGenerator(
-	openAIClient *llms.OpenAiClient,
 	projectService *services.ProjectService,
 	executionStepService *services.ExecutionStepService,
 	executionService *services.ExecutionService,
@@ -40,7 +38,6 @@ func NewOpenAICodeGenerator(
 	slackAlert *monitoring.SlackAlert,
 ) *OpenAICodeGenerator {
 	return &OpenAICodeGenerator{
-		openAIClient:              openAIClient,
 		projectService:            projectService,
 		executionStepService:      executionStepService,
 		executionService:          executionService,
@@ -252,8 +249,8 @@ func (openAICodeGenerator *OpenAICodeGenerator) GenerateCode(apiKey string, fram
 		},
 		"IN_PROGRESS",
 	)
-	openAICodeGenerator.openAIClient.WithApiKey(apiKey)
-	response, err := openAICodeGenerator.openAIClient.ChatCompletion(messages)
+	openAIClient := llms.NewOpenAiClient(apiKey)
+	response, err := openAIClient.ChatCompletion(messages)
 	if err != nil {
 		settingsUrl := config.Get("app.url").(string) + "/settings"
 		err := openAICodeGenerator.activityLogService.CreateActivityLog(

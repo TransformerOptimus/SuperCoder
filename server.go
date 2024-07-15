@@ -21,6 +21,7 @@ import (
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/hibiken/asynq"
+	"github.com/knadh/koanf/v2"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"go.uber.org/dig"
 	"go.uber.org/zap"

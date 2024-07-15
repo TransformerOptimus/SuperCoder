@@ -172,9 +172,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(func(userRepo *repositories.UserRepository, orgService *services.OrganisationService, jwtService *services.JWTService) *services.UserService {
-		return services.NewUserService(userRepo, orgService, jwtService)
-	})
+	err = c.Provide(services.NewUserService)
 
 	err = c.Provide(services.NewLLMAPIKeyService)
 	if err != nil {
@@ -279,11 +277,12 @@ func main() {
 	}
 
 	// Provide Controllers
-	err = c.Provide(func(githubOauthService *services.GithubOauthService, authService *services.AuthService) *controllers.OauthController {
+	err = c.Provide(func(githubOauthService *services.GithubOauthService, authService *services.AuthService,
+		userService *services.UserService, jwtService *services.JWTService) *controllers.AuthController {
 		clientID := config.GithubClientId()
 		clientSecret := config.GithubClientSecret()
 		redirectURL := config.GithubRedirectURL()
-		return controllers.NewOauthController(githubOauthService, authService, clientID, clientSecret, redirectURL)
+		return controllers.NewAuthController(githubOauthService, authService, jwtService, userService, clientID, clientSecret, redirectURL, config.LoginRedirectUrl())
 	})
 	if err != nil {
 		panic(err)
@@ -315,12 +314,6 @@ func main() {
 	})
 	err = c.Provide(func(executionService *services.ExecutionService) *controllers.ExecutionController {
 		return controllers.NewExecutionController(executionService)
-	})
-	if err != nil {
-		panic(err)
-	}
-	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService) *controllers.UserController {
-		return controllers.NewUserController(jwtService, userService, config.LoginRedirectUrl())
 	})
 	if err != nil {
 		panic(err)
@@ -383,8 +376,7 @@ func main() {
 	// Setup routes and start the server
 	err = c.Invoke(func(
 		health *controllers.HealthController,
-		oauth *controllers.OauthController,
-		userController *controllers.UserController,
+		auth *controllers.AuthController,
 		organizationController *controllers.OrganizationController,
 		middleware *middleware.JWTClaims,
 		projectsController *controllers.ProjectController,
@@ -442,8 +434,8 @@ func main() {
 		api.GET("/health", health.Health)
 
 		githubAuth := api.Group("/github")
-		githubAuth.GET("/signin", oauth.GithubSignIn)
-		githubAuth.GET("/callback", oauth.GithubCallback)
+		githubAuth.GET("/signin", auth.GithubSignIn)
+		githubAuth.GET("/callback", auth.GithubCallback)
 
 		projects := api.Group("/projects", middleware.AuthenticateJWT())
 
@@ -498,10 +490,10 @@ func main() {
 
 		llmApiKeys.GET("/:organisation_id", orgAuthMiddleware.Authorize(), llm_api_key.FetchAllLLMAPIKeyByOrganisationID)
 
-		user := api.Group("/user")
-		user.GET("/check_user", userController.CheckUser)
-		user.POST("/sign_in", userController.SignIn)
-		user.POST("/sign_up", userController.SignUp)
+		authentication := api.Group("/auth")
+		authentication.GET("/check_user", auth.CheckUser)
+		authentication.POST("/sign_in", auth.SignIn)
+		authentication.POST("/sign_up", auth.SignUp)
 
 		organizations := api.Group("/organisation", middleware.AuthenticateJWT())
 		organization := organizations.Group("/:organisation_id", orgAuthMiddleware.Authorize())

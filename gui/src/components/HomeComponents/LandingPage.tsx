@@ -110,10 +110,10 @@ export default function LandingPage() {
           setIsEmailRegistered(false);
         }
       }
-      setIsButtonLoading(false);
     } catch (error) {
-      setIsButtonLoading(false);
       console.error('Error: ', error);
+    } finally {
+      setIsButtonLoading(false);
     }
   }
 
@@ -134,9 +134,9 @@ export default function LandingPage() {
           setPasswordErrorMsg('Password entered is incorrect.');
         }
       }
-      setIsButtonLoading(false);
     } catch (error) {
       console.error('Error: ', error);
+    } finally {
       setIsButtonLoading(false);
     }
   }
@@ -160,9 +160,9 @@ export default function LandingPage() {
           router.push('/projects');
         }
       }
-      setIsButtonLoading(false);
     } catch (error) {
       console.error('Error: ', error);
+    } finally {
       setIsButtonLoading(false);
     }
   }

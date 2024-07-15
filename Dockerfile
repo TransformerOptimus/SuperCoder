@@ -2,7 +2,10 @@ FROM public.ecr.aws/docker/library/golang:1.22.3-bookworm AS build-base
 
 RUN apt-get update && apt-get install -y jq postgresql-client && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m coder
+RUN groupadd -g 1000 coder
+RUN useradd -u 1000 -g coder coder
+RUN usermod -aG sudo coder
+RUN echo 'coder ALL=NOPASSWD: ALL' >> /etc/sudoers
 
 USER coder
 WORKDIR /home/coder

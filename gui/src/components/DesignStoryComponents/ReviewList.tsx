@@ -76,9 +76,7 @@ const ReviewList: React.FC = () => {
                         <span>created on {story.created_on}</span>
                       </div>
                     </div>
-                    {!story.review_viewed ? (
-                      <GithubReviewButton>Review</GithubReviewButton>
-                    ) : null}
+                    <GithubReviewButton>Review</GithubReviewButton>
                   </div>
                 </div>
               );

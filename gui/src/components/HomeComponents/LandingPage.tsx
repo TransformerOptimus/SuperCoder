@@ -77,6 +77,7 @@ export default function LandingPage() {
     setPassword('');
     setShowPassword(false);
     setEmailErrorMsg('');
+    setPasswordErrorMsg('');
   };
 
   const onSetPassword = (value: string) => {

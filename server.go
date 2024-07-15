@@ -370,7 +370,7 @@ func main() {
 	// Setup routes and start the server
 	err = c.Invoke(func(
 		health *controllers.HealthController,
-		Auth *controllers.AuthController,
+		auth *controllers.AuthController,
 		middleware *middleware.JWTClaims,
 		projectsController *controllers.ProjectController,
 		storiesController *controllers.StoryController,
@@ -427,8 +427,8 @@ func main() {
 		api.GET("/health", health.Health)
 
 		githubAuth := api.Group("/github")
-		githubAuth.GET("/signin", oauth.GithubSignIn)
-		githubAuth.GET("/callback", oauth.GithubCallback)
+		githubAuth.GET("/signin", auth.GithubSignIn)
+		githubAuth.GET("/callback", auth.GithubCallback)
 
 		projects := api.Group("/projects", middleware.AuthenticateJWT())
 
@@ -483,10 +483,10 @@ func main() {
 
 		llmApiKeys.GET("/:organisation_id", orgAuthMiddleware.Authorize(), llm_api_key.FetchAllLLMAPIKeyByOrganisationID)
 
-		auth := api.Group("/auth")
-		auth.GET("/check_user", Auth.CheckUser)
-		auth.POST("/sign_in", Auth.SignIn)
-		auth.POST("/sign_up", Auth.SignUp)
+		authentication := api.Group("/auth")
+		authentication.GET("/check_user", auth.CheckUser)
+		authentication.POST("/sign_in", auth.SignIn)
+		authentication.POST("/sign_up", auth.SignUp)
 
 		// Wrap the socket.io server as Gin handlers for specific routes
 		r.GET("/api/socket.io/*any", middleware.AuthenticateJWT(), gin.WrapH(ioServer))

@@ -56,7 +56,7 @@ export async function toGetProjectPullRequests(setter, status: string = 'ALL') {
 
 export async function handleInProgressStoryStatus(
   setOpenSetupModelModal,
-  number_of_stories_in_progress: number,
+  numberOfStoriesInProgress: number,
   toUpdateStoryStatus,
 ) {
   try {
@@ -65,7 +65,7 @@ export async function handleInProgressStoryStatus(
       setOpenSetupModelModal(true);
       return false;
     }
-    if (number_of_stories_in_progress >= 1) {
+    if (numberOfStoriesInProgress >= 1) {
       toast.error('Cannot have two stories simultaneously In Progress', {
         style: {
           border: '1px solid #713200',

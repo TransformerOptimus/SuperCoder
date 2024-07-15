@@ -25,7 +25,7 @@ export default function StoryDetails({
   id,
   story_id,
   open_status = true,
-  number_of_stories_in_progress,
+  numberOfStoriesInProgress,
   tabCSS,
   toGetAllStoriesOfProject,
   close,
@@ -106,7 +106,7 @@ export default function StoryDetails({
   const handleMoveToInProgressClick = async () => {
     const openWorkbench = await handleInProgressStoryStatus(
       setOpenSetupModelModal,
-      number_of_stories_in_progress,
+      numberOfStoriesInProgress,
       toUpdateStoryStatus,
     );
     if (openWorkbench) {

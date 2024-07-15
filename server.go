@@ -21,7 +21,6 @@ import (
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/hibiken/asynq"
-	"github.com/knadh/koanf/v2"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"go.uber.org/dig"
 	"go.uber.org/zap"
@@ -172,9 +171,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(func(userRepo *repositories.UserRepository, orgService *services.OrganisationService, jwtService *services.JWTService) *services.UserService {
-		return services.NewUserService(userRepo, orgService, jwtService)
-	})
+	err = c.Provide(services.NewUserService)
 
 	err = c.Provide(services.NewLLMAPIKeyService)
 	if err != nil {
@@ -279,11 +276,12 @@ func main() {
 	}
 
 	// Provide Controllers
-	err = c.Provide(func(githubOauthService *services.GithubOauthService, authService *services.AuthService) *controllers.OauthController {
+	err = c.Provide(func(githubOauthService *services.GithubOauthService, authService *services.AuthService,
+		userService *services.UserService, jwtService *services.JWTService) *controllers.AuthController {
 		clientID := config.GithubClientId()
 		clientSecret := config.GithubClientSecret()
 		redirectURL := config.GithubRedirectURL()
-		return controllers.NewOauthController(githubOauthService, authService, clientID, clientSecret, redirectURL)
+		return controllers.NewAuthController(githubOauthService, authService, jwtService, userService, clientID, clientSecret, redirectURL, config.LoginRedirectUrl())
 	})
 	if err != nil {
 		panic(err)
@@ -315,12 +313,6 @@ func main() {
 	})
 	err = c.Provide(func(executionService *services.ExecutionService) *controllers.ExecutionController {
 		return controllers.NewExecutionController(executionService)
-	})
-	if err != nil {
-		panic(err)
-	}
-	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService) *controllers.UserController {
-		return controllers.NewUserController(jwtService, userService, config.LoginRedirectUrl())
 	})
 	if err != nil {
 		panic(err)
@@ -377,8 +369,7 @@ func main() {
 	// Setup routes and start the server
 	err = c.Invoke(func(
 		health *controllers.HealthController,
-		oauth *controllers.OauthController,
-		userController *controllers.UserController,
+		Auth *controllers.AuthController,
 		middleware *middleware.JWTClaims,
 		projectsController *controllers.ProjectController,
 		storiesController *controllers.StoryController,
@@ -491,10 +482,10 @@ func main() {
 
 		llmApiKeys.GET("/:organisation_id", orgAuthMiddleware.Authorize(), llm_api_key.FetchAllLLMAPIKeyByOrganisationID)
 
-		user := api.Group("/user")
-		user.GET("/check_user", userController.CheckUser)
-		user.POST("/sign_in", userController.SignIn)
-		user.POST("/sign_up", userController.SignUp)
+		auth := api.Group("/auth")
+		auth.GET("/check_user", Auth.CheckUser)
+		auth.POST("/sign_in", Auth.SignIn)
+		auth.POST("/sign_up", Auth.SignUp)
 
 		// Wrap the socket.io server as Gin handlers for specific routes
 		r.GET("/api/socket.io/*any", middleware.AuthenticateJWT(), gin.WrapH(ioServer))

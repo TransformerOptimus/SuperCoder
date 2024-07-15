@@ -20,7 +20,7 @@ export interface DesignStoryDetailsProps {
   close: () => void;
   toGetAllDesignStoriesOfProject: () => void;
   setOpenSetupModelModal: React.Dispatch<React.SetStateAction<boolean>>;
-  number_of_stories_in_progress: number;
+  numberOfStoriesInProgress: number;
 }
 
 export interface CreateDesignStoryPayload {

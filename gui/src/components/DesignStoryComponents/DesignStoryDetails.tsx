@@ -18,7 +18,7 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
   top,
   toGetAllDesignStoriesOfProject,
   setOpenSetupModelModal,
-  number_of_stories_in_progress,
+  numberOfStoriesInProgress,
 }) => {
   const { selectedStory, setEditTrue } = useDesignContext();
   const router = useRouter();
@@ -72,7 +72,7 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
   const handleMoveToInProgressClick = async () => {
     const openWorkbench = await handleInProgressStoryStatus(
       setOpenSetupModelModal,
-      number_of_stories_in_progress,
+      numberOfStoriesInProgress,
       toUpdateStoryStatus,
     );
     if (openWorkbench) {

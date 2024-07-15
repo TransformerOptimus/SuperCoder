@@ -89,7 +89,7 @@ const DesignPage: React.FC = () => {
           top={'50px'}
           toGetAllDesignStoriesOfProject={toGetAllDesignStoriesOfProject}
           setOpenSetupModelModal={setOpenSetupModelModal}
-          number_of_stories_in_progress={numberOfStoriesInProgress}
+          numberOfStoriesInProgress={numberOfStoriesInProgress}
         />
       </CustomDrawer>
       <CustomDrawer

@@ -132,7 +132,7 @@ export const createDesignStory = (payload: CreateDesignStoryPayload) => {
   formData.append('file', payload.file, payload.imageName);
   formData.append('title', payload.title);
   formData.append('project_id', payload.project_id);
-  return api.post(`/stories/design/`, formData, {
+  return api.post(`/stories/design`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

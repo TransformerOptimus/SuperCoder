@@ -33,6 +33,11 @@ export interface CommentReBuildPayload {
   comment: string;
 }
 
+export interface CommentReBuildDesignStoryPayload {
+  story_id: number;
+  comment: string;
+}
+
 export interface CommitItems {
   title: string;
   commiter: string;
@@ -47,4 +52,10 @@ export interface CommitLogsProps {
 
 export interface FilesChangedProps {
   diff: string;
+}
+
+export interface CreatePullRequestPayload {
+  project_id: number;
+  title: string;
+  description: string;
 }

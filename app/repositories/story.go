@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"ai-developer/app/constants"
 	"ai-developer/app/models"
 	"fmt"
 	"gorm.io/gorm"
@@ -18,23 +19,24 @@ func (receiver *StoryRepository) CreateStory(story *models.Story) (*models.Story
 	return story, nil
 }
 
-func (receiver *StoryRepository) GetStoriesByProjectId(projectId int) ([]models.Story, error) {
+func (receiver *StoryRepository) GetStoriesByProjectId(projectId int, storyType string) ([]models.Story, error) {
 	var stories []models.Story
-	err := receiver.db.Where("project_id = ? AND is_deleted = ?", projectId, false).Find(&stories).Error
+	err := receiver.db.Where("project_id = ? AND is_deleted = ? AND type = ?", projectId, false, storyType).Find(&stories).Error
 	if err != nil {
 		return nil, err
 	}
 	return stories, nil
 }
 
-func (receiver *StoryRepository) GetStoriesByProjectIdAndSearch(projectId int, searchValue string) ([]models.Story, error) {
-	var stories []models.Story
-	searchPattern := searchValue + "%"
-	err := receiver.db.Where("title ILIKE ? AND project_id = ? AND is_deleted = ?", searchPattern, projectId, false).Find(&stories).Error
-	if err != nil {
-		return nil, err
-	}
-	return stories, nil
+func (receiver *StoryRepository) GetStoriesByProjectIdAndSearch(projectId int, searchValue string, storyType string) ([]models.Story, error) {
+    var stories []models.Story
+    searchPattern := searchValue + "%"
+    err := receiver.db.Where("title ILIKE ? AND project_id = ? AND is_deleted = ? AND type = ?", 
+        searchPattern, projectId, false, storyType).Find(&stories).Error
+    if err != nil {
+        return nil, err
+    }
+    return stories, nil
 }
 
 func (receiver *StoryRepository) GetStoryIdsMapByProjectIds(projectIds []int) (map[uint][]uint, error) {
@@ -95,9 +97,18 @@ func (receiver *StoryRepository) UpdateStoryStatus(story *models.Story, status s
 	return nil
 }
 
+func (receiver *StoryRepository) UpdateReviewViewedStatus(story *models.Story, viewedStatus bool) error {
+	story.ReviewViewed = viewedStatus
+	err := receiver.db.Save(story).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (receiver *StoryRepository) GetInProgressStoriesByProjectId(projectId int) ([]*models.Story, error) {
 	var stories []*models.Story
-	err := receiver.db.Where("project_id = ? AND is_deleted = ?", projectId, false).Find(&stories).Error
+	err := receiver.db.Where("project_id = ? AND is_deleted = ? AND status = ?", projectId, false, constants.InProgress).Find(&stories).Error
 	if err != nil {
 		return nil, err
 	}

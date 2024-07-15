@@ -3,11 +3,12 @@ import CustomContainers from '@/components/CustomContainers/CustomContainers';
 import { Button } from '@nextui-org/react';
 import { Suspense, useEffect, useState } from 'react';
 import CreateEditStory from '@/components/StoryComponents/CreateEditStory';
-import ActiveWorkbench from '@/app/(programmer)/workbench/ActiveWorkbench';
+import ActiveWorkbench from '@/components/WorkBenchComponents/ActiveWorkbench';
 import CustomDrawer from '@/components/CustomDrawer/CustomDrawer';
 import { useRouter } from 'next/navigation';
 import { useWorkbenchContext, WorkbenchProvider } from '@/context/Workbench';
 import { toGetAllStoriesOfProjectUtils } from '@/app/utils';
+import { storyTypes } from '@/app/constants/ProjectConstants';
 
 export default function WorkBench() {
   const [isModalOpen, setIsModalOpen] = useState<boolean | null>(false);
@@ -33,7 +34,10 @@ export default function WorkBench() {
     <div id={'workbench'} className={'proxima_nova p-4'}>
       {activeWorkbenchCondition() ? (
         <Suspense fallback={<div>Loading....</div>}>
-          <ActiveWorkbench />
+          <ActiveWorkbench
+            storiesList={storiesList}
+            storyType={storyTypes.BACKEND}
+          />
         </Suspense>
       ) : (
         <CustomContainers

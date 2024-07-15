@@ -111,9 +111,8 @@ const ReviewPage: React.FC = (props) => {
     try {
       const response = await rebuildDesignStory(payload);
       if (response) {
-        const data = response.data;
         setSelectedStory(story);
-        router.push('/workbench');
+        router.push('/design_workbench');
       }
     } catch (error) {
       console.error('Error while creating story:: ', error);

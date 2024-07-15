@@ -1,14 +1,15 @@
 package dto
 
 type CreateJobRequest struct {
-	ExecutionId   int64    `json:"executionId"`
-	StoryId       int64    `json:"storyId"`
-	ProjectId     string   `json:"projectId"`
-	IsReExecution bool     `json:"isReExecution"`
-	Branch        string   `json:"branch"`
-	PullRequestId int64    `json:"pullRequestId"`
-	ExecutorImage string   `json:"dockerImage"`
-	Env           []string `json:"env"`
+	ExecutionId        int64    `json:"executionId"`
+	ProjectId          string   `json:"projectId"`
+	StoryId            int64    `json:"storyId"`
+	IsReExecution      bool     `json:"isReExecution"`
+	Branch             string   `json:"branch"`
+	PullRequestId      int64    `json:"pullRequestId"`
+	ExecutorImage      string   `json:"executorImage"`
+	Env                []string `json:"env"`
+	WorkspaceMountPath string   `json:"workspaceMountPath"`
 }
 
 type CreateJobResponse struct {

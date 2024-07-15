@@ -3,7 +3,9 @@ package steps
 type UpdateCodeFileStep struct {
 	BaseStep
 	WorkflowStep
-	Type string
+	File  string
+	Retry bool
+	Type  string
 }
 
 func (s UpdateCodeFileStep) StepType() string {

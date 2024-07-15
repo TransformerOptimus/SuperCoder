@@ -141,9 +141,7 @@ export default function Board() {
           toGetAllStoriesOfProject={toGetAllStoriesOfProject}
           close={() => setOpenStoryDetailsModal(false)}
           open_status={openStoryDetailsModal}
-          number_of_stories_in_progress={
-            boardData && boardData.IN_PROGRESS.length
-          }
+          numberOfStoriesInProgress={boardData && boardData.IN_PROGRESS.length}
           setOpenSetupModelModal={setOpenSetupModelModal}
         />
       </CustomDrawer>

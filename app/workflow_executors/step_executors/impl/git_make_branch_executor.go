@@ -68,7 +68,7 @@ func (e GitMakeBranchExecutor) Execute(step steps.GitMakeBranchStep) error {
 			}
 		}
 
-		err := e.checkoutAndPullMain(workingDir, step.Project)
+		err = e.checkoutAndPullMain(workingDir, step.Project)
 		if err != nil {
 			fmt.Printf("Error checking out to main and pulling latest changes: %s\n", err)
 			return err

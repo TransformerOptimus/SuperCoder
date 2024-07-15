@@ -1,24 +1,25 @@
 'use client';
 import imagePath from '@/app/imagePath';
-import CustomContainers from '@/components/CustomContainers/CustomContainers';
-import StoryDetailsWorkbench from '@/app/(programmer)/workbench/WorkBenchComponents/StoryDetailsWorkbench';
-import Browser from '@/app/(programmer)/workbench/WorkBenchComponents/Browser';
-import Activity from '@/app/(programmer)/workbench/WorkBenchComponents/Activity';
 import React, { useEffect, useRef, useState } from 'react';
 import { handleStoryStatus } from '@/app/utils';
 import CustomTag from '@/components/CustomTag/CustomTag';
 import { getActivityLogs } from '@/api/DashboardService';
-import { useSearchParams } from 'next/navigation';
-import { StoryListItems } from '../../../../types/workbenchTypes';
-import { BoardProvider } from '@/context/Boards';
+import {
+  ActiveWorkbenchProps,
+  StoryListItems,
+} from '../../../types/workbenchTypes';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
 import CustomImage from '@/components/ImageComponents/CustomImage';
 import { storyStatus } from '@/app/constants/BoardConstants';
-import { CustomTabsNewProps } from '../../../../types/customComponentTypes';
 import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
-import { useWorkbenchContext } from '@/context/Workbench';
+import { storyTypes } from '@/app/constants/ProjectConstants';
+import BackendWorkbench from '@/components/WorkBenchComponents/BackendWorkbench';
+import DesignWorkbench from '@/components/WorkBenchComponents/DesignWorkbench';
 
-const ActiveWorkbench: React.FC = () => {
+const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
+  storiesList,
+  storyType,
+}) => {
   const [activityLogs, setActivityLogs] = useState(null);
   const [status, setStatus] = useState<string | null>(null);
   const [selectedStoryId, setSelectedStoryId] = useState(null);
@@ -28,29 +29,14 @@ const ActiveWorkbench: React.FC = () => {
   const [selectedStory, setSelectedStory] = useState<StoryListItems | null>(
     null,
   );
-  const backendURL = useRef('');
-  const frontendURL = useRef('');
-  const { storiesList } = useWorkbenchContext();
 
-  const tabsProps: CustomTabsNewProps = {
-    options: [
-      {
-        key: 'backend',
-        text: 'Backend',
-        icon: imagePath.browserIconDark,
-        content: (
-          <Browser url={backendURL.current} status={!executionInProcess} />
-        ),
-      },
-      {
-        key: 'frontend',
-        text: 'Frontend',
-        icon: imagePath.browserIconDark,
-        content: (
-          <Browser url={frontendURL.current} status={!executionInProcess} />
-        ),
-      },
-    ],
+  const getStatus = (storyId: number) => {
+    for (const [status, storyList] of Object.entries(storiesList)) {
+      if (storyList.some((story) => story.story_id === storyId)) {
+        return status;
+      }
+    }
+    return '';
   };
 
   const handleSelectedStory = () => {
@@ -63,8 +49,16 @@ const ActiveWorkbench: React.FC = () => {
       (item) => item.story_id.toString() === selectedStoryId,
     );
 
-    if (story) setSelectedStory(story);
-    else {
+    if (story) {
+      setSelectedStory(story);
+      const currentStatus = getStatus(story.story_id);
+      if (
+        selectedStoryId === story.story_id.toString() &&
+        currentStatus !== status
+      ) {
+        setStatus(currentStatus);
+      }
+    } else {
       localStorage.setItem(
         'storyId',
         completeStoriesList[0].story_id.toString(),
@@ -94,8 +88,6 @@ const ActiveWorkbench: React.FC = () => {
     let id = null;
     if (typeof window !== 'undefined') {
       id = localStorage.getItem('storyId');
-      backendURL.current = localStorage.getItem('projectURLBackend');
-      frontendURL.current = localStorage.getItem('projectURLFrontend');
       setSelectedStoryId(id);
       toGetActivityLogs(id).then().catch();
     }
@@ -122,7 +114,7 @@ const ActiveWorkbench: React.FC = () => {
 
   useEffect(() => {
     if (selectedStoryId) toGetActivityLogs(selectedStoryId).then().catch();
-  }, [selectedStoryId]);
+  }, [selectedStoryId, status]);
 
   async function toGetActivityLogs(story_id: string) {
     try {
@@ -223,50 +215,19 @@ const ActiveWorkbench: React.FC = () => {
           </div>
         </div>
       )}
-
-      <div
-        id={'active_workbench_content'}
-        className={'grid w-full grid-cols-12 gap-2'}
-      >
-        <div className={'col-span-6'}>
-          <CustomContainers
-            id={'activity'}
-            alignment={'items-center justify-center'}
-            header={'Activity'}
-            height={'calc(100vh - 126px)'}
-          >
-            <Activity activity={activityLogs} />
-          </CustomContainers>
-        </div>
-
-        <div
-          className={'col-span-6 flex flex-col gap-2'}
-          style={{ height: 'calc(100vh - 126px)' }}
-        >
-          <div className={'flex-1'} style={{ height: 'calc(50% - 4px)' }}>
-            <CustomContainers
-              id={'browser'}
-              alignment={'items-center justify-center'}
-              header={'Browser'}
-              height={'100%'}
-              tabsProps={tabsProps}
-              type={'tabs'}
-            />
-          </div>
-          <div className={'flex-1'} style={{ height: 'calc(50% - 4px)' }}>
-            <CustomContainers
-              id={'story_details'}
-              alignment={'items-center justify-center'}
-              header={'Story Details'}
-              height={'100%'}
-            >
-              <BoardProvider>
-                <StoryDetailsWorkbench id={selectedStoryId} />
-              </BoardProvider>
-            </CustomContainers>
-          </div>
-        </div>
-      </div>
+      {storyType === storyTypes.DESIGN ? (
+        <DesignWorkbench
+          activityLogs={activityLogs}
+          selectedStoryId={selectedStoryId}
+          executionInProcess={executionInProcess}
+        />
+      ) : (
+        <BackendWorkbench
+          activityLogs={activityLogs}
+          selectedStoryId={selectedStoryId}
+          status={!executionInProcess}
+        />
+      )}
     </div>
   );
 };

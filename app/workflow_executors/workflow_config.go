@@ -7,4 +7,5 @@ import (
 type WorkflowConfig struct {
 	WorkflowName string
 	StepGraph    *graph.StepGraph
+	Files        []string
 }

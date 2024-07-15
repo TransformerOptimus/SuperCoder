@@ -44,6 +44,7 @@
   --secondary-button-fg-color: #fff;
   --white-opacity-2: rgb(255 255 255 / 2%);
   --white-opacity-4: rgb(255 255 255 / 4%);
+  --white-opacity-6: rgb(255 255 255 / 6%);
   --white-opacity-8: rgb(255 255 255 / 8%);
   --white-opacity-12: rgb(255 255 255 / 12%);
   --white-opacity-20: rgb(255 255 255 / 20%);
@@ -184,7 +185,7 @@ body {
   resize: none;
 }
 
-.bg-custom-dropdown {
+.bg-custom-dropdown, .bg-code-section {
   background-color: var(--layout-bg-color);
   color: white;
 }
@@ -247,4 +248,14 @@ body {
 
 .custom-skeleton {
   animation: pulse 1.5s ease-in-out infinite;
+}
+
+.code_header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--white-opacity-12);
+  background: var(--white-opacity-12);
+  border-radius: 8px 0 0;
 }

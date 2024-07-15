@@ -103,6 +103,7 @@ func (js K8sJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Create
 			},
 		},
 	}
+	js.logger.Info("Creating job", zap.Any("job", job))
 	job, err = js.clientset.
 		BatchV1().
 		Jobs(js.workspaceServiceConfig.WorkspaceNamespace()).
@@ -133,6 +134,7 @@ func (js K8sJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Create
 	res = &dto.CreateJobResponse{
 		JobId: job.Name,
 	}
+	js.logger.Info("Job created", zap.Any("job", job))
 	return
 }
 

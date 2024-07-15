@@ -7,6 +7,9 @@ export default function CustomTabs({
   options,
   handle,
   children,
+  position = 'start',
+  containerCss = 'p-4 gap-4',
+  tabCss = 'px-3 py-3',
   height,
 }: CustomTabsNewProps) {
   const [selectedTab, setSelectedTab] = useState<string | null>(options[0].key);
@@ -23,9 +26,17 @@ export default function CustomTabs({
   )?.content;
 
   return (
-    <div id={'custom_tabs'} className={styles.custom_tabs}>
-      <div className={'flex w-full flex-row items-center justify-between'}>
-        <div className={'flex flex-row items-center gap-2'}>
+      <div id={'custom_tabs'} className={`${styles.custom_tabs} ${containerCss}`}>
+          <div
+              className={`flex w-full ${
+                  position === 'end' ? 'flex-row-reverse' : 'flex-row'
+              } items-center justify-between`}
+          >
+              <div
+                  className={`flex flex-row items-center gap-2 ${
+                      position === 'end' && 'mx-2'
+                  }`}
+              >
           {options &&
             options.length > 0 &&
             options.map((option, index) => (
@@ -33,7 +44,7 @@ export default function CustomTabs({
                 key={index}
                 className={`${styles.tab_item} ${
                   selectedTab === option.key ? styles.tab_item_selected : ''
-                }`}
+                } ${tabCss}`}
                 onClick={() => handleTabClick(option.key)}
               >
                 {option.icon !== null && (
@@ -50,8 +61,9 @@ export default function CustomTabs({
                     priority={true}
                   />
                 )}
-
-                <span className={styles.tab_item_text}>{option.text}</span>
+                  {option.text && (
+                      <span className={styles.tab_item_text}>{option.text}</span>
+                  )}
                 {option.count && (
                   <span className={styles.tab_item_count}>{option.count}</span>
                 )}

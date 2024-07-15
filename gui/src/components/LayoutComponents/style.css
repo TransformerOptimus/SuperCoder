@@ -21,10 +21,12 @@
 .sidebar_item_selected {
   border-radius: 8px;
   display: flex;
+  flex-direction: column;
   padding: 8px 10px;
   gap: 4px;
   align-self: stretch;
   cursor: pointer;
+  width: 66px;
 }
 
 .sidebar_item_selected {

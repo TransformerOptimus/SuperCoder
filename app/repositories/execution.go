@@ -118,3 +118,12 @@ func (r *ExecutionRepository) GetExecutionsWithStatusAndCreatedAtRange(status st
 	}
 	return executions, nil
 }
+
+func (r *ExecutionRepository) GetExecutionsByBranchName(branchName string) (*models.Execution, error) {
+	var execution models.Execution
+    if err := r.db.Where("branch_name = ?", branchName).Find(&execution).Error; err != nil {
+        return nil, err
+    }
+    return &execution, nil
+}
+

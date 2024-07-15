@@ -37,7 +37,18 @@ export interface CustomTabsNewProps {
   children?: ReactNode;
   handle?: (key: string) => void;
   options: OptionItems[];
+  position?: 'start' | 'end';
   height?: string | number;
+  containerCss?: string;
+  tabCss?: string;
+}
+
+export interface ReBuildModalProps {
+  openRebuildModal: boolean;
+  setOpenRebuildModal: React.Dispatch<React.SetStateAction<boolean>>;
+  rebuildComment: string;
+  setRebuildComment: React.Dispatch<React.SetStateAction<string>>;
+  handleRebuildStory: () => void;
 }
 
 export interface CustomTagProps {
@@ -48,6 +59,7 @@ export interface CustomTagProps {
   iconBackClass?: string;
   color?: string;
   children?: ReactNode;
+  className?: string;
 }
 
 export interface CustomDropdownItem {
@@ -98,4 +110,16 @@ export interface CustomSidebarProps {
   title?: string;
   options?: SidebarOptions[];
   onOptionSelect?: (key: string) => void;
+}
+
+export interface FrontendCodeSectionProps {
+  height: string;
+  allowCopy?: boolean;
+  backgroundColor?: boolean;
+  codeFiles: CodeFile[];
+}
+
+export interface CodeFile {
+  file_name: string;
+  code: string;
 }

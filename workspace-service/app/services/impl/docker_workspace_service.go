@@ -21,7 +21,7 @@ import (
 type DockerWorkspaceService struct {
 	services.WorkspaceService
 	workspaceServiceConfig       *workspaceconfig.WorkspaceServiceConfig
-	frontendWorkspacePathConfig  *workspaceconfig.FrontendWorkspacePathConfig
+	frontendWorkspaceConfig  *workspaceconfig.FrontendWorkspaceConfig
 	logger                 *zap.Logger
 }
 
@@ -214,8 +214,8 @@ func (ws DockerWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId
 }
 
 func (ws DockerWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyHashId string, workspaceId string, frontendTemplate string) error {
-	frontendPath := ws.frontendWorkspacePathConfig.FrontendWorkspacePath(workspaceId, storyHashId)
-	exists, err := utils.CheckIfFrontendWorkspaceExists(frontendPath)
+	frontendPath := ws.frontendWorkspaceConfig.FrontendWorkspacePath(workspaceId, storyHashId)
+	exists, err := utils.CheckIfDirExists(frontendPath)
 	if err != nil {
 		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
 		return err
@@ -239,7 +239,7 @@ func (ws DockerWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(sto
 		}
 	}
 
-	workspacePath := ws.frontendWorkspacePathConfig.FrontendWorkspacePath(workspaceId, storyHashId)
+	workspacePath := ws.frontendWorkspaceConfig.FrontendWorkspacePath(workspaceId, storyHashId)
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))

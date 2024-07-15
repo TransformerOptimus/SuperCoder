@@ -18,7 +18,7 @@ func CheckIfWorkspaceExists(workspaceId string) (bool, error) {
 	return false, err
 }
 
-func CheckIfFrontendWorkspaceExists(path string) (bool, error) {
+func CheckIfDirExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil

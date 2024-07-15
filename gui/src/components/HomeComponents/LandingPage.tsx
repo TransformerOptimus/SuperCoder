@@ -14,7 +14,7 @@ import { API_BASE_URL } from '@/api/apiConfig';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import { authPayload, userData } from '../../../types/authTypes';
 import { useRouter } from 'next/navigation';
-import { setUserData } from '@/app/utils';
+import { setUserData, validateEmail } from '@/app/utils';
 
 export default function LandingPage() {
   const [email, setEmail] = useState<string>('');
@@ -23,6 +23,8 @@ export default function LandingPage() {
   const [isEmailRegistered, setIsEmailRegistered] = useState<boolean | null>(
     null,
   );
+  const [emailErrorMsg, setEmailErrorMsg] = useState<string>('');
+  const [passwordErrorMsg, setPasswordErrorMsg] = useState<string>('');
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
   const router = useRouter();
@@ -30,6 +32,25 @@ export default function LandingPage() {
   useEffect(() => {
     toCheckHealth().then().catch();
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Enter') {
+        if (isEmailRegistered === null) {
+          toCheckUserEmail().then().catch();
+        } else if (isEmailRegistered) {
+          loginUser().then().catch();
+        } else {
+          createAccount().then().catch();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [toCheckUserEmail, loginUser, createAccount]);
 
   async function toCheckHealth() {
     try {
@@ -55,6 +76,12 @@ export default function LandingPage() {
     setIsEmailRegistered(null);
     setPassword('');
     setShowPassword(false);
+    setEmailErrorMsg('');
+  };
+
+  const onSetPassword = (value: string) => {
+    setPassword(value);
+    setPasswordErrorMsg('');
   };
 
   const toSetUserData = (user, access_token: string) => {
@@ -69,6 +96,10 @@ export default function LandingPage() {
 
   async function toCheckUserEmail() {
     try {
+      if (!validateEmail(email)) {
+        setEmailErrorMsg('Enter a Valid Email.');
+        return;
+      }
       setIsButtonLoading(true);
       const response = await checkUserEmailExists(email);
       if (response) {
@@ -79,10 +110,10 @@ export default function LandingPage() {
           setIsEmailRegistered(false);
         }
       }
-      setIsButtonLoading(false);
     } catch (error) {
-      setIsButtonLoading(false);
       console.error('Error: ', error);
+    } finally {
+      setIsButtonLoading(false);
     }
   }
 
@@ -99,17 +130,23 @@ export default function LandingPage() {
         if (data.success) {
           toSetUserData(data.user, data.access_token);
           router.push('/projects');
+        } else {
+          setPasswordErrorMsg('Password entered is incorrect.');
         }
       }
-      setIsButtonLoading(false);
     } catch (error) {
       console.error('Error: ', error);
+    } finally {
       setIsButtonLoading(false);
     }
   }
 
   async function createAccount() {
     try {
+      if (password.length < 8) {
+        setPasswordErrorMsg('Password must be atleast 8 characters');
+        return;
+      }
       setIsButtonLoading(true);
       const payload: authPayload = {
         email: email,
@@ -123,9 +160,9 @@ export default function LandingPage() {
           router.push('/projects');
         }
       }
-      setIsButtonLoading(false);
     } catch (error) {
       console.error('Error: ', error);
+    } finally {
       setIsButtonLoading(false);
     }
   }
@@ -186,6 +223,8 @@ export default function LandingPage() {
                 value={email}
                 setter={onSetEmail}
                 disabled={false}
+                isError={emailErrorMsg !== ''}
+                errorMessage={emailErrorMsg}
               />
             </div>
             {isEmailRegistered !== null && (
@@ -195,16 +234,19 @@ export default function LandingPage() {
                   placeholder={'Enter your email'}
                   format={showPassword ? 'text' : 'password'}
                   value={password}
-                  setter={setPassword}
+                  setter={onSetPassword}
                   endIcon={
                     showPassword
                       ? imagePath.passwordUnhidden
                       : imagePath.passwordHidden
                   }
+                  alt={'password_icons'}
                   endIconSize={'size-4'}
                   endIconClick={() =>
                     setShowPassword((prevState) => !prevState)
                   }
+                  errorMessage={passwordErrorMsg}
+                  isError={passwordErrorMsg !== ''}
                 />
               </div>
             )}

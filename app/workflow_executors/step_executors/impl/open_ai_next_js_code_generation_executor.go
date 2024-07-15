@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"go.uber.org/zap"
 )
 
 type OpenAiNextJsCodeGenerator struct {
@@ -25,6 +26,7 @@ type OpenAiNextJsCodeGenerator struct {
 	designReviewService  *services.DesignStoryReviewService
 	s3Service            *s3_providers.S3Service
 	llmAPIKeyService     *services.LLMAPIKeyService
+	logger         		 *zap.Logger
 }
 
 func NewOpenAINextJsCodeGenerationExecutor(
@@ -36,6 +38,7 @@ func NewOpenAINextJsCodeGenerationExecutor(
 	designReviewService *services.DesignStoryReviewService,
 	s3Service *s3_providers.S3Service,
 	llmAPIKeyService *services.LLMAPIKeyService,
+	logger *zap.Logger,
 ) *OpenAiNextJsCodeGenerator {
 	return &OpenAiNextJsCodeGenerator{
 		projectService:       projectService,
@@ -46,25 +49,25 @@ func NewOpenAINextJsCodeGenerationExecutor(
 		designReviewService:  designReviewService,
 		s3Service:            s3Service,
 		llmAPIKeyService:     llmAPIKeyService,
+		logger:               logger,
 	}
 }
 
 func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.GenerateCodeStep) error {
-	fmt.Printf("Executing GenerateCodeStep: %s\n", step.StepName())
-	fmt.Printf("Working on project details: %v\n", step.Project)
-	fmt.Printf("Working on story details:  %v\n", step.Story)
-	fmt.Printf("Max loop iterations: %d\n", step.MaxLoopIterations)
-	fmt.Printf("Is re-execution: %v\n", step.Execution.ReExecution)
-	fmt.Printf("Is Retry : %v\n", step.Retry)
-	fmt.Printf("File Name: %s\n", step.File)
-	fmt.Printf("\n-----------------------\n")
-	fmt.Println("________________Running command_____________ : ")
-	
+	openAiCodeGenerator.logger.Info("Executing GenerateCodeStep: %s\n", zap.String("step name",step.StepName()))
+	openAiCodeGenerator.logger.Info("Working on project details", zap.Any("project", step.Project))
+	openAiCodeGenerator.logger.Info("Working on story details", zap.Any("story", step.Story))
+	openAiCodeGenerator.logger.Info("Max loop iterations", zap.Any("maxLoopIterations", step.MaxLoopIterations))
+	openAiCodeGenerator.logger.Info("Is re-execution", zap.Any("reExecution", step.Execution.ReExecution))
+	openAiCodeGenerator.logger.Info("Is retry", zap.Any("retry", step.Retry))
+	openAiCodeGenerator.logger.Info("File name", zap.Any("fileName", step.File))
+
 	storyDir := config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID)
 
-	fmt.Println("____________Project Directory: ", storyDir)
-	fmt.Println("___________Checking for Max Retry______________")
-	fmt.Println("________________Running command_____________ : ")
+	openAiCodeGenerator.logger.Info("____Project Directory____", zap.Any("storyDir", storyDir))
+	openAiCodeGenerator.logger.Info("Checking for Max Retry")
+	openAiCodeGenerator.logger.Info("Running command")
+
 	
 	fmt.Printf("\n-----------------------\n")
 	count, err := openAiCodeGenerator.executionStepService.CountExecutionStepsOfName(step.Execution.ID, steps.CODE_GENERATE_STEP.String())

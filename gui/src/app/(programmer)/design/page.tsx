@@ -23,8 +23,7 @@ const DesignPage: React.FC = () => {
   } = useDesignContext();
   const [openSetupModelModal, setOpenSetupModelModal] =
     useState<boolean>(false);
-  const [numberOfStoriesInProgress, setNumberOfStoriesInProgress] =
-    useState<number>(0);
+  const [storiesInProgress, setStoriesInProgress] = useState<number>(0);
 
   useEffect(() => {
     toGetAllDesignStoriesOfProject().then().catch();
@@ -60,6 +59,10 @@ const DesignPage: React.FC = () => {
         const data = response.data;
         if (data.stories) {
           setStoryList(data.stories);
+          const inProgressStories = data.stories.filter(
+            (story) => story.status === 'IN_PROGRESS',
+          );
+          setStoriesInProgress(inProgressStories.length);
         } else {
           setStoryList([]);
         }
@@ -89,7 +92,7 @@ const DesignPage: React.FC = () => {
           top={'50px'}
           toGetAllDesignStoriesOfProject={toGetAllDesignStoriesOfProject}
           setOpenSetupModelModal={setOpenSetupModelModal}
-          numberOfStoriesInProgress={numberOfStoriesInProgress}
+          numberOfStoriesInProgress={storiesInProgress}
         />
       </CustomDrawer>
       <CustomDrawer

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	workspaceconfig "workspace-service/app/config"
 )
 
 func CheckIfWorkspaceExists(workspaceId string) (bool, error) {
@@ -19,9 +18,8 @@ func CheckIfWorkspaceExists(workspaceId string) (bool, error) {
 	return false, err
 }
 
-func CheckIfFrontendWorkspaceExists(storyHashId, workspaceId string) (bool, error) {
-	output := workspaceconfig.FrontendWorkspacePath(workspaceId, storyHashId)
-	_, err := os.Stat(output)
+func CheckIfFrontendWorkspaceExists(path string) (bool, error) {
+	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
 	}

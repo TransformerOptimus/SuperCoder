@@ -130,7 +130,7 @@ export default function CreateOrEditProjectBody({
           const data = response.data;
           setProjectName(data.Name);
           setProjectDescription(data.Description);
-          setSelectedBackendFramework(data.Framework);
+          setSelectedBackendFramework(data.BackendFramework);
           setSelectedFrontendFramework(data.FrontendFramework);
         }
       }

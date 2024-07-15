@@ -11,7 +11,7 @@ type Project struct {
 	FrontendURL       string    `gorm:"type:varchar(100);"`
 	BackendURL        string    `gorm:"type:varchar(100);"`
 	Name              string    `gorm:"type:varchar(100);"`
-	Framework         string    `gorm:"type:varchar(100);not null"`
+	BackendFramework  string    `gorm:"type:varchar(100);not null"`
 	FrontendFramework string    `gorm:"type:varchar(100);not null"`
 	Description       string    `gorm:"type:text"`
 	OrganisationID    uint      `gorm:"not null"`

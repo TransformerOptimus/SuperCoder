@@ -105,7 +105,6 @@ func main() {
 
 	// Provide GitnessClient
 	err = c.Provide(func(logger *zap.Logger, slackAlert *monitoring.SlackAlert) *gitness_git_provider.GitnessClient {
-		fmt.Println("___token in server____", config.GitnessToken())
 		return gitness_git_provider.NewGitnessClient(config.GitnessURL(), config.GitnessToken(),
 			client.NewHttpClient(), logger, slackAlert)
 	})
@@ -120,6 +119,9 @@ func main() {
 		panic(err)
 	}
 	err = c.Provide(s3_providers.NewS3Service)
+	if err != nil {
+		panic(err)
+	}
 
 	// Provide Repositories
 	err = c.Provide(func(db *gorm.DB) (
@@ -411,7 +413,6 @@ func main() {
 
 		env := config.Get("app.env")
 		if env == constants.Development {
-			fmt.Println("____RUNNING INITIALIZE SCRIPT______")
 			err := InitializeSuperCoderData(userService, organisationService)
 			if err != nil {
 				log.Fatalf("Failed to initialize SuperCoder data: %v", err)
@@ -497,7 +498,7 @@ func main() {
 
 		pullRequests := api.Group("/pull-requests", middleware.AuthenticateJWT())
 
-		pullRequests.POST("/create", pullRequestCtrl.CreatePullRequestFromCodeEditor)
+		pullRequests.POST("/create", pullRequestCtrl.CreateManualPullRequest)
 		pullRequest := pullRequests.Group("/:pull_request_id", pullRequestAuthMiddleware.Authorize())
 		pullRequest.GET("/diff", pullRequestCtrl.GetPullRequestDiffByPullRequestID)
 		pullRequest.GET("/commits", pullRequestCtrl.FetchPullRequestCommits)

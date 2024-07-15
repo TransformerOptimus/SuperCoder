@@ -110,7 +110,7 @@ func (ctrl *PullRequestController) GetPullRequestDiffByPullRequestID(c *gin.Cont
 	c.JSON(http.StatusOK, gin.H{"diff": diff})
 }
 
-func (ctrl *PullRequestController) CreatePullRequestFromCodeEditor(c *gin.Context) {
+func (ctrl *PullRequestController) CreateManualPullRequest(c *gin.Context) {
 	var createPRRequest request.CreatePRFromCodeEditorRequest
 	if err := c.ShouldBindJSON(&createPRRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -120,7 +120,7 @@ func (ctrl *PullRequestController) CreatePullRequestFromCodeEditor(c *gin.Contex
 	Title := createPRRequest.Title
 	Description := createPRRequest.Description
 	fmt.Println("project id _____", ProjectID)
-	prId, err := ctrl.pullRequestService.CreatePullRequestFromCodeEditor(ProjectID, Title, Description)
+	prId, err := ctrl.pullRequestService.CreateManualPullRequest(ProjectID, Title, Description)
 	if err !=nil{
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Pull Request"})
         return

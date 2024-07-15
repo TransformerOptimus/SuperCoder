@@ -154,13 +154,13 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 		createJobRequest.WithExecutorImage("node")
 		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.FrontendFramework))
 	} else {
-		fmt.Println("Project Framework", project.Framework)
+		fmt.Println("Project Framework", project.BackendFramework)
 		createJobRequest.WithPullRequestId(int64(payload.PullRequestId))
 		createJobRequest.WithProjectId(project.HashID)
 		createJobRequest.WithExecutorImage("python")
 		mountPath := "/workspaces/" + project.HashID
 		createJobRequest.WithWorkspaceMountPath(mountPath)
-		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.Framework))
+		createJobRequest.Env = append(createJobRequest.Env, "EXECUTION_TEMPLATE="+strings.ToUpper(project.BackendFramework))
 
 	}
 

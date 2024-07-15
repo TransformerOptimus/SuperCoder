@@ -13,11 +13,12 @@ import (
 	"ai-developer/app/utils"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
-	"strconv"
-	"time"
 )
 
 type ProjectService struct {
@@ -53,16 +54,16 @@ func (s *ProjectService) GetAllProjectsOfOrganisation(organisationId int) ([]res
 	allProjects := make([]response.GetAllProjectsResponse, 0, len(projects))
 	for _, project := range projects {
 		allProjects = append(allProjects, response.GetAllProjectsResponse{
-			ProjectId:          project.ID,
-			ProjectName:        project.Name,
-			ProjectDescription: project.Description,
-			ProjectFramework:   project.Framework,
+			ProjectId:                project.ID,
+			ProjectName:              project.Name,
+			ProjectDescription:       project.Description,
+			ProjectFramework:         project.BackendFramework,
 			ProjectFrontendFramework: project.FrontendFramework,
-			ProjectHashID:      project.HashID,
-			ProjectUrl:         project.Url,
-			ProjectBackendURL:  project.BackendURL,
-			ProjectFrontendURL: project.FrontendURL,
-			PullRequestCount:   len(projectPullRequestMap[int(project.ID)]),
+			ProjectHashID:            project.HashID,
+			ProjectUrl:               project.Url,
+			ProjectBackendURL:        project.BackendURL,
+			ProjectFrontendURL:       project.FrontendURL,
+			PullRequestCount:         len(projectPullRequestMap[int(project.ID)]),
 		})
 	}
 
@@ -96,7 +97,7 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 	project := &models.Project{
 		OrganisationID:    uint(organisationID),
 		Name:              requestData.Name,
-		Framework:         requestData.Framework,
+		BackendFramework:  requestData.Framework,
 		FrontendFramework: requestData.FrontendFramework,
 		Description:       requestData.Description,
 		HashID:            hashID,
@@ -124,12 +125,12 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 	//Making Call to Workspace Service to create workspace on project level
 	_, err = s.workspaceServiceClient.CreateWorkspace(
 		&request.CreateWorkspaceRequest{
-			WorkspaceId:     hashID,
-			BackendTemplate: &backendService,
+			WorkspaceId:      hashID,
+			BackendTemplate:  &backendService,
 			FrontendTemplate: &frontendService,
-			RemoteURL:       remoteGitURL,
-			GitnessUserName: config.GitnessUser(),
-			GitnessToken:    config.GitnessToken(),
+			RemoteURL:        remoteGitURL,
+			GitnessUserName:  config.GitnessUser(),
+			GitnessToken:     config.GitnessToken(),
 		},
 	)
 

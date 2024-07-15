@@ -70,7 +70,10 @@ export const updateStoryStatus = (
   status: string,
   story_id: number | string,
 ) => {
-  return api.put(`/stories/${story_id}/status`, { story_status: status, story_id: story_id });
+  return api.put(`/stories/${story_id}/status`, {
+    story_status: status,
+    story_id: story_id,
+  });
 };
 
 export const getActivityLogs = (story_id: string) => {
@@ -86,7 +89,9 @@ export const getAllExecutionOutputs = (id: string) => {
 };
 
 export const getProjectPullRequests = (project_id: string, status: string) => {
-  return api.get(`/projects/${project_id}/pull-requests`, { params: { status } });
+  return api.get(`/projects/${project_id}/pull-requests`, {
+    params: { status },
+  });
 };
 
 export const commentRebuildStory = (payload: CommentReBuildPayload) => {
@@ -94,7 +99,9 @@ export const commentRebuildStory = (payload: CommentReBuildPayload) => {
 };
 
 export const mergePullRequest = (pull_request_id: number) => {
-  return api.post(`/pull-requests/${pull_request_id}/merge`, { pull_request_id: pull_request_id });
+  return api.post(`/pull-requests/${pull_request_id}/merge`, {
+    pull_request_id: pull_request_id,
+  });
 };
 
 export const getCommitsPullRequest = (pr_id: number) => {
@@ -116,20 +123,19 @@ export const createOrUpdateLLMAPIKey = (
   return api.post(`/llm_api_key`, payload);
 };
 
-
 // Teams APIS
 export const getOrganisationMembers = () => {
-  return api.get(`/team_members`);
-}
+  return api.get(``);
+};
 
 export const addUserToOrganisation = (email: string) => {
-  return api.post(`/team_add`, {email: email})
-}
+  return api.post(``, { email: email });
+};
 
 export const removeUserFromOrganisation = (email: string) => {
-  return api.post('/team_remove', {email: email})
-}
+  return api.post('', { email: email });
+};
 
 export const revokeUserInvite = (email: string) => {
-  return api.post(`/team_revoke`, {email: email})
-}
+  return api.post(``, { email: email });
+};

@@ -18,7 +18,6 @@ type AuthController struct {
 	githubOauthService *services.GithubOauthService
 	jwtService         *services.JWTService
 	userService        *services.UserService
-	appRedirectUrl     string
 	clientID           string
 	clientSecret       string
 	redirectURL        string
@@ -137,7 +136,6 @@ func NewAuthController(
 	authService *services.AuthService,
 	jwtService *services.JWTService,
 	userService *services.UserService,
-	appRedirectUrl string,
 	clientID string,
 	clientSecret string,
 	redirectURL string,
@@ -150,6 +148,5 @@ func NewAuthController(
 		clientID:           clientID,
 		clientSecret:       clientSecret,
 		redirectURL:        redirectURL,
-		appRedirectUrl:     appRedirectUrl,
 	}
 }

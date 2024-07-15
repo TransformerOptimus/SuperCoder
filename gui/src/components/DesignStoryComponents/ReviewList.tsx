@@ -76,6 +76,7 @@ const ReviewList: React.FC = () => {
                         <span>created on {story.created_on}</span>
                       </div>
                     </div>
+
                     <GithubReviewButton>Review</GithubReviewButton>
                   </div>
                 </div>

@@ -154,7 +154,9 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
         id={'new_story_header'}
         className={`${styles.new_story_header} flex flex-shrink-0 flex-row items-center justify-between px-4 py-6`}
       >
-        <span className={'text-xl font-medium'}>New Story</span>
+        <span className={'text-xl font-medium'}>
+          {editTrue ? 'Edit Story' : 'New Story'}
+        </span>
 
         <CustomImage
           className={'size-5'}

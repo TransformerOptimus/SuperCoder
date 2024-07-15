@@ -18,16 +18,16 @@ export const sidebarOptions: SidebarOption[] = [
   },
   {
     id: 'design_workbench',
-    text: 'Design Workbench',
-    selected: imagePath.workbenchIconSelected,
-    unselected: imagePath.workbenchIconUnselected,
+    text: 'Front-End Workbench',
+    selected: imagePath.frontendWorkbenchIconSelected,
+    unselected: imagePath.frontendWorkbenchIconUnselected,
     route: `/design_workbench`,
   },
   {
     id: 'workbench',
-    text: 'Workbench',
-    selected: imagePath.workbenchIconSelected,
-    unselected: imagePath.workbenchIconUnselected,
+    text: 'Back-End Workbench',
+    selected: imagePath.backendWorkbenchIconSelected,
+    unselected: imagePath.backendWorkbenchIconUnselected,
     route: `/workbench`,
   },
   {

@@ -48,7 +48,7 @@ const SideBar: React.FC = () => {
           alt={`${option.id}_icon`}
           priority
         />
-        <span className="proxima_nova text-[9px] font-normal">
+        <span className={'proxima_nova text-center text-[9px] font-normal'}>
           {option.text}
         </span>
       </div>

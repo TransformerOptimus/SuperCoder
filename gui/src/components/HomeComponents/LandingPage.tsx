@@ -26,19 +26,25 @@ export default function LandingPage() {
   const [emailErrorMsg, setEmailErrorMsg] = useState<string>('');
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string>('');
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
-  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [isInvite, setIsInvite] = useState<boolean>(false);
+  const [organizationId, setOrganizationId] = useState<string | null>('');
 
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
     toCheckHealth().then().catch();
-    const token = searchParams.get('invite_token');
     const email = searchParams.get('email');
-    if (email && token) {
+    const organizationId = searchParams.get('organizationId');
+    if (email) {
       setEmail(email);
-      setInviteToken(token);
-      setIsEmailRegistered(false);
+      setIsInvite(true);
+      if (organizationId) {
+        setOrganizationId(organizationId);
+        setIsEmailRegistered(false);
+      } else {
+        setIsEmailRegistered(true);
+      }
     }
   }, []);
 
@@ -157,10 +163,13 @@ export default function LandingPage() {
         return;
       }
       setIsButtonLoading(true);
-      const payload: authPayload = {
+      let payload: authPayload = {
         email: email,
         password: password,
       };
+      if (organizationId) {
+        payload = { ...payload, organizationId: organizationId };
+      }
       const response = await signUp(payload);
       if (response) {
         const data = response.data;
@@ -231,7 +240,7 @@ export default function LandingPage() {
                 format={'text'}
                 value={email}
                 setter={onSetEmail}
-                disabled={inviteToken !== null}
+                disabled={isInvite}
                 isError={emailErrorMsg !== ''}
                 errorMessage={emailErrorMsg}
               />

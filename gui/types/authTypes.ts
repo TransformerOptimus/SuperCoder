@@ -1,6 +1,7 @@
 export interface authPayload {
   email: string;
   password: string;
+  organizationId?: string;
 }
 
 export interface userData {

@@ -13,6 +13,7 @@ import {
   removeUserFromOrganisation,
   revokeUserInvite,
 } from '@/api/DashboardService';
+import { validateEmail } from '@/app/utils';
 
 interface user {
   email: string;
@@ -35,6 +36,7 @@ export default function Users() {
   const [userList, setUserList] = useState<user[]>(email);
   const [inviteUserEmail, setInviteUserEmail] = useState<string>('');
   const [removeUserEmail, setRemoveUserEmail] = useState<string>('');
+  const [emailErrorMsg, setEmailErrorMsg] = useState<string>('');
 
   useEffect(() => {
     setInviteUserEmail('');
@@ -57,6 +59,10 @@ export default function Users() {
 
   async function sendInvite() {
     try {
+      if (!validateEmail(inviteUserEmail)) {
+        setEmailErrorMsg('Enter a Valid Email.');
+        return;
+      }
       const response = await addUserToOrganisation(inviteUserEmail);
       if (response) {
         const data = response.data;
@@ -97,6 +103,11 @@ export default function Users() {
     setOpenRemoveUserModal(true);
   };
 
+  const onSetEmail = (value) => {
+    setInviteUserEmail(value);
+    setEmailErrorMsg('');
+  };
+
   return (
     <div id={'users'} className={'proxima_nova flex flex-col gap-6'}>
       <CustomModal
@@ -111,8 +122,10 @@ export default function Users() {
             <CustomInput
               format={'text'}
               value={inviteUserEmail}
-              setter={setInviteUserEmail}
-              placeholder={'Enter email Address'}
+              setter={onSetEmail}
+              placeholder={'Enter Email Address'}
+              isError={emailErrorMsg !== ''}
+              errorMessage={emailErrorMsg}
             />
           </div>
         </CustomModal.Body>

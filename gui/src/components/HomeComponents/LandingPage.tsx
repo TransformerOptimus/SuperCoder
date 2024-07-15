@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '@/api/apiConfig';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import { authPayload, userData } from '../../../types/authTypes';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { setUserData, validateEmail } from '@/app/utils';
 
 export default function LandingPage() {
@@ -26,11 +26,20 @@ export default function LandingPage() {
   const [emailErrorMsg, setEmailErrorMsg] = useState<string>('');
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string>('');
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     toCheckHealth().then().catch();
+    const token = searchParams.get('invite_token');
+    const email = searchParams.get('email');
+    if (email && token) {
+      setEmail(email);
+      setInviteToken(token);
+      setIsEmailRegistered(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -222,7 +231,7 @@ export default function LandingPage() {
                 format={'text'}
                 value={email}
                 setter={onSetEmail}
-                disabled={false}
+                disabled={inviteToken !== null}
                 isError={emailErrorMsg !== ''}
                 errorMessage={emailErrorMsg}
               />

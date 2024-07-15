@@ -29,7 +29,7 @@ func LoadConfig() (config *koanf.Koanf, err error) {
 				},
 				"autoremove": "false",
 				"volume": map[string]interface{}{
-					"source": "ai-developer_workspaces",
+					"source": "supercoder_workspaces",
 					"target": "/workspaces",
 				},
 			},

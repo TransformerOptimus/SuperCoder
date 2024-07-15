@@ -231,7 +231,9 @@ export default function LandingPage() {
               <div className={'flex flex-col gap-2'}>
                 <span className={'secondary_color text-sm'}>Password</span>
                 <CustomInput
-                  placeholder={'Enter your email'}
+                  placeholder={
+                    isEmailRegistered ? 'Enter Password' : 'Set Password'
+                  }
                   format={showPassword ? 'text' : 'password'}
                   value={password}
                   setter={onSetPassword}

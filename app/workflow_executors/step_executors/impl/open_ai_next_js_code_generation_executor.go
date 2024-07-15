@@ -17,7 +17,6 @@ import (
 )
 
 type OpenAiNextJsCodeGenerator struct {
-	claudeClient         *llms.ClaudeClient
 	projectService       *services.ProjectService
 	executionStepService *services.ExecutionStepService
 	executionService     *services.ExecutionService
@@ -29,7 +28,6 @@ type OpenAiNextJsCodeGenerator struct {
 }
 
 func NewOpenAINextJsCodeGenerationExecutor(
-	claudeClient *llms.ClaudeClient,
 	projectService *services.ProjectService,
 	executionStepService *services.ExecutionStepService,
 	executionService *services.ExecutionService,
@@ -40,7 +38,6 @@ func NewOpenAINextJsCodeGenerationExecutor(
 	llmAPIKeyService *services.LLMAPIKeyService,
 ) *OpenAiNextJsCodeGenerator {
 	return &OpenAiNextJsCodeGenerator{
-		claudeClient:         claudeClient,
 		projectService:       projectService,
 		executionStepService: executionStepService,
 		executionService:     executionService,
@@ -359,7 +356,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecut
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCode(step steps.GenerateCodeStep, instruction map[string]string, storyDir string, apiKey string) (string, error) {
 	if step.Retry {
-		response, err := openAiCodeGenerator.GenerateCodeOnRetry(step.ExecutionStep, instruction, storyDir)
+		response, err := openAiCodeGenerator.GenerateCodeOnRetry(step.ExecutionStep, instruction, storyDir, apiKey)
 		if err != nil {
 			fmt.Println("Error generating code on retry")
 			return "", err
@@ -378,8 +375,8 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCode(step steps.Ge
 			},
 			"IN_PROGRESS",
 		)
-		openAiCodeGenerator.claudeClient.WithApiKey(apiKey)
-		response, err := openAiCodeGenerator.claudeClient.ChatCompletion(messages)
+		claudeClient := llms.NewClaudeClient(apiKey)
+		response, err := claudeClient.ChatCompletion(messages)
 		if err != nil {
 			return "", fmt.Errorf("failed to generate code from Claude API: %w", err)
 		}
@@ -402,7 +399,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) ProcessMessageResponse(mes
 
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(executionStep *models.ExecutionStep, instruction map[string]string, storyDir string) (string, error) {
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(executionStep *models.ExecutionStep, instruction map[string]string, storyDir string, apiKey string) (string, error) {
 	switch instruction["actionType"] {
 	case "create":
 		filePath := storyDir + instruction["fileName"]
@@ -430,7 +427,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(execut
 		}
 		return "", nil
 	case "edit":
-		response, err := openAiCodeGenerator.EditCodeOnRetry(instruction, storyDir, executionStep)
+		response, err := openAiCodeGenerator.EditCodeOnRetry(instruction, storyDir, executionStep, apiKey)
 		if err != nil {
 			return "", err
 		}
@@ -441,7 +438,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(execut
 	}
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instruction map[string]string, storyDir string, executionStep *models.ExecutionStep) (string, error) {
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instruction map[string]string, storyDir string, executionStep *models.ExecutionStep, apiKey string) (string, error) {
 	generationPlan, err := openAiCodeGenerator.GetCodeGenerationPlan(storyDir)
 	if err != nil {
 		return "", err
@@ -459,7 +456,8 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instructio
 		},
 		"IN_PROGRESS",
 	)
-	response, err := openAiCodeGenerator.claudeClient.ChatCompletion(messages)
+	claudeClient := llms.NewClaudeClient(apiKey)
+	response, err := claudeClient.ChatCompletion(messages)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate code from OpenAI API: %w", err)
 	}

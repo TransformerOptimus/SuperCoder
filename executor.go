@@ -5,7 +5,6 @@ import (
 	gitness_git_provider "ai-developer/app/client/git_provider"
 	"ai-developer/app/client/workspace"
 	"ai-developer/app/config"
-	"ai-developer/app/llms"
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
@@ -285,21 +284,6 @@ func main() {
 		return
 	}
 
-	// Provide OpenAiClient
-	if err := c.Provide(func() *llms.OpenAiClient {
-		apiKey := config.OpenAIAPIKey()
-		return llms.NewOpenAiClient(apiKey)
-	}); err != nil {
-		log.Fatalf("Error providing OpenAiClient: %v", err)
-	}
-
-	// Provide ClaudeClient
-	if err = c.Provide(func() *llms.ClaudeClient {
-		apiKey := config.ClaudeAPIKey()
-		return llms.NewClaudeClient(apiKey)
-	}); err != nil {
-		log.Fatalf("Error providing ClaudeClient: %v", err)
-	}
 	template, exists := os.LookupEnv("EXECUTION_TEMPLATE")
 	if template == "FLASK" || !exists {
 		_ = c.Provide(func(

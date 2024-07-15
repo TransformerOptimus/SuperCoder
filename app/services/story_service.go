@@ -111,7 +111,7 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 		Type:        storyType,
 	}
 
-	frontendService := constants.NextJS
+	frontendService := constants.NextJs
 	//Making Call to Workspace Service to create workspace on project level
 	_, err = s.workspaceServiceClient.CreateFrontendWorkspace(
 		&request.CreateWorkspaceRequest{

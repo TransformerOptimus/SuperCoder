@@ -66,6 +66,7 @@ body:
         If installed with git you can run `git branch` to see which version of SuperCoder you are running.
       options:
         - Main
+        - Cloud Version
         - Other
     validations:
       required: true

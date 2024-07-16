@@ -105,6 +105,18 @@ func PullBranch(workingDir string, origin string, branchName string) error {
 	return nil
 }
 
+func PullOriginMain(workingDir string, origin string) error {
+	fmt.Printf("Executing git pull origin main --no-rebase",)
+	cmd := exec.Command("git", "pull", origin, "main", "--no-rebase")
+	cmd.Dir = workingDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git pull error: %s, output: %s", err.Error(), string(output))
+	}
+	fmt.Printf("Output: %s\n", string(output))
+	return nil
+}
+
 func PullOriginBranch(workingDir string, project *models.Project, GitnessSpaceOrProjectName string) error {
 	branchName := "main"
 	httpPrefix := "https"
@@ -123,14 +135,18 @@ func PullOriginBranch(workingDir string, project *models.Project, GitnessSpaceOr
 }
 
 func GetCurrentBranch(workingDir string) (string, error) {
-	fmt.Printf("Getting current branch in directory: %s\n", workingDir)
-	cmd := exec.Command("git", "branch", "--show-current")
-	cmd.Dir = workingDir
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(output)), nil
+    fmt.Printf("Getting current branch in directory: %s\n", workingDir)
+    cmd := exec.Command("git", "branch", "--show-current")
+    cmd.Dir = workingDir
+    output, err := cmd.CombinedOutput()
+    if err != nil {
+        exitError, ok := err.(*exec.ExitError)
+        if ok {
+            return "", fmt.Errorf("git command failed with exit code %d: %s", exitError.ExitCode(), string(output))
+        }
+        return "", fmt.Errorf("git command failed: %v\nOutput: %s", err, string(output))
+    }
+    return strings.TrimSpace(string(output)), nil
 }
 
 func GitAddToTrackFiles(workingDir string, err error) (string, error) {

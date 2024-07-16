@@ -19,6 +19,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
@@ -241,6 +242,12 @@ func main() {
 		panic(err)
 
 	}
+	//NEXT JS serverStartTestStep
+	err = c.Provide(impl.NewNextJsServerStartTestExecutor)
+	if err != nil {
+		log.Println("Error providing next js test step:", err)
+		panic(err)
+	}
 	//GitCommitStep
 	err = c.Provide(impl.NewGitCommitExecutor)
 	if err != nil {
@@ -292,14 +299,12 @@ func main() {
 		) map[steps.StepName]step_executors.StepExecutor {
 			return map[steps.StepName]step_executors.StepExecutor{
 				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
-				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
 				steps.UPDATE_CODE_FILE_STEP:        *updateCodeFileExecutor,
 				steps.GIT_COMMIT_STEP:              *gitCommitExecutor,
 				steps.GIT_CREATE_BRANCH_STEP:       *gitMakeBranchExecutor,
 				steps.GIT_PUSH_STEP:                *gitPushExecutor,
 				steps.GIT_CREATE_PULL_REQUEST_STEP: *gitnessMakePullRequestExecutor,
 				steps.SERVER_START_STEP:            *flaskServerStartTestExecutor,
-				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
 				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
 				steps.RESET_DB_STEP:                *resetFlaskDBStepExecutor,
 				steps.PACKAGE_INSTALL_STEP:         *poetryPackageInstallStepExecutor,

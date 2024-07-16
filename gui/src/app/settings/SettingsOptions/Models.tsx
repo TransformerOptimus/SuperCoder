@@ -36,10 +36,6 @@ export default function Models() {
     toGetLLMAPIKeys().then().catch();
   }, []);
 
-  useEffect(() => {
-    console.log(modelsList);
-  }, [modelsList]);
-
   async function toGetLLMAPIKeys() {
     try {
       const organisation_id = localStorage.getItem('organisationId');

@@ -5,6 +5,6 @@ type CreateLLMAPIKeyRequest struct {
 }
 
 type LLMAPIKey struct {
-	LLMModel  string `json:"llm_model" binding:"required"`
-	LLMAPIKey string `json:"llm_api_key" binding:"required"`
+	LLMModel  string  `json:"llm_model" binding:"required"`
+	LLMAPIKey *string `json:"llm_api_key"`
 }

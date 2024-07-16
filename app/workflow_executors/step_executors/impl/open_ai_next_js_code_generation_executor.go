@@ -124,9 +124,33 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	if openAiCodeGenerator.llmAPIKeyService == nil {
 		fmt.Println("_____NULL_____")
 	}
-	llmAPIKey, err := openAiCodeGenerator.llmAPIKeyService.GetLLMAPIKeyByModelName("claude-3", organisationId)
+	llmAPIKey, err := openAiCodeGenerator.llmAPIKeyService.GetLLMAPIKeyByModelName(constants.CLAUDE_3, organisationId)
 	if err != nil {
 		fmt.Println("Error getting claude api key: ", err)
+	}
+	if llmAPIKey == nil || llmAPIKey.LLMAPIKey == "" {
+		openAiCodeGenerator.logger.Info("_____claude API Key not found_____")
+		settingsUrl := config.Get("app.url").(string) + "/settings"
+		err := openAiCodeGenerator.activityLogService.CreateActivityLog(
+			step.Execution.ID,
+			step.ExecutionStep.ID,
+			"INFO",
+			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
+		)
+		if err != nil {
+			fmt.Printf("Error creating activity log: %s\n", err.Error())
+			return err
+		}
+		//Update Execution Status and Story Status
+		if err := openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
+			fmt.Printf("Error updating story status: %s\n", err.Error())
+			return err
+		}
+		//Update execution status to IN REVIEW
+		if err := openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
+			fmt.Printf("Error updating execution step: %s\n", err.Error())
+			return err
+		}
 	}
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API KEY_________", apiKey)

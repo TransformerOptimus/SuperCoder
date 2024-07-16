@@ -1,22 +1,41 @@
 'use client';
-import CustomSelect from '@/components/CustomSelect/CustomSelect';
 import React, { useEffect, useState } from 'react';
 import { Button } from '@nextui-org/react';
 import { createOrUpdateLLMAPIKey, getLLMAPIKeys } from '@/api/DashboardService';
 import toast from 'react-hot-toast';
+import CustomInput from '@/components/CustomInput/CustomInput';
+import imagePath from '@/app/imagePath';
 
 interface ModelsList {
   model_name: string;
   api_key: string;
+  text?: string;
+  icon?: string;
 }
 
 export default function Models() {
-  const [selectedValue, setSelectedValue] = useState<string>('');
-  const [apiKey, setApiKey] = useState<string | null>('');
   const [modelsList, setModelsList] = useState<ModelsList[] | null>(null);
+  const modelDetails = {
+    'gpt-4o': { text: 'Open AI API Key (gpt-4o)', icon: imagePath.openAIIcon },
+    'claude-3': {
+      text: 'Anthropic API Key (claude-3.4-sonnet)',
+      icon: imagePath.claudeIcon,
+    },
+  };
 
   const handleButtonClick = () => {
     toCreateOrUpdateLLMAPIKey().then().catch();
+  };
+
+  const handleApiKeyChange = (model_name: string, value: string) => {
+    setModelsList(
+      (prev) =>
+        prev?.map((model) =>
+          model.model_name === model_name
+            ? { ...model, api_key: value }
+            : model,
+        ) || null,
+    );
   };
 
   useEffect(() => {
@@ -24,18 +43,7 @@ export default function Models() {
   }, []);
 
   useEffect(() => {
-    if (modelsList && selectedValue.length > 0) {
-      const selectedModel = modelsList.find(
-        (model) => model.model_name === selectedValue,
-      );
-      if (selectedModel) {
-        setApiKey(selectedModel.api_key);
-      }
-    }
-  }, [selectedValue]);
-
-  useEffect(() => {
-    if (modelsList) setSelectedValue(modelsList[0].model_name);
+    console.log(modelsList);
   }, [modelsList]);
 
   async function toGetLLMAPIKeys() {
@@ -43,8 +51,10 @@ export default function Models() {
       const organisation_id = localStorage.getItem('organisationId');
       const response = await getLLMAPIKeys(organisation_id);
       if (response) {
-        const data = response.data;
-        console.log(data);
+        const data = response.data.map((model: ModelsList) => ({
+          ...model,
+          ...modelDetails[model.model_name],
+        }));
         setModelsList(data);
       }
     } catch (error) {
@@ -54,19 +64,16 @@ export default function Models() {
 
   async function toCreateOrUpdateLLMAPIKey() {
     try {
-      let id = null;
-      if (typeof window !== 'undefined') {
-        id = localStorage.getItem('organisationId');
-      }
+      const organisation_id = localStorage.getItem('organisationId');
+
       const payload = {
-        organisation_id: Number(id),
-        llm_model: selectedValue,
-        llm_api_key: apiKey,
+        organisation_id: Number(organisation_id),
+        llm_model: modelsList[0].model_name,
+        llm_api_key: modelsList[0].api_key,
       };
+
       const response = await createOrUpdateLLMAPIKey(payload);
       if (response) {
-        const data = response.data;
-        console.log(data);
         toast.success('Model is setup successfully');
         toGetLLMAPIKeys().then().catch();
       }
@@ -81,40 +88,28 @@ export default function Models() {
   return (
     <div id={'models_section'} className={'proxima_nova flex flex-col gap-6'}>
       <span id={'title'} className={'text-xl font-semibold text-white'}>
-        {' '}
-        Setup Model{' '}
+        Setup Models
       </span>
-      <div id={'model_selection_section'} className={'flex flex-col gap-2'}>
-        <span className={'secondary_color text-[13px] font-medium'}>Model</span>
-        <CustomSelect
-          selectedValues={selectedValue}
-          setSelectedValues={setSelectedValue}
-        >
-          {modelsList &&
-            modelsList.length > 0 &&
-            modelsList.map((model, index) => (
-              <CustomSelect.Item key={index} value={model.model_name}>
-                {model.model_name}
-              </CustomSelect.Item>
-            ))}
-        </CustomSelect>
-      </div>
-      <div id={'api_key_section'} className={'flex flex-col gap-2'}>
-        <span className={'secondary_color text-[13px] font-medium'}>
-          {' '}
-          Open AI API Key{' '}
-        </span>
-        <input
-          value={apiKey}
-          type={'password'}
-          className={'input_medium'}
-          placeholder={'Enter API Key here'}
-          onChange={(event) => setApiKey(event.target.value)}
-        />
+      <div id={'api_key_section'} className={'flex flex-col gap-6'}>
+        {modelsList?.map((model) => (
+          <div key={model.model_name} className={'flex flex-col gap-2'}>
+            <span className={'secondary_color text-[13px] font-medium'}>
+              {model.text}
+            </span>
+            <CustomInput
+              format={'password'}
+              value={model.api_key || ''}
+              setter={(value) => handleApiKeyChange(model.model_name, value)}
+              placeholder={'Enter API Key here'}
+              icon={model.icon}
+              iconCSS={'size-4'}
+              alt={`${model.model_name}_icon`}
+            />
+          </div>
+        ))}
       </div>
       <Button className={'primary_medium w-fit'} onClick={handleButtonClick}>
-        {' '}
-        Update Changes{' '}
+        Update Changes
       </Button>
     </div>
   );

@@ -175,11 +175,11 @@ func (controller *TerminalController) NewTerminal(ctx *gin.Context) {
 				return
 			}
 			if err := connection.WriteMessage(websocket.BinaryMessage, buffer[:readLength]); err != nil {
-				controller.logger.Warn("failed to send %v bytes from tty to xterm.js", zap.Int("read_length", readLength))
+				controller.logger.Warn(fmt.Sprintf("failed to send %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength))
 				errorCounter++
 				continue
 			}
-			controller.logger.Info("sent message of size %v bytes from tty to xterm.js", zap.Int("read_length", readLength))
+			controller.logger.Info(fmt.Sprintf("sent message of size %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength))
 			errorCounter = 0
 		}
 	}()
@@ -215,7 +215,7 @@ func (controller *TerminalController) NewTerminal(ctx *gin.Context) {
 					ttySize := &TTYSize{}
 					resizeMessage := bytes.Trim(dataBuffer[1:], " \n\r\t\x00\x01")
 					if err := json.Unmarshal(resizeMessage, ttySize); err != nil {
-						controller.logger.Warn("failed to unmarshal received resize message '%s': %s", zap.ByteString("resizeMessage", resizeMessage), zap.Error(err))
+						controller.logger.Warn(fmt.Sprintf("failed to unmarshal received resize message '%s'", resizeMessage), zap.ByteString("resizeMessage", resizeMessage), zap.Error(err))
 						continue
 					}
 					controller.logger.Info("resizing tty ", zap.Uint16("rows", ttySize.Rows), zap.Uint16("cols", ttySize.Cols))

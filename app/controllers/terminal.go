@@ -46,6 +46,7 @@ type TerminalController struct {
 	logger                      *zap.Logger
 	tty                         *os.File
 	cancelFunc                  context.CancelFunc
+	writeMutex                  sync.Mutex
 }
 
 func NewTerminalController(logger *zap.Logger, command string, arguments []string, allowedHostnames []string) (*TerminalController, error) {
@@ -142,10 +143,14 @@ func (controller *TerminalController) keepAlive(ctx context.Context, connection 
 		case <-ctx.Done():
 			return
 		default:
+
+			controller.writeMutex.Lock()
 			if err := connection.WriteMessage(websocket.PingMessage, []byte("keepalive")); err != nil {
-				controller.logger.Warn("failed to write ping message", zap.Error(err))
+				controller.writeMutex.Unlock()
+				controller.logger.Warn("failed to write ping message")
 				return
 			}
+			controller.writeMutex.Unlock()
 
 			time.Sleep(keepalivePingTimeout / 2)
 
@@ -166,29 +171,35 @@ func (controller *TerminalController) readFromTTY(ctx context.Context, connectio
 		case <-ctx.Done():
 			return
 		default:
-		}
 
-		buffer := make([]byte, controller.MaxBufferSizeBytes)
+			buffer := make([]byte, controller.MaxBufferSizeBytes)
 
-		readLength, err := controller.tty.Read(buffer)
-		if err != nil {
-			controller.logger.Warn("failed to read from tty", zap.Error(err))
-			if err := connection.WriteMessage(websocket.TextMessage, []byte("bye!")); err != nil {
-				controller.logger.Warn("failed to send termination message from tty to xterm.js", zap.Error(err))
-			}
-			return
-		}
-
-		if err := connection.WriteMessage(websocket.BinaryMessage, buffer[:readLength]); err != nil {
-			controller.logger.Warn(fmt.Sprintf("failed to send %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength), zap.Error(err))
-			errorCounter++
-			if errorCounter > controller.ConnectionErrorLimit {
+			readLength, err := controller.tty.Read(buffer)
+			if err != nil {
+				controller.logger.Warn("failed to read from tty", zap.Error(err))
+				controller.writeMutex.Lock()
+				if err := connection.WriteMessage(websocket.TextMessage, []byte("bye!")); err != nil {
+					controller.logger.Warn("failed to send termination message from tty to xterm.js", zap.Error(err))
+				}
+				controller.writeMutex.Unlock()
 				return
 			}
-			continue
+
+			controller.writeMutex.Lock()
+			if err := connection.WriteMessage(websocket.BinaryMessage, buffer[:readLength]); err != nil {
+				controller.writeMutex.Unlock()
+				controller.logger.Warn(fmt.Sprintf("failed to send %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength))
+				errorCounter++
+				if errorCounter > controller.ConnectionErrorLimit {
+					return
+				}
+				continue
+			}
+			controller.writeMutex.Unlock()
+
+			controller.logger.Info(fmt.Sprintf("sent message of size %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength))
+			errorCounter = 0
 		}
-		controller.logger.Info(fmt.Sprintf("sent message of size %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength))
-		errorCounter = 0
 	}
 }
 
@@ -199,35 +210,35 @@ func (controller *TerminalController) writeToTTY(ctx context.Context, connection
 		case <-ctx.Done():
 			return
 		default:
-		}
 
-		messageType, data, err := connection.ReadMessage()
-		if err != nil {
-			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-				controller.logger.Info("WebSocket closed by client")
-				break
+			messageType, data, err := connection.ReadMessage()
+			if err != nil {
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+					controller.logger.Info("WebSocket closed by client")
+					return
+				}
+				controller.logger.Warn("failed to get next reader", zap.Error(err))
+				return
 			}
-			controller.logger.Warn("failed to get next reader", zap.Error(err))
-			return
+
+			dataLength := len(data)
+			dataBuffer := bytes.Trim(data, "\x00")
+			dataType := WebsocketMessageType[messageType]
+
+			controller.logger.Info(fmt.Sprintf("received %s (type: %v) message of size %v byte(s) from xterm.js with key sequence: %v", dataType, messageType, dataLength, dataBuffer))
+
+			if messageType == websocket.BinaryMessage && dataBuffer[0] == 1 {
+				controller.resizeTTY(dataBuffer)
+				continue
+			}
+
+			bytesWritten, err := controller.tty.Write(dataBuffer)
+			if err != nil {
+				controller.logger.Warn(fmt.Sprintf("failed to write %v bytes to tty: %s", len(dataBuffer), err))
+				continue
+			}
+			controller.logger.Info("bytes written to tty...", zap.Int("bytes_written", bytesWritten))
 		}
-
-		dataLength := len(data)
-		dataBuffer := bytes.Trim(data, "\x00")
-		dataType := WebsocketMessageType[messageType]
-
-		controller.logger.Info(fmt.Sprintf("received %s (type: %v) message of size %v byte(s) from xterm.js with key sequence: %v", dataType, messageType, dataLength, dataBuffer))
-
-		if messageType == websocket.BinaryMessage && dataBuffer[0] == 1 {
-			controller.resizeTTY(dataBuffer)
-			continue
-		}
-
-		bytesWritten, err := controller.tty.Write(dataBuffer)
-		if err != nil {
-			controller.logger.Warn(fmt.Sprintf("failed to write %v bytes to tty: %s", len(dataBuffer), err))
-			continue
-		}
-		controller.logger.Info("bytes written to tty...", zap.Int("bytes_written", bytesWritten))
 	}
 }
 

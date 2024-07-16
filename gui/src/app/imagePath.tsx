@@ -79,4 +79,5 @@ export default {
   emptyFilesIcons: '/icons/empty_files_icon.svg',
   openAIIcon: '/icons/openai_icon.svg',
   claudeIcon: '/icons/claude_icon.svg',
+  backArrow: '/arrows/back_arrow.svg',
 };

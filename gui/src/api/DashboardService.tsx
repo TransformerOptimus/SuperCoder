@@ -194,7 +194,3 @@ export const addUserToOrganisation = (email: string) => {
 export const removeUserFromOrganisation = (email: string) => {
   return api.post('', { email: email });
 };
-
-export const revokeUserInvite = (email: string) => {
-  return api.post(``, { email: email });
-};

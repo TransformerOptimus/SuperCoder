@@ -11,15 +11,8 @@ import {
   addUserToOrganisation,
   getOrganisationMembers,
   removeUserFromOrganisation,
-  revokeUserInvite,
 } from '@/api/DashboardService';
 import { validateEmail } from '@/app/utils';
-
-interface user {
-  email: string;
-  isAdmin: boolean;
-  inviteAccepted: boolean;
-}
 
 export default function Users() {
   const [openInviteUserModal, setOpenInviteUserModal] =
@@ -28,21 +21,22 @@ export default function Users() {
     useState<boolean>(false);
 
   const email = [
-    { email: 'admin@test.com', isAdmin: true, inviteAccepted: true },
-    { email: 'random@email.com', isAdmin: false, inviteAccepted: true },
-    { email: 'moin@mail.com', isAdmin: false, inviteAccepted: false },
+    { email: 'admin@test.com'},
+    { email: 'random@email.com'},
+    { email: 'moin@mail.com'},
   ];
 
-  const [userList, setUserList] = useState<user[]>(email);
+  const [userList, setUserList] = useState<{email: string}[]>(email);
   const [inviteUserEmail, setInviteUserEmail] = useState<string>('');
   const [removeUserEmail, setRemoveUserEmail] = useState<string>('');
   const [emailErrorMsg, setEmailErrorMsg] = useState<string>('');
 
   useEffect(() => {
+    fetchUsersFromOrganisation().then().catch();
+  }, []);
+
+  useEffect(() => {
     setInviteUserEmail('');
-    if (!openInviteUserModal) {
-      fetchUsersFromOrganisation().catch();
-    }
   }, [openInviteUserModal]);
 
   async function fetchUsersFromOrganisation() {
@@ -50,7 +44,7 @@ export default function Users() {
       const response = await getOrganisationMembers();
       if (response) {
         const data = response.data;
-        setUserList(data.user);
+        setUserList(data.user_list);
       }
     } catch (error) {
       console.error(error);
@@ -65,23 +59,12 @@ export default function Users() {
       }
       const response = await addUserToOrganisation(inviteUserEmail);
       if (response) {
-        const data = response.data;
-        setOpenInviteUserModal(false);
+        fetchUsersFromOrganisation().catch();
       }
     } catch (error) {
       console.error(error);
+    } finally {
       setOpenInviteUserModal(false);
-    }
-  }
-
-  async function toRevokeUserInvite(email: string) {
-    try {
-      const response = await revokeUserInvite(email);
-      if (response) {
-        const data = response.data;
-      }
-    } catch (error) {
-      console.error(error);
     }
   }
 
@@ -89,12 +72,13 @@ export default function Users() {
     try {
       const response = await removeUserFromOrganisation(removeUserEmail);
       if (response) {
-        const data = response.data;
-        setOpenRemoveUserModal(false);
-        setRemoveUserEmail('');
+        fetchUsersFromOrganisation().then().catch();
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setOpenRemoveUserModal(false);
+      setRemoveUserEmail('');
     }
   }
 
@@ -174,7 +158,7 @@ export default function Users() {
             return (
               <div className={`px-3 py-4 ${styles.item} flex justify-between`}>
                 <span className={`text-sm text-white`}>{item.email}</span>
-                {!item.isAdmin && item.inviteAccepted && (
+                {index !== 0 && (
                   <CustomDropdown
                     trigger={
                       <CustomImage
@@ -205,23 +189,6 @@ export default function Users() {
                       </div>
                     </CustomDropdown.Item>
                   </CustomDropdown>
-                )}{' '}
-                {!item.inviteAccepted && index === 2 && (
-                  <Button
-                    className={
-                      'flex h-fit flex-row gap-1 border-none bg-transparent p-0'
-                    }
-                    onClick={() => toRevokeUserInvite(item.email)}
-                  >
-                    <CustomImage
-                      className={'size-4'}
-                      src={imagePath.yellowBackIcon}
-                      alt={'yellow back'}
-                    />
-                    <span className={`text-[13px] ${styles.revoke_color}`}>
-                      Revoke Invite
-                    </span>
-                  </Button>
                 )}
               </div>
             );

@@ -17,7 +17,7 @@ import TestCases from '@/components/StoryComponents/TestCases';
 import { handleInProgressStoryStatus, handleStoryStatus } from '@/app/utils';
 import { useRouter } from 'next/navigation';
 import { StoryDetailsProps } from '../../../types/storyTypes';
-import { storyStatus } from '@/app/constants/BoardConstants';
+import { storyActions, storyStatus } from '@/app/constants/BoardConstants';
 import { useBoardContext } from '@/context/Boards';
 import toast from 'react-hot-toast';
 
@@ -44,9 +44,23 @@ export default function StoryDetails({
   } = useBoardContext();
   const router = useRouter();
 
-  const [issueTitle, setIssueTitle] = useState<string>('');
-  const [issueDescription, setIssueDescription] = useState<string>('');
-  const [actions, setActions] = useState<{ label: string; link: string }[]>([]);
+  const [issue, setIssue] = useState<{
+    title: string | null;
+    description: string | null;
+    actions: { label: string; link: string }[];
+  }>({
+    title: null,
+    description: null,
+    actions: [],
+  });
+
+  const resetIssue = () => {
+    setIssue({
+      title: null,
+      description: null,
+      actions: [],
+    });
+  };
 
   const tabOptions = [
     {
@@ -140,41 +154,48 @@ export default function StoryDetails({
         setStoryTestCases(data.story.test_cases);
         setStoryInstructions(data.story.instructions);
 
-        if (data.story.status === 'IN_REVIEW') {
+        if (data.story.status === storyStatus.IN_REVIEW) {
           let issueTitle = '';
           let issueDescription = '';
           const actions = [];
 
           switch (data.story.reason) {
-            case 'MAX_LOOP_ITERATION_REACHED':
-              issueTitle = 'Action Needed: Maximum number of iterations reached';
-              issueDescription = 'The story execution in the workbench has exceeded the maximum allowed iterations. You can update the story details and re-build it.';
+            case storyStatus.MAX_LOOP_ITERATIONS:
+              issueTitle =
+                'Action Needed: Maximum number of iterations reached';
+              issueDescription =
+                'The story execution in the workbench has exceeded the maximum allowed iterations. You can update the story details and re-build it.';
               actions.push(
-                  { label: 'Re-Build', link: 'REBUILD' },
-                  { label: 'Get Help', link: 'https://discord.com/invite/dXbRe5BHJC' }
+                { label: 'Re-Build', link: storyActions.REBUILD },
+                {
+                  label: 'Get Help',
+                  link: 'https://discord.com/invite/dXbRe5BHJC',
+                },
               );
               break;
-            case 'IN_REVIEW_LLM_KEY_NOT_FOUND':
+            case storyStatus.LLM_KEY_NOT_FOUND:
               issueTitle = 'Action Needed: LLM API Key Configuration Error';
-              issueDescription = 'There is an issue with the LLM API Key configuration, which may involve an invalid or expired API key. Please verify the API Key settings and update them to continue.';
+              issueDescription =
+                'There is an issue with the LLM API Key configuration, which may involve an invalid or expired API key. Please verify the API Key settings and update them to continue.';
               actions.push(
-                  { label: 'Re-Build', link: 'REBUILD' },
-                  { label: 'Go to Settings', link: '/settings' }
+                { label: 'Re-Build', link: storyActions.REBUILD },
+                { label: 'Go to Settings', link: '/settings' },
               );
               break;
           }
 
-          setIssueTitle(issueTitle);
-          setIssueDescription(issueDescription);
-          setActions(actions);
+          setIssue({
+            title: issueTitle,
+            description: issueDescription,
+            actions,
+          });
         } else {
-          setIssueTitle('');
-          setIssueDescription('');
-          setActions([]);
+          resetIssue();
         }
       }
     } catch (error) {
       console.error('Error while fetching story by id:: ', error);
+      resetIssue();
     }
   }
 
@@ -278,38 +299,44 @@ export default function StoryDetails({
           </div>
         )}
         {id !== 'workbench' && storyDetails.status === 'IN_REVIEW' && (
-            <div className={styles.issueContainer}>
-              <div className={styles.leftFrame}>
-                <CustomImage
-                    className={'size-10'}
-                    src={imagePath.overviewWarningYellow}
-                    alt={'error_icon'}
-                />
+          <div className={styles.issueContainer}>
+            <div className={styles.leftFrame}>
+              <CustomImage
+                className={'size-10'}
+                src={imagePath.overviewWarningYellow}
+                alt={'error_icon'}
+              />
+            </div>
+            <div className={styles.issueContent}>
+              <div className={styles.issueHeader}>
+                <span className={styles.issueTitle}>{issue.title}</span>
+                <p className={styles.issueDescription}>{issue.description}</p>
               </div>
-              <div className={styles.issueContent}>
-                <div className={styles.issueHeader}>
-                  <span className={styles.issueTitle}>{issueTitle}</span>
-                  <p className={styles.issueDescription}>{issueDescription}</p>
-                </div>
-                <div className={styles.issueActions}>
-                  {actions && actions.length > 0 && actions.map((action, index) => (
-                      <Button
-                          key={index}
-                          onClick={() => {
-                            if (action.link === 'REBUILD') {
-                              handleMoveToInProgressClick().then().catch();
-                            } else {
-                              router.push(action.link);
-                            }
-                          }}
-                          className={action.label === 'Re-Build' ? styles.primaryButton : styles.secondaryButton}
-                      >
-                        {action.label}
-                      </Button>
+              <div className={styles.issueActions}>
+                {issue.actions &&
+                  issue.actions.length > 0 &&
+                  issue.actions.map((action, index) => (
+                    <Button
+                      key={index}
+                      onClick={() => {
+                        if (action.link === storyActions.REBUILD) {
+                          handleMoveToInProgressClick().then().catch();
+                        } else {
+                          router.push(action.link);
+                        }
+                      }}
+                      className={
+                        action.label === storyActions.REBUILD
+                          ? styles.primaryButton
+                          : styles.secondaryButton
+                      }
+                    >
+                      {action.label}
+                    </Button>
                   ))}
-                </div>
               </div>
             </div>
+          </div>
         )}
         <div id={'story_details_body'} className={tabCSS}>
           <CustomTabs

@@ -4,16 +4,17 @@ import (
 	"ai-developer/app/types/request"
 	"ai-developer/app/utils"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/creack/pty"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"strings"
-
 	"go.uber.org/zap"
+	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 )
@@ -44,6 +45,7 @@ type TerminalController struct {
 	AllowedHostnames            []string
 	logger                      *zap.Logger
 	tty                         *os.File
+	cancelFunc                  context.CancelFunc
 }
 
 func NewTerminalController(logger *zap.Logger, command string, arguments []string, allowedHostnames []string) (*TerminalController, error) {
@@ -88,159 +90,174 @@ func (controller *TerminalController) RunCommand(ctx *gin.Context) {
 }
 
 func (controller *TerminalController) NewTerminal(ctx *gin.Context) {
+	subCtx, cancelFunc := context.WithCancel(ctx)
+	controller.cancelFunc = cancelFunc
 
-	connectionErrorLimit := controller.ConnectionErrorLimit
-	if connectionErrorLimit < 0 {
-		connectionErrorLimit = controller.DefaultConnectionErrorLimit
-	}
-	maxBufferSizeBytes := controller.MaxBufferSizeBytes
-	keepalivePingTimeout := controller.KeepalivePingTimeout
-	if keepalivePingTimeout <= time.Second {
-		keepalivePingTimeout = 20 * time.Second
-	}
+	defer func() {
+		controller.cleanup()
+	}()
 
-	allowedHostnames := controller.AllowedHostnames
-	upgrader := utils.GetConnectionUpgrader(allowedHostnames, maxBufferSizeBytes)
-	connection, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+	connection, err := controller.setupConnection(ctx, ctx.Writer, ctx.Request)
 	if err != nil {
-		controller.logger.Warn("failed to upgrade connection: %s", zap.Error(err))
+		controller.logger.Warn("failed to setup connection", zap.Error(err))
 		return
 	}
 
-	cmd := controller.cmd
-	cmd.Env = os.Environ()
-	tty := controller.tty
-	defer func() {
-		controller.logger.Info("gracefully stopping spawned tty...")
-		if cmd.Process != nil {
-			if err := cmd.Process.Kill(); err != nil {
-				controller.logger.Warn("failed to kill process: %s", zap.Error(err))
-			}
-			if _, err := cmd.Process.Wait(); err != nil {
-				controller.logger.Warn("failed to wait for process to exit: %s", zap.Error(err))
-			}
-		}
-		if connection != nil {
-			if err := connection.Close(); err != nil {
-				controller.logger.Warn("failed to close webscoket connection: %s", zap.Error(err))
-			}
-		}
-	}()
-
-	var connectionClosed bool
 	var waiter sync.WaitGroup
-	waiter.Add(1)
 
-	// this is a keep-alive loop that ensures connection does not hang up itself
+	waiter.Add(3)
+
+	go controller.keepAlive(subCtx, connection, &waiter)
+
+	go controller.readFromTTY(subCtx, connection, &waiter)
+
+	go controller.writeToTTY(subCtx, connection, &waiter)
+
+	waiter.Wait()
+
+	controller.logger.Info("closing connection...")
+}
+
+func (controller *TerminalController) setupConnection(ctx context.Context, w gin.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
+	upgrader := utils.GetConnectionUpgrader(controller.AllowedHostnames, controller.MaxBufferSizeBytes)
+	connection, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return nil, err
+	}
+	return connection, nil
+}
+
+func (controller *TerminalController) keepAlive(ctx context.Context, connection *websocket.Conn, waiter *sync.WaitGroup) {
+	defer waiter.Done()
 	lastPongTime := time.Now()
+	keepalivePingTimeout := controller.KeepalivePingTimeout
+
 	connection.SetPongHandler(func(msg string) error {
 		lastPongTime = time.Now()
 		return nil
 	})
-	go func() {
-		for {
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
 			if err := connection.WriteMessage(websocket.PingMessage, []byte("keepalive")); err != nil {
-				controller.logger.Warn("failed to write ping message")
+				controller.logger.Warn("failed to write ping message", zap.Error(err))
 				return
 			}
+
 			time.Sleep(keepalivePingTimeout / 2)
+
 			if time.Now().Sub(lastPongTime) > keepalivePingTimeout {
 				controller.logger.Warn("failed to get response from ping, triggering disconnect now...")
-				waiter.Done()
 				return
 			}
 			controller.logger.Debug("received response from ping successfully")
 		}
-	}()
+	}
+}
 
-	// tty >> xterm.js
-	go func() {
-		errorCounter := 0
-		for {
-			// consider the connection closed/errored out so that the socket handler
-			// can be terminated - this frees up memory so the service doesn't get
-			// overloaded
-			if errorCounter > connectionErrorLimit {
-				waiter.Done()
+func (controller *TerminalController) readFromTTY(ctx context.Context, connection *websocket.Conn, waiter *sync.WaitGroup) {
+	defer waiter.Done()
+	errorCounter := 0
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		buffer := make([]byte, controller.MaxBufferSizeBytes)
+
+		readLength, err := controller.tty.Read(buffer)
+		if err != nil {
+			controller.logger.Warn("failed to read from tty", zap.Error(err))
+			if err := connection.WriteMessage(websocket.TextMessage, []byte("bye!")); err != nil {
+				controller.logger.Warn("failed to send termination message from tty to xterm.js", zap.Error(err))
+			}
+			return
+		}
+
+		if err := connection.WriteMessage(websocket.BinaryMessage, buffer[:readLength]); err != nil {
+			controller.logger.Warn(fmt.Sprintf("failed to send %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength), zap.Error(err))
+			errorCounter++
+			if errorCounter > controller.ConnectionErrorLimit {
+				return
+			}
+			continue
+		}
+		controller.logger.Info(fmt.Sprintf("sent message of size %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength))
+		errorCounter = 0
+	}
+}
+
+func (controller *TerminalController) writeToTTY(ctx context.Context, connection *websocket.Conn, waiter *sync.WaitGroup) {
+	defer waiter.Done()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		messageType, data, err := connection.ReadMessage()
+		if err != nil {
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				controller.logger.Info("WebSocket closed by client")
 				break
 			}
-			buffer := make([]byte, maxBufferSizeBytes)
-			readLength, err := tty.Read(buffer)
-			if err != nil {
-				controller.logger.Warn("failed to read from tty", zap.Error(err))
-				if err := connection.WriteMessage(websocket.TextMessage, []byte("bye!")); err != nil {
-					controller.logger.Warn("failed to send termination message from tty to xterm.js", zap.Error(err))
-				}
-				waiter.Done()
-				return
-			}
-			if err := connection.WriteMessage(websocket.BinaryMessage, buffer[:readLength]); err != nil {
-				controller.logger.Warn(fmt.Sprintf("failed to send %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength))
-				errorCounter++
-				continue
-			}
-			controller.logger.Info(fmt.Sprintf("sent message of size %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength))
-			errorCounter = 0
+			controller.logger.Warn("failed to get next reader", zap.Error(err))
+			return
 		}
-	}()
 
-	// tty << xterm.js
-	go func() {
-		for {
-			// data processing
-			messageType, data, err := connection.ReadMessage()
-			if err != nil {
-				if !connectionClosed {
-					controller.logger.Warn("failed to get next reader", zap.Error(err))
-				}
-				return
-			}
-			dataLength := len(data)
-			dataBuffer := bytes.Trim(data, "\x00")
-			dataType, ok := WebsocketMessageType[messageType]
-			if !ok {
-				dataType = "unknown"
-			}
-			controller.logger.Info(fmt.Sprintf("received %s (type: %v) message of size %v byte(s) from xterm.js with key sequence: %v", dataType, messageType, dataLength, dataBuffer))
+		dataLength := len(data)
+		dataBuffer := bytes.Trim(data, "\x00")
+		dataType := WebsocketMessageType[messageType]
 
-			// process
-			if dataLength == -1 { // invalid
-				controller.logger.Warn("failed to get the correct number of bytes read, ignoring message")
-				continue
-			}
+		controller.logger.Info(fmt.Sprintf("received %s (type: %v) message of size %v byte(s) from xterm.js with key sequence: %v", dataType, messageType, dataLength, dataBuffer))
 
-			// handle resizing
-			if messageType == websocket.BinaryMessage {
-				if dataBuffer[0] == 1 {
-					ttySize := &TTYSize{}
-					resizeMessage := bytes.Trim(dataBuffer[1:], " \n\r\t\x00\x01")
-					if err := json.Unmarshal(resizeMessage, ttySize); err != nil {
-						controller.logger.Warn(fmt.Sprintf("failed to unmarshal received resize message '%s'", resizeMessage), zap.ByteString("resizeMessage", resizeMessage), zap.Error(err))
-						continue
-					}
-					controller.logger.Info("resizing tty ", zap.Uint16("rows", ttySize.Rows), zap.Uint16("cols", ttySize.Cols))
-					if err := pty.Setsize(tty, &pty.Winsize{
-						Rows: ttySize.Rows,
-						Cols: ttySize.Cols,
-					}); err != nil {
-						controller.logger.Warn("failed to resize tty", zap.Error(err))
-					}
-					continue
-				}
-			}
-
-			// write to tty
-			bytesWritten, err := tty.Write(dataBuffer)
-			if err != nil {
-				controller.logger.Warn(fmt.Sprintf("failed to write %v bytes to tty: %s", len(dataBuffer), err))
-				continue
-			}
-			controller.logger.Info("bytes written to tty...", zap.Int("bytes_written", bytesWritten))
+		if messageType == websocket.BinaryMessage && dataBuffer[0] == 1 {
+			controller.resizeTTY(dataBuffer)
+			continue
 		}
-	}()
 
-	waiter.Wait()
-	controller.logger.Info("closing connection...")
-	connectionClosed = true
+		bytesWritten, err := controller.tty.Write(dataBuffer)
+		if err != nil {
+			controller.logger.Warn(fmt.Sprintf("failed to write %v bytes to tty: %s", len(dataBuffer), err))
+			continue
+		}
+		controller.logger.Info("bytes written to tty...", zap.Int("bytes_written", bytesWritten))
+	}
+}
 
+func (controller *TerminalController) resizeTTY(dataBuffer []byte) {
+	ttySize := &TTYSize{}
+	resizeMessage := bytes.Trim(dataBuffer[1:], " \n\r\t\x00\x01")
+	if err := json.Unmarshal(resizeMessage, ttySize); err != nil {
+		controller.logger.Warn(fmt.Sprintf("failed to unmarshal received resize message '%s'", resizeMessage), zap.ByteString("resizeMessage", resizeMessage), zap.Error(err))
+		return
+	}
+	controller.logger.Info("resizing tty ", zap.Uint16("rows", ttySize.Rows), zap.Uint16("cols", ttySize.Cols))
+	if err := pty.Setsize(controller.tty, &pty.Winsize{
+		Rows: ttySize.Rows,
+		Cols: ttySize.Cols,
+	}); err != nil {
+		controller.logger.Warn("failed to resize tty", zap.Error(err))
+	}
+}
+
+func (controller *TerminalController) cleanup() {
+	controller.logger.Info("gracefully stopping spawned tty...")
+	if controller.cmd.Process != nil {
+		if err := controller.cmd.Process.Kill(); err != nil {
+			controller.logger.Warn("failed to kill process: %s", zap.Error(err))
+		}
+		if _, err := controller.cmd.Process.Wait(); err != nil {
+			controller.logger.Warn("failed to wait for process to exit: %s", zap.Error(err))
+		}
+	}
+	if controller.cancelFunc != nil {
+		controller.cancelFunc()
+	}
 }

@@ -65,11 +65,18 @@ export default function Models() {
   async function toCreateOrUpdateLLMAPIKey() {
     try {
       const organisation_id = localStorage.getItem('organisationId');
+      if (!organisation_id) {
+        console.error('Organisation ID not found in local storage');
+      }
+
+      const apiKeys = modelsList.map((model) => ({
+        llm_model: model.model_name,
+        llm_api_key: model.api_key,
+      }));
 
       const payload = {
         organisation_id: Number(organisation_id),
-        llm_model: modelsList[0].model_name,
-        llm_api_key: modelsList[0].api_key,
+        api_keys: apiKeys,
       };
 
       const response = await createOrUpdateLLMAPIKey(payload);

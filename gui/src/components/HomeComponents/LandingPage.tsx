@@ -15,6 +15,7 @@ import CustomInput from '@/components/CustomInput/CustomInput';
 import { authPayload, userData } from '../../../types/authTypes';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { setUserData, validateEmail } from '@/app/utils';
+import toast, {Toaster} from "react-hot-toast";
 
 export default function LandingPage() {
   const [email, setEmail] = useState<string>('');
@@ -34,9 +35,13 @@ export default function LandingPage() {
 
   useEffect(() => {
     toCheckHealth().then().catch();
-    const email = searchParams.get('email');
-    const organizationId = searchParams.get('organizationId');
-    if (email) {
+    const email = searchParams.get('user_email');
+    const organizationId = searchParams.get('organisation_id');
+    const error = searchParams.get('error_msg');
+    if (error){
+      toast.error("The invite link has expired.");
+    }
+    else if (email) {
       setEmail(email);
       setIsInvite(true);
       if (organizationId) {
@@ -280,6 +285,7 @@ export default function LandingPage() {
           </Button>
         </div>
       </div>
+      <Toaster/>
     </div>
   );
 }

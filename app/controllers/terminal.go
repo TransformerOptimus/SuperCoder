@@ -141,13 +141,14 @@ func (controller *TerminalController) keepAlive(ctx context.Context, connection 
 	for {
 		select {
 		case <-ctx.Done():
+			controller.logger.Info("done keeping alive...")
 			return
 		default:
 
 			controller.writeMutex.Lock()
 			if err := connection.WriteMessage(websocket.PingMessage, []byte("keepalive")); err != nil {
 				controller.writeMutex.Unlock()
-				controller.logger.Warn("failed to write ping message")
+				controller.logger.Warn("failed to write ping message", zap.Error(err))
 				return
 			}
 			controller.writeMutex.Unlock()
@@ -169,6 +170,7 @@ func (controller *TerminalController) readFromTTY(ctx context.Context, connectio
 	for {
 		select {
 		case <-ctx.Done():
+			controller.logger.Info("done reading from tty...")
 			return
 		default:
 
@@ -188,9 +190,13 @@ func (controller *TerminalController) readFromTTY(ctx context.Context, connectio
 			controller.writeMutex.Lock()
 			if err := connection.WriteMessage(websocket.BinaryMessage, buffer[:readLength]); err != nil {
 				controller.writeMutex.Unlock()
-				controller.logger.Warn(fmt.Sprintf("failed to send %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength))
+				controller.logger.Warn(fmt.Sprintf("failed to send %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength), zap.Error(err))
 				errorCounter++
 				if errorCounter > controller.ConnectionErrorLimit {
+					return
+				}
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+					controller.logger.Info("WebSocket closed by client")
 					return
 				}
 				continue
@@ -208,6 +214,7 @@ func (controller *TerminalController) writeToTTY(ctx context.Context, connection
 	for {
 		select {
 		case <-ctx.Done():
+			controller.logger.Info("done writing from tty...")
 			return
 		default:
 

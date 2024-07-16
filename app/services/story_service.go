@@ -530,7 +530,8 @@ func (s *StoryService) UpdateStoryStatusByUser(storyID int, status string) error
 
 	//Check if valid transition
 	if status == constants.InProgress {
-		if story.Status == constants.Todo || story.Status == constants.InReview {
+		if story.Status == constants.Todo || story.Status == constants.InReview || story.Status == constants.MaxLoopIterationReached ||
+            story.Status == constants.InReviewLLMKeyNotFound {
 			err := s.UpdateStoryStatus(storyID, status)
 			if err != nil {
 				s.logger.Error("Error updating story status", zap.Error(err))
@@ -565,7 +566,8 @@ func (s *StoryService) UpdateStoryStatus(storyID int, status string) error {
 	s.logger.Info("New Status", zap.String("status", status))
 	if strings.ToUpper(status) == constants.InProgress {
 		s.logger.Info("Story to be updated to InProgress", zap.Int("storyID", storyID))
-		if story.Status == constants.Todo || story.Status == constants.InReview {
+		if story.Status == constants.Todo || story.Status == constants.InReview || story.Status == constants.MaxLoopIterationReached ||
+        	story.Status == constants.InReviewLLMKeyNotFound {
 			s.logger.Info("Story is in Todo", zap.Int("storyID", storyID))
 			s.logger.Info("Executing story", zap.Int("storyID", storyID))
 			// Create payload for CreateJob task

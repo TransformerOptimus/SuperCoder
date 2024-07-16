@@ -35,3 +35,56 @@
   border-top: 1px solid var(--white-opacity-8);
   flex-shrink: 0; /* Prevent shrinking */
 }
+
+.issueContainer {
+  margin: 16px 16px 16px 16px;
+  width: auto;
+  height: auto;
+  padding: 16px;
+  gap: 8px;
+  border-radius: 8px 8px 8px 8px;
+  border-left: 4px solid #AA7C23;
+  background: rgba(170, 124, 35, 0.08);
+  display: flex;
+}
+
+.leftFrame {
+  width: 40px; /* Hug width */
+  height: 142px; /* Fill height */
+  display: flex;
+  padding-right: 2.5px;
+}
+
+.issueHeader {
+  padding-top: 5px;
+}
+
+.issueTitle {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #FFFFFF;
+}
+
+.issueDescription {
+  font-size: 16px;
+  color: #FFFFFF;
+}
+
+.issueActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.primaryButton {
+  color: black;
+  background-color: white;
+  font-weight: bold;
+}
+
+.secondaryButton {
+  color: white;
+  background: rgba(170, 124, 35, 0.08);
+  font-weight: bold;
+}

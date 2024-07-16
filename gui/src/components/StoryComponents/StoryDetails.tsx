@@ -9,7 +9,7 @@ import {
   getStoryById,
   updateStoryStatus,
 } from '@/api/DashboardService';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@nextui-org/react';
 import CustomTag from '@/components/CustomTag/CustomTag';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
@@ -43,6 +43,11 @@ export default function StoryDetails({
     setEditTrue,
   } = useBoardContext();
   const router = useRouter();
+
+  const [issueTitle, setIssueTitle] = useState<string>('');
+  const [issueDescription, setIssueDescription] = useState<string>('');
+  const [actions, setActions] = useState<{ label: string; link: string }[]>([]);
+
   const tabOptions = [
     {
       key: 'overview',
@@ -134,6 +139,39 @@ export default function StoryDetails({
         setStoryOverview(data.story.overview);
         setStoryTestCases(data.story.test_cases);
         setStoryInstructions(data.story.instructions);
+
+        if (data.story.status === 'IN_REVIEW') {
+          let issueTitle = '';
+          let issueDescription = '';
+          const actions = [];
+
+          switch (data.story.reason) {
+            case 'MAX_LOOP_ITERATION_REACHED':
+              issueTitle = 'Action Needed: Maximum number of iterations reached';
+              issueDescription = 'The story execution in the workbench has exceeded the maximum allowed iterations. You can update the story details and re-build it.';
+              actions.push(
+                  { label: 'Re-Build', link: 'REBUILD' },
+                  { label: 'Get Help', link: 'https://discord.com/invite/dXbRe5BHJC' }
+              );
+              break;
+            case 'IN_REVIEW_LLM_KEY_NOT_FOUND':
+              issueTitle = 'Action Needed: LLM API Key Configuration Error';
+              issueDescription = 'There is an issue with the LLM API Key configuration, which may involve an invalid or expired API key. Please verify the API Key settings and update them to continue.';
+              actions.push(
+                  { label: 'Re-Build', link: 'REBUILD' },
+                  { label: 'Go to Settings', link: '/settings' }
+              );
+              break;
+          }
+
+          setIssueTitle(issueTitle);
+          setIssueDescription(issueDescription);
+          setActions(actions);
+        } else {
+          setIssueTitle('');
+          setIssueDescription('');
+          setActions([]);
+        }
       }
     } catch (error) {
       console.error('Error while fetching story by id:: ', error);
@@ -239,7 +277,40 @@ export default function StoryDetails({
             </div>
           </div>
         )}
-
+        {id !== 'workbench' && storyDetails.status === 'IN_REVIEW' && (
+            <div className={styles.issueContainer}>
+              <div className={styles.leftFrame}>
+                <CustomImage
+                    className={'size-10'}
+                    src={imagePath.overviewWarningYellow}
+                    alt={'error_icon'}
+                />
+              </div>
+              <div className={styles.issueContent}>
+                <div className={styles.issueHeader}>
+                  <span className={styles.issueTitle}>{issueTitle}</span>
+                  <p className={styles.issueDescription}>{issueDescription}</p>
+                </div>
+                <div className={styles.issueActions}>
+                  {actions && actions.length > 0 && actions.map((action, index) => (
+                      <Button
+                          key={index}
+                          onClick={() => {
+                            if (action.link === 'REBUILD') {
+                              handleMoveToInProgressClick().then().catch();
+                            } else {
+                              router.push(action.link);
+                            }
+                          }}
+                          className={action.label === 'Re-Build' ? styles.primaryButton : styles.secondaryButton}
+                      >
+                        {action.label}
+                      </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+        )}
         <div id={'story_details_body'} className={tabCSS}>
           <CustomTabs
             options={tabOptions}

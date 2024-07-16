@@ -19,6 +19,7 @@ export default {
   boardIconUnselected: '/icons/unselected/board.svg',
   overviewIconSelected: '/icons/selected/overview.svg',
   overviewIconUnselected: '/icons/unselected/overview.svg',
+  overviewWarningYellow: 'icons/overview_warning_yellow.svg',
   instructionsIconSelected: '/icons/selected/instructions.svg',
   instructionsIconUnselected: '/icons/unselected/instructions.svg',
   filesChangedIconSelected: '/icons/selected/files_changed.svg',

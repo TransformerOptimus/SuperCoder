@@ -7,12 +7,11 @@ import {
   CommitItems,
   PRListItems,
 } from '../../../../../types/pullRequestsTypes';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import CommitLog from '@/app/(programmer)/pull_request/[pr_id]/CommitLogs';
 import { Button } from '@nextui-org/react';
 import CustomTabs from '@/components/CustomTabs/CustomTabs';
 import FilesChanged from '@/app/(programmer)/pull_request/[pr_id]/FilesChanged';
-import CustomModal from '@/components/CustomModal/CustomModal';
 import { usePullRequestsContext } from '@/context/PullRequests';
 import {
   commentRebuildStory,
@@ -24,6 +23,7 @@ import { toGetProjectPullRequests } from '@/app/utils';
 import CustomTag from '@/components/CustomTag/CustomTag';
 import { prStatuses } from '@/app/constants/PullRequestConstants';
 import toast from 'react-hot-toast';
+import ReBuildModal from '@/components/RebuildModal/RebuildModal';
 
 export default function PRDetails(props) {
   const [openRebuildModal, setOpenRebuildModal] = useState<boolean | null>(
@@ -176,34 +176,13 @@ export default function PRDetails(props) {
 
   return (
     <div id={`${selectedPRId}_pr_details`} className={'flex flex-col'}>
-      <CustomModal
-        isOpen={openRebuildModal}
-        onClose={() => setOpenRebuildModal(false)}
-        width={'40vw'}
-      >
-        <CustomModal.Header title={'Add comment to Re-Build'} />
-        <CustomModal.Body padding={'24px 16px'}>
-          <div className={'flex flex-col gap-2'}>
-            <span className={'secondary_color text-[13px] font-normal'}>
-              Comment
-            </span>
-            <textarea
-              value={rebuildComment}
-              className={'textarea_large'}
-              placeholder={'Write down the comment here..'}
-              onChange={(event) => setRebuildComment(event.target.value)}
-            />
-          </div>
-        </CustomModal.Body>
-        <CustomModal.Footer>
-          <Button
-            className={'primary_medium'}
-            onClick={() => handleRebuildStory()}
-          >
-            Re-Build with comment
-          </Button>
-        </CustomModal.Footer>
-      </CustomModal>
+      <ReBuildModal
+        openRebuildModal={openRebuildModal}
+        setOpenRebuildModal={setOpenRebuildModal}
+        rebuildComment={rebuildComment}
+        setRebuildComment={setRebuildComment}
+        handleRebuildStory={handleRebuildStory}
+      />
 
       {selectedPR && (
         <div className={styles.pr_details_header_container}>
@@ -231,6 +210,7 @@ export default function PRDetails(props) {
             iconClass={'size-4'}
             text={handlePRStatus(selectedPR.status).text}
             color={handlePRStatus(selectedPR.status).color}
+            className={'rounded-3xl'}
           />
         </div>
       )}

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@nextui-org/react';
 import CustomTextImage from '@/components/ImageComponents/CustomTextImage';
 import imagePath from '@/app/imagePath';
@@ -10,6 +10,7 @@ import { setProjectDetails, toGetAllProjects } from '@/app/utils';
 import CreateOrEditProjectBody from '@/components/HomeComponents/CreateOrEditProjectBody';
 import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
 import { SkeletonTypes } from '@/app/constants/SkeletonConstants';
+import CustomImage from '@/components/ImageComponents/CustomImage';
 
 export default function Projects() {
   const [openNewProjectModal, setOpenNewProjectModal] = useState<
@@ -60,36 +61,54 @@ export default function Projects() {
             style={{ maxHeight: 'calc(100vh - 160px)' }}
           >
             {projectsList &&
-              projectsList.length > 0 &&
-              projectsList.map((project, index) => (
-                <div
-                  id={`project_${project.project_id}`}
-                  key={index}
-                  className={`${styles.project_container} card_container col-span-6`}
-                  onClick={() => handleProjectClick(project)}
-                >
-                  <div className={'flex flex-col gap-2'}>
-                    <span className={'text-xl font-semibold'}>
-                      {project.project_name}
-                    </span>
-                    <span className={'secondary_color text-sm font-normal'}>
-                      {project.project_description}
-                    </span>
-                  </div>
+              (projectsList.length > 0 ? (
+                projectsList.map((project, index) => (
+                  <div
+                    id={`project_${project.project_id}`}
+                    key={index}
+                    className={`${styles.project_container} card_container col-span-6`}
+                    onClick={() => handleProjectClick(project)}
+                  >
+                    <div className={'flex flex-col gap-2'}>
+                      <span className={'text-xl font-semibold'}>
+                        {project.project_name}
+                      </span>
+                      <span className={'secondary_color text-sm font-normal'}>
+                        {project.project_description}
+                      </span>
+                    </div>
 
-                  <div className={'flex flex-row items-center gap-3'}>
-                    <CustomTextImage
-                      gap={'gap-1'}
-                      textCSS={'text-[11px] secondary_color font-normal'}
-                      text={
-                        project.pull_request_count &&
-                        project.pull_request_count.toString()
-                      }
-                      imageCSS={'size-[14px]'}
-                      src={imagePath.prOpenGreyIcon}
-                      alt={'number_of_commits'}
-                      priority={true}
+                    <div className={'flex flex-row items-center gap-3'}>
+                      <CustomTextImage
+                        gap={'gap-1'}
+                        textCSS={'text-[11px] secondary_color font-normal'}
+                        text={
+                          project.pull_request_count &&
+                          project.pull_request_count.toString()
+                        }
+                        imageCSS={'size-[14px]'}
+                        src={imagePath.prOpenGreyIcon}
+                        alt={'number_of_commits'}
+                        priority={true}
+                      />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className={'col-span-12 grid'}>
+                  <div
+                    className={
+                      'flex flex-col items-center justify-center gap-2 py-44'
+                    }
+                  >
+                    <CustomImage
+                      className={'size-24'}
+                      src={imagePath.emptyFilesIcons}
+                      alt={'empty_icon'}
                     />
+                    <span className={'proxima_nova secondary_color text-xl'}>
+                      No projects created yet!
+                    </span>
                   </div>
                 </div>
               ))}

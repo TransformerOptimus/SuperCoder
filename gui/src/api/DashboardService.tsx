@@ -4,8 +4,16 @@ import {
   UpdateProjectPayload,
 } from '../../types/projectsTypes';
 import { FormStoryPayload } from '../../types/storyTypes';
-import { CommentReBuildPayload } from '../../types/pullRequestsTypes';
+import {
+  CommentReBuildPayload,
+  CommentReBuildDesignStoryPayload,
+  CreatePullRequestPayload,
+} from '../../types/pullRequestsTypes';
 import { CreateOrUpdateLLMAPIKeyPayload } from '../../types/modelsTypes';
+import {
+  CreateDesignStoryPayload,
+  EditDesignStoryPayload,
+} from '../../types/designStoryTypes';
 import { authPayload } from '../../types/authTypes';
 
 export const checkHealth = () => {
@@ -56,9 +64,10 @@ export const editStory = (payload: FormStoryPayload) => {
 export const getAllStoriesOfProject = (
   project_id: string,
   search: string = '',
+  story_type: string = 'backend',
 ) => {
   return api.get(`/projects/${project_id}/stories`, {
-    params: { search },
+    params: { search, story_type },
   });
 };
 
@@ -84,8 +93,8 @@ export const deleteStory = (story_id: number) => {
   return api.delete(`/stories/${story_id}`);
 };
 
-export const getAllExecutionOutputs = (id: string) => {
-  return api.get(`/stories/${id}/execution-outputs`);
+export const createPullRequest = (payload: CreatePullRequestPayload) => {
+  return api.post(`/pull-requests/create`, payload);
 };
 
 export const getProjectPullRequests = (project_id: string, status: string) => {
@@ -121,6 +130,56 @@ export const createOrUpdateLLMAPIKey = (
   payload: CreateOrUpdateLLMAPIKeyPayload,
 ) => {
   return api.post(`/llm_api_key`, payload);
+};
+
+// design Story APIs
+
+export const getAllDesignStoriesOfProject = (project_id: string) => {
+  return api.get(`/projects/${project_id}/design/stories`);
+};
+
+export const createDesignStory = (payload: CreateDesignStoryPayload) => {
+  const formData = new FormData();
+  formData.append('file', payload.file, payload.imageName);
+  formData.append('title', payload.title);
+  formData.append('project_id', payload.project_id);
+  return api.post(`/stories/design`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+export const editDesignStory = (payload: EditDesignStoryPayload) => {
+  const formData = new FormData();
+  if (payload.file) {
+    formData.append('file', payload.file, payload.imageName);
+  }
+  formData.append('title', payload.title);
+  formData.append('story_id', payload.story_id.toString());
+  return api.put(`/stories/design/edit`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+export const getDesignStoryDetails = (story_id: string) => {
+  return api.get(`/stories/${story_id}/design`);
+};
+
+export const getFrontendCode = (story_id: string) => {
+  return api.get(`/stories/${story_id}/code`);
+};
+
+export const rebuildDesignStory = (
+  payload: CommentReBuildDesignStoryPayload,
+) => {
+  return api.post(`/design/review`, payload);
+};
+
+export const updateReviewViewedStatus = (story_id: number) => {
+  return api.put(`/stories/design/review_viewed/${story_id}`, {});
 };
 
 // Teams APIS

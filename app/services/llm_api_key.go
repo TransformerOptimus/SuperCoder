@@ -31,7 +31,7 @@ func (s *LLMAPIKeyService) GetLLMAPIKeyByModelName(llmmodel string, organisation
 func (s *LLMAPIKeyService) GetAllLLMAPIKeyByOrganisationID(organisationID uint) ([]llm_api_key.LLMAPIKeyReturn, error) {
 	var llmAPIKeys []llm_api_key.LLMAPIKeyReturn
 
-	llmModelList := []string{constants.GPT_4O}
+	llmModelList := []string{constants.GPT_4O, constants.CLAUDE_3}
 	for _, llmModel := range llmModelList {
 		apiKey, err := s.GetLLMAPIKeyByModelName(llmModel, organisationID)
 		if err != nil {

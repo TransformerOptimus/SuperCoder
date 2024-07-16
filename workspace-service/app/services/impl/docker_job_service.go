@@ -35,7 +35,12 @@ func getDockerEnvVars(request dto.CreateJobRequest) []string {
 func (js DockerJobService) CreateJob(request dto.CreateJobRequest) (res *dto.CreateJobResponse, err error) {
 	jobName := createJobName(request.ProjectId, request.StoryId, request.ExecutionId)
 
-	js.logger.Info("Creating job", zap.String("jobName", jobName), zap.String("image", js.config.LocalContainerImage(request.ExecutorImage)))
+	js.logger.Info(
+		"Creating job", 
+		zap.String("requestImage", request.ExecutorImage),
+		zap.String("jobName", jobName), 
+		zap.String("image", js.config.LocalContainerImage(request.ExecutorImage)),
+	)
 
 	cont, err := js.dockerClient.ContainerCreate(
 		context.Background(),

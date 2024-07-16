@@ -4,6 +4,5 @@ export interface LLMAPIKey {
 }
 
 export interface CreateOrUpdateLLMAPIKeyPayload {
-  organisation_id: number;
   api_keys: LLMAPIKey[];
 }

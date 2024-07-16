@@ -5,13 +5,7 @@ import { createOrUpdateLLMAPIKey, getLLMAPIKeys } from '@/api/DashboardService';
 import toast from 'react-hot-toast';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import imagePath from '@/app/imagePath';
-
-interface ModelsList {
-  model_name: string;
-  api_key: string;
-  text?: string;
-  icon?: string;
-}
+import { ModelsList } from '../../../../types/settingTypes';
 
 export default function Models() {
   const [modelsList, setModelsList] = useState<ModelsList[] | null>(null);
@@ -64,18 +58,12 @@ export default function Models() {
 
   async function toCreateOrUpdateLLMAPIKey() {
     try {
-      const organisation_id = localStorage.getItem('organisationId');
-      if (!organisation_id) {
-        console.error('Organisation ID not found in local storage');
-      }
-
       const apiKeys = modelsList.map((model) => ({
         llm_model: model.model_name,
         llm_api_key: model.api_key,
       }));
 
       const payload = {
-        organisation_id: Number(organisation_id),
         api_keys: apiKeys,
       };
 

@@ -78,4 +78,7 @@ export default {
   redCrossDeleteIcon: '/icons/red_cross_delete_icon.svg',
   copyIcon: '/icons/copy_icon.svg',
   emptyFilesIcons: '/icons/empty_files_icon.svg',
+  openAIIcon: '/icons/openai_icon.svg',
+  claudeIcon: '/icons/claude_icon.svg',
+  backArrow: '/arrows/back_arrow.svg',
 };

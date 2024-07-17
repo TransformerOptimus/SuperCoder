@@ -10,10 +10,10 @@ export const useTerminal = (commands: { [key: string]: string }) => {
     if (terminalRef.current && !xtermRef.current) {
       const xterm = new Terminal({
         cursorBlink: true,
-        theme: {
-          background: '#1e1e1e', // Dark background
-          foreground: '#ffffff', // Light text
-        },
+        cursorWidth: 20,
+        fontFamily: 'Space Mono',
+        fontSize: 12,
+        fontWeight: '400',
       });
       xterm.open(terminalRef.current);
       xtermRef.current = xterm;
@@ -21,11 +21,9 @@ export const useTerminal = (commands: { [key: string]: string }) => {
       xterm.onKey(({ key, domEvent }) => {
         const printable =
           !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
-
         if (domEvent.keyCode === 13) {
           handleCommand(xterm);
         } else if (domEvent.keyCode === 8) {
-          // Do not delete the prompt
           if (xterm.buffer.active.cursorX > 2) {
             xterm.write('\b \b');
           }
@@ -52,13 +50,11 @@ export const useTerminal = (commands: { [key: string]: string }) => {
       ?.translateToString()
       .trim();
     const command = input?.split('$ ')[1];
-
     if (command && commands[command]) {
       xterm.write(`\r\n${commands[command]}`);
     } else {
       xterm.write('\r\nCommand not found');
     }
-
     xterm.prompt();
   };
 

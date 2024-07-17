@@ -412,12 +412,12 @@ func main() {
 	}
 
 	// Provide OpenSearch Repository
-	err = c.Provide(func(client *opensearch.Client, logger *zap.Logger) repository.SearchRepository {
-		return repositories.NewOpenSearchRepository(client, logger)
+	err = c.Provide(func(client *opensearch.Client, logger *zap.Logger) repository.CodeBaseSearchRepository {
+		return repositories.NewCodeBaseOpenSearchRepository(client, logger)
 	})
 
 	// Provide OpenSearch Service
-	err = c.Provide(services.NewSearchService)
+	err = c.Provide(services.NewCodeBaseSearchService)
 	if err != nil {
 		panic(err)
 	}
@@ -446,7 +446,7 @@ func main() {
 		ioServer *socketio.Server,
 		nrApp *newrelic.Application,
 		designStoryCtrl *controllers.DesignStoryReviewController,
-		openSearchService *services.SearchService,
+		openSearchService *services.CodeBaseSearchService,
 		logger *zap.Logger,
 	) error {
 
@@ -568,64 +568,6 @@ func main() {
 		defer ioServer.Close()
 
 		fmt.Println("Starting Gin server on port 8080...")
-
-		fmt.Println("Trying out Open Search!")
-		url := config.OpenSearchURL()
-		maxRetries := 5
-		retryInterval := time.Second * 5
-
-		// Create HTTP client with TLS configuration
-		httpClient := &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-			},
-		}
-
-		for i := 0; i < maxRetries; i++ {
-			req, err := http.NewRequest("GET", url, nil)
-			if err != nil {
-				fmt.Printf("Failed to create request: %v\n", err)
-				continue
-			}
-
-			req.SetBasicAuth("admin", "3R29as+N#SPuqlfaHECh")
-
-			resp, err := httpClient.Do(req)
-			if err == nil && resp.StatusCode == 200 {
-				fmt.Println("Successfully connected to OpenSearch")
-				// Proceed with your application logic
-				break
-			} else {
-				fmt.Printf("Failed to connect to OpenSearch, attempt %d/%d: %v\n", i+1, maxRetries, err)
-				time.Sleep(retryInterval)
-			}
-		}
-
-		ctx := context.Background()
-		document := map[string]interface{}{
-			"title": "Test Document",
-		}
-
-		err := openSearchService.IndexDocument(ctx, "test-index", document)
-		if err != nil {
-			log.Fatalf("Error indexing document: %s", err)
-		}
-
-		query := map[string]interface{}{
-			"query": map[string]interface{}{
-				"match": map[string]interface{}{
-					"title": "Test",
-				},
-			},
-		}
-		results, err := openSearchService.SearchDocument(ctx, "test-index", query)
-		if err != nil {
-			log.Fatalf("Error searching documents: %s", err)
-		}
-		log.Printf("Search results: %v", results)
-
 		if err != nil {
 			log.Fatalf("Failed to start the application: %v", err)
 		}

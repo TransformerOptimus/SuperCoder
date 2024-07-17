@@ -11,19 +11,19 @@ import (
 	"strings"
 )
 
-type OpenSearchRepository struct {
+type CodeBaseOpenSearchRepository struct {
 	client *opensearch.Client
 	logger *zap.Logger
 }
 
-func NewOpenSearchRepository(client *opensearch.Client, logger *zap.Logger) *OpenSearchRepository {
-	return &OpenSearchRepository{
+func NewCodeBaseOpenSearchRepository(client *opensearch.Client, logger *zap.Logger) *CodeBaseOpenSearchRepository {
+	return &CodeBaseOpenSearchRepository{
 		client: client,
-		logger: logger.Named("OpenSearchRepository"),
+		logger: logger.Named("CodeBaseOpenSearchRepository"),
 	}
 }
 
-func (r *OpenSearchRepository) IndexDocument(ctx context.Context, index string, document interface{}) error {
+func (r *CodeBaseOpenSearchRepository) IndexDocument(ctx context.Context, index string, document interface{}) error {
 	body, err := json.Marshal(document)
 	if err != nil {
 		return err
@@ -34,8 +34,6 @@ func (r *OpenSearchRepository) IndexDocument(ctx context.Context, index string, 
 		Body:    strings.NewReader(string(body)),
 		Refresh: "true",
 	}
-
-	fmt.Println(r.client.UpdateByQueryRethrottle)
 
 	res, err := req.Do(ctx, r.client)
 	if err != nil {
@@ -55,7 +53,7 @@ func (r *OpenSearchRepository) IndexDocument(ctx context.Context, index string, 
 	return nil
 }
 
-func (r *OpenSearchRepository) Search(ctx context.Context, index string, query interface{}) ([]interface{}, error) {
+func (r *CodeBaseOpenSearchRepository) Search(ctx context.Context, index string, query interface{}) ([]interface{}, error) {
 	body, err := json.Marshal(query)
 	if err != nil {
 		return nil, err

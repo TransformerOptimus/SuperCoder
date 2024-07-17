@@ -6,7 +6,7 @@ export default function StoryDetailsWorkbench({
   id,
 }: StoryDetailsWorkbenchProps) {
   return (
-    <div id={'story_details'} className={'p-4'}>
+    <div id={'story_details'}>
       <StoryDetails story_id={id} id={'workbench'} />
     </div>
   );

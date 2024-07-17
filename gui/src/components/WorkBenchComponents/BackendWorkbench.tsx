@@ -7,6 +7,7 @@ import { CustomTabsNewProps } from '../../../types/customComponentTypes';
 import imagePath from '@/app/imagePath';
 import Browser from '@/components/WorkBenchComponents/Browser';
 import { BackendWorkbenchProps } from '../../../types/workbenchTypes';
+import TerminalComponent from '@/components/Terminal/Terminal';
 
 const BackendWorkbench: React.FC<BackendWorkbenchProps> = ({
   activityLogs,
@@ -21,7 +22,8 @@ const BackendWorkbench: React.FC<BackendWorkbenchProps> = ({
       frontendURL.current = localStorage.getItem('projectURLFrontend');
     }
   }, []);
-  const tabsProps: CustomTabsNewProps = {
+
+  const browserTabsProps: CustomTabsNewProps = {
     options: [
       {
         key: 'backend',
@@ -34,6 +36,27 @@ const BackendWorkbench: React.FC<BackendWorkbenchProps> = ({
         text: 'Frontend',
         icon: imagePath.browserIconDark,
         content: <Browser url={frontendURL.current} status={status} />,
+      },
+    ],
+  };
+
+  const actionTabsProps: CustomTabsNewProps = {
+    options: [
+      {
+        key: 'story_details',
+        text: 'Story Details',
+        icon: imagePath.storyDetailsIconSelected,
+        content: (
+          <BoardProvider>
+            <StoryDetailsWorkbench id={selectedStoryId} />
+          </BoardProvider>
+        ),
+      },
+      {
+        key: 'terminal',
+        text: 'Terminal',
+        icon: imagePath.terminalIconSelected,
+        content: <TerminalComponent />,
       },
     ],
   };
@@ -64,21 +87,19 @@ const BackendWorkbench: React.FC<BackendWorkbenchProps> = ({
             alignment={'items-center justify-center'}
             header={'Browser'}
             height={'100%'}
-            tabsProps={tabsProps}
+            tabsProps={browserTabsProps}
             type={'tabs'}
           />
         </div>
         <div className={'flex-1'} style={{ height: 'calc(50% - 4px)' }}>
           <CustomContainers
-            id={'story_details'}
+            id={'actions'}
             alignment={'items-center justify-center'}
-            header={'Story Details'}
+            header={'Action'}
             height={'100%'}
-          >
-            <BoardProvider>
-              <StoryDetailsWorkbench id={selectedStoryId} />
-            </BoardProvider>
-          </CustomContainers>
+            tabsProps={actionTabsProps}
+            type={'tabs'}
+          />
         </div>
       </div>
     </div>

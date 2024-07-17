@@ -10,14 +10,7 @@ const commands = {
 const TerminalComponent: React.FC = () => {
   const terminalRef = useTerminal(commands);
 
-  return (
-    <div className="h-full w-full">
-      <div
-        ref={terminalRef}
-        className="h-full w-full rounded-lg bg-black shadow-lg"
-      ></div>
-    </div>
-  );
+  return <div ref={terminalRef} className={'h-full w-full rounded-b-lg'} />;
 };
 
 export default TerminalComponent;

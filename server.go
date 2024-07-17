@@ -12,10 +12,12 @@ import (
 	"ai-developer/app/models"
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
+	repository "ai-developer/app/repositories/interface"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
 	"ai-developer/app/services/s3_providers"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	ginzap "github.com/gin-contrib/zap"
@@ -24,6 +26,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"github.com/newrelic/go-agent/v3/newrelic"
+	"github.com/opensearch-project/opensearch-go"
 	"go.uber.org/dig"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -377,6 +380,48 @@ func main() {
 	}
 	fmt.Println("WorkspaceGateway provided")
 
+	// Provide OpenSearch Client
+	err = c.Provide(func() (*opensearch.Client, error) {
+		cfg := opensearch.Config{
+			Addresses: []string{
+				config.OpenSearchURL(),
+			},
+			Username: config.OpenSearchUsername(),
+			Password: config.OpenSearchPassword(),
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+		openSearchClient, err := opensearch.NewClient(cfg)
+
+		fmt.Println("OpenSearch Client created....")
+		fmt.Println("OpenSearch Client: ", openSearchClient)
+		fmt.Println("Address: ", config.OpenSearchURL())
+		fmt.Println("Username: ", config.OpenSearchUsername())
+		fmt.Println("Password: ", config.OpenSearchPassword())
+
+		if err != nil {
+			return nil, fmt.Errorf("error creating the OpenSearch client: %w", err)
+		}
+		return openSearchClient, nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// Provide OpenSearch Repository
+	err = c.Provide(func(client *opensearch.Client, logger *zap.Logger) repository.SearchRepository {
+		return repositories.NewOpenSearchRepository(client, logger)
+	})
+
+	// Provide OpenSearch Service
+	err = c.Provide(services.NewSearchService)
+	if err != nil {
+		panic(err)
+	}
+
 	// Setup routes and start the server
 	err = c.Invoke(func(
 		health *controllers.HealthController,
@@ -401,6 +446,7 @@ func main() {
 		ioServer *socketio.Server,
 		nrApp *newrelic.Application,
 		designStoryCtrl *controllers.DesignStoryReviewController,
+		openSearchService *services.SearchService,
 		logger *zap.Logger,
 	) error {
 
@@ -522,6 +568,68 @@ func main() {
 		defer ioServer.Close()
 
 		fmt.Println("Starting Gin server on port 8080...")
+
+		fmt.Println("Trying out Open Search!")
+		url := config.OpenSearchURL()
+		maxRetries := 5
+		retryInterval := time.Second * 5
+
+		// Create HTTP client with TLS configuration
+		httpClient := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		}
+
+		for i := 0; i < maxRetries; i++ {
+			req, err := http.NewRequest("GET", url, nil)
+			if err != nil {
+				fmt.Printf("Failed to create request: %v\n", err)
+				continue
+			}
+
+			req.SetBasicAuth("admin", "3R29as+N#SPuqlfaHECh")
+
+			resp, err := httpClient.Do(req)
+			if err == nil && resp.StatusCode == 200 {
+				fmt.Println("Successfully connected to OpenSearch")
+				// Proceed with your application logic
+				break
+			} else {
+				fmt.Printf("Failed to connect to OpenSearch, attempt %d/%d: %v\n", i+1, maxRetries, err)
+				time.Sleep(retryInterval)
+			}
+		}
+
+		ctx := context.Background()
+		document := map[string]interface{}{
+			"title": "Test Document",
+		}
+
+		err := openSearchService.IndexDocument(ctx, "test-index", document)
+		if err != nil {
+			log.Fatalf("Error indexing document: %s", err)
+		}
+
+		query := map[string]interface{}{
+			"query": map[string]interface{}{
+				"match": map[string]interface{}{
+					"title": "Test",
+				},
+			},
+		}
+		results, err := openSearchService.SearchDocument(ctx, "test-index", query)
+		if err != nil {
+			log.Fatalf("Error searching documents: %s", err)
+		}
+		log.Printf("Search results: %v", results)
+
+		if err != nil {
+			log.Fatalf("Failed to start the application: %v", err)
+		}
+
 		return r.Run()
 	})
 

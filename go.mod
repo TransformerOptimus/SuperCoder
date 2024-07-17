@@ -23,7 +23,10 @@ require (
 	gorm.io/gorm v1.25.10
 )
 
-require github.com/jmespath/go-jmespath v0.4.0 // indirect
+require (
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/opensearch-project/opensearch-go v1.1.0 // indirect
+)
 
 require (
 	dario.cat/mergo v1.0.0 // indirect

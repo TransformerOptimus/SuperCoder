@@ -14,23 +14,25 @@ import (
 type CodeBaseOpenSearchRepository struct {
 	client *opensearch.Client
 	logger *zap.Logger
+	index  string
 }
 
 func NewCodeBaseOpenSearchRepository(client *opensearch.Client, logger *zap.Logger) *CodeBaseOpenSearchRepository {
 	return &CodeBaseOpenSearchRepository{
 		client: client,
 		logger: logger.Named("CodeBaseOpenSearchRepository"),
+		index:  "codebase",
 	}
 }
 
-func (r *CodeBaseOpenSearchRepository) IndexDocument(ctx context.Context, index string, document interface{}) error {
+func (r *CodeBaseOpenSearchRepository) IndexDocument(ctx context.Context, document interface{}) error {
 	body, err := json.Marshal(document)
 	if err != nil {
 		return err
 	}
 
 	req := opensearchapi.IndexRequest{
-		Index:   index,
+		Index:   r.index,
 		Body:    strings.NewReader(string(body)),
 		Refresh: "true",
 	}
@@ -53,14 +55,14 @@ func (r *CodeBaseOpenSearchRepository) IndexDocument(ctx context.Context, index 
 	return nil
 }
 
-func (r *CodeBaseOpenSearchRepository) Search(ctx context.Context, index string, query interface{}) ([]interface{}, error) {
+func (r *CodeBaseOpenSearchRepository) Search(ctx context.Context, query interface{}) ([]interface{}, error) {
 	body, err := json.Marshal(query)
 	if err != nil {
 		return nil, err
 	}
 
 	req := opensearchapi.SearchRequest{
-		Index: []string{index},
+		Index: []string{r.index},
 		Body:  strings.NewReader(string(body)),
 	}
 

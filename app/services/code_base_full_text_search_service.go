@@ -13,10 +13,10 @@ func NewCodeBaseSearchService(repo fullTextSearchRepository.CodeBaseSearchReposi
 	return &CodeBaseSearchService{repo: repo}
 }
 
-func (s *CodeBaseSearchService) IndexDocument(ctx context.Context, index string, document interface{}) error {
-	return s.repo.IndexDocument(ctx, index, document)
+func (s *CodeBaseSearchService) IndexDocument(ctx context.Context, document interface{}) error {
+	return s.repo.IndexDocument(ctx, document)
 }
 
-func (s *CodeBaseSearchService) SearchDocument(ctx context.Context, index string, query interface{}) ([]interface{}, error) {
-	return s.repo.Search(ctx, index, query)
+func (s *CodeBaseSearchService) SearchDocument(ctx context.Context, query interface{}) ([]interface{}, error) {
+	return s.repo.Search(ctx, query)
 }

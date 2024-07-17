@@ -303,57 +303,40 @@ export default function StoryDetails({
         {id !== 'workbench' &&
           storyDetails.status === storyStatus.IN_REVIEW && (
             <div
-              className={`${styles.issue_container} m-4 flex gap-2.5 rounded-lg border-l-4 p-4`}
-              style={{
-                borderColor: '#AA7C23',
-                backgroundColor: 'rgba(170, 124, 35, 0.08)',
-              }}
+              className={`${styles.issue_container} m-4 flex flex-row gap-2 rounded-lg p-3`}
             >
-              <div
-                className={'flex pr-1.5'}
-                style={{ width: '40px', height: '142px' }}
-              >
-                <CustomImage
-                  className={'size-10'}
-                  src={imagePath.overviewWarningYellow}
-                  alt={'error_icon'}
-                />
-              </div>
-              <div id={'in_review_description'} className={'flex flex-col'}>
-                <div className={'pt-1.25'}>
-                  <span className={'mb-1.25 text-xl font-bold text-white'}>
-                    {issue?.title}
-                  </span>
-                  <p className={'text-m text-white'}>{issue?.description}</p>
-                </div>
+              <CustomImage
+                className={'mt-[2px] size-5'}
+                src={imagePath.overviewWarningYellow}
+                alt={'error_icon'}
+              />
 
-                <div className={'mt-2.5 flex gap-2.5'}>
-                  {issue?.actions &&
-                    issue.actions.length > 0 &&
-                    issue.actions.map((action, index) => (
-                      <Button
-                        key={index}
-                        onClick={() => {
-                          if (action.link === storyActions.REBUILD) {
-                            handleMoveToInProgressClick().then().catch();
-                          } else {
-                            router.push(action.link);
-                          }
-                        }}
-                        className={
-                          action.label === storyActions.REBUILD
-                            ? 'bg-white font-bold text-black'
-                            : 'font-bold text-white'
-                        }
-                        style={
-                          action.label !== storyActions.REBUILD
-                            ? { backgroundColor: 'rgba(170, 124, 35, 0.08)' }
-                            : {}
-                        }
-                      >
-                        {action.label}
-                      </Button>
-                    ))}
+              <div
+                id={'in_review_description'}
+                className={'proxima_nova flex flex-col gap-2 text-white'}
+              >
+                <span id={'issue_title'} className={'text-base font-medium'}>
+                  {issue?.title}
+                </span>
+
+                <span
+                  id={'issue_description'}
+                  className={'text-sm font-normal opacity-80'}
+                >
+                  {issue?.description}
+                </span>
+
+                <div
+                  id={'issue_action_buttons'}
+                  className={'my-2 flex flex-row gap-2'}
+                >
+                  <Button
+                    className={'primary_medium'}
+                    onClick={() => handleMoveToInProgressClick().then().catch()}
+                  >
+                    Re-Build
+                  </Button>
+                  <Button className={'light_medium'}>Get Help</Button>
                 </div>
               </div>
             </div>

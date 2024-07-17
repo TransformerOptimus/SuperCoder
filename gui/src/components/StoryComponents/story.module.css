@@ -21,8 +21,8 @@
   flex-direction: column;
   gap: 24px;
   padding: 24px 16px;
-  overflow-y: auto; /* Enable vertical scrolling */
-  flex-grow: 1; /* Allow the body to grow and take available space */
+  overflow-y: auto;
+  flex-grow: 1;
 }
 
 .new_story_footer {
@@ -33,15 +33,11 @@
   gap: 8px;
   align-self: stretch;
   border-top: 1px solid var(--white-opacity-8);
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
 }
 
 .issue_container {
-  width: auto;
-  height: auto;
-  border-radius: 8px;
-  border-left: 4px solid #AA7C23;
+  border-left: 4px solid var(--warning-container-border);
   background: var(--warning-container-background);
-  display: flex;
 }
 

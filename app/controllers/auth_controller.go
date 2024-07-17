@@ -36,7 +36,7 @@ func (controller *AuthController) GithubSignIn(c *gin.Context) {
 		c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 
 	}
-	inviteToken := c.Param("invite_token")
+	inviteToken := c.Query("invite_token")
 	var githubOauthConfig = &oauth2.Config{
 		RedirectURL:  controller.redirectURL,
 		ClientID:     controller.clientID,

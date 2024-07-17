@@ -59,15 +59,15 @@ func (s *GithubOauthService) HandleGithubCallback(code string, state string) (st
 	} else {
 		name = "N/A"
 	}
-	user, err := s.userService.GetUserByEmail(primaryEmail)
 	var userExists string
 	userEmail, inviteOrgId, err := s.DecodeInviteToken(state)
 	if err != nil {
 		return "", "", "", "", 0, err
 	}
-	if userEmail != primaryEmail {
+	if userEmail != "" && userEmail != primaryEmail {
 		return "", "", "", "", 0, errors.New("user email and invite email do not match")
 	}
+	user, err := s.userService.GetUserByEmail(primaryEmail)
 	if err != nil {
 		if user == nil {
 			user = &models.User{
@@ -131,13 +131,15 @@ func (s *GithubOauthService) DecodeInviteToken(state string) (string, int, error
 }
 
 func (s *GithubOauthService) handleExistingUserOrg(user *models.User, inviteOrgId int) (*models.User, error) {
-	user.OrganisationID = uint(inviteOrgId)
-	orgUser, err := s.organisationUserRepo.GetOrganisationUserByUserIDAndOrganisationID(user.ID, uint(inviteOrgId))
-	if err != nil {
-		return nil, err
-	}
-	if orgUser == nil {
-		_, err = s.createOrganisationUser(user)
+	if inviteOrgId != 0 {
+		user.OrganisationID = uint(inviteOrgId)
+		orgUser, err := s.organisationUserRepo.GetOrganisationUserByUserIDAndOrganisationID(user.ID, uint(inviteOrgId))
+		if err != nil {
+			return nil, err
+		}
+		if orgUser == nil {
+			_, err = s.createOrganisationUser(user)
+		}
 	}
 	return user, nil
 }

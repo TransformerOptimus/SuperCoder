@@ -53,6 +53,7 @@
   --project-bg-color: rgb(0 0 0 / 24%);
   --selected-image-border-color: rgb(255 255 255 / 80%);
   --github-button-border-color: #d1d5da;
+  --warning-container-background: rgba(170, 124, 35, 0.08);
 }
 
 body {

@@ -43,7 +43,7 @@ export default function Users() {
   }, []);
 
   useEffect(() => {
-    setInviteUserEmail('');
+    onSetEmail('');
   }, [openInviteUserModal]);
 
   async function fetchUsersFromOrganisation(organisation_id) {
@@ -65,10 +65,6 @@ export default function Users() {
 
   async function sendInvite() {
     try {
-      if (!validateEmail(inviteUserEmail)) {
-        setEmailErrorMsg('Enter a Valid Email.');
-        return;
-      }
       setIsLoading(true);
       const data: InviteUserPayload = {
         organisationId: organizationId,
@@ -112,6 +108,14 @@ export default function Users() {
     setOpenRemoveUserModal(true);
   };
 
+  const handleSendInvite = () => {
+    if (!validateEmail(inviteUserEmail)) {
+      setEmailErrorMsg('Enter a Valid Email.');
+      return;
+    }
+    sendInvite().then().catch();
+  };
+
   const onSetEmail = (value) => {
     setInviteUserEmail(value);
     setEmailErrorMsg('');
@@ -141,7 +145,7 @@ export default function Users() {
         <CustomModal.Footer>
           <Button
             className={'primary_medium'}
-            onClick={sendInvite}
+            onClick={handleSendInvite}
             isLoading={isLoading}
           >
             Invite User

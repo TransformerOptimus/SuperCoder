@@ -49,6 +49,7 @@ type TerminalController struct {
 	tty                         *os.File
 	cancelFunc                  context.CancelFunc
 	writeMutex                  sync.Mutex
+	historyBuffer               bytes.Buffer
 }
 
 func NewTerminalController(logger *zap.Logger, command string, arguments []string, allowedHostnames []string) (*TerminalController, error) {
@@ -58,6 +59,7 @@ func NewTerminalController(logger *zap.Logger, command string, arguments []strin
 		logger.Warn("failed to start command", zap.Error(err))
 		return nil, err
 	}
+	ttyBuffer := bytes.Buffer{}
 	return &TerminalController{
 		DefaultConnectionErrorLimit: 10,
 		MaxBufferSizeBytes:          1024,
@@ -68,6 +70,7 @@ func NewTerminalController(logger *zap.Logger, command string, arguments []strin
 		Arguments:                   arguments,
 		AllowedHostnames:            allowedHostnames,
 		logger:                      logger,
+		historyBuffer:               ttyBuffer,
 	}, nil
 }
 
@@ -110,6 +113,13 @@ func (controller *TerminalController) NewTerminal(ctx *gin.Context) {
 		controller.logger.Warn("failed to setup connection", zap.Error(err))
 		return
 	}
+
+	// restore history from buffer
+	controller.writeMutex.Lock()
+	if err := connection.WriteMessage(websocket.BinaryMessage, controller.historyBuffer.Bytes()); err != nil {
+		controller.logger.Info("failed to write tty buffer to xterm.js", zap.Error(err))
+	}
+	controller.writeMutex.Unlock()
 
 	var waiter sync.WaitGroup
 
@@ -203,6 +213,8 @@ func (controller *TerminalController) readFromTTY(ctx context.Context, connectio
 			}
 
 			controller.writeMutex.Lock()
+			// save to history buffer
+			controller.historyBuffer.Write(buffer[:readLength])
 			if err := connection.WriteMessage(websocket.BinaryMessage, buffer[:readLength]); err != nil {
 				controller.writeMutex.Unlock()
 				controller.logger.Warn(fmt.Sprintf("failed to send %v bytes from tty to xterm.js", readLength), zap.Int("read_length", readLength), zap.Error(err))

@@ -9,7 +9,7 @@ import {
   signUp,
 } from '@/api/DashboardService';
 import { Button } from '@nextui-org/react';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { API_BASE_URL } from '@/api/apiConfig';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import { authPayload, userData } from '../../../types/authTypes';
@@ -203,90 +203,92 @@ export default function LandingPage() {
   };
 
   return (
-    <div
-      id={'landing_page'}
-      className={`flex h-screen w-screen flex-col px-14 py-10 text-white ${styles.bg_color}`}
-    >
-      <CustomImage
-        className={'h-[32px] w-[166px]'}
-        src={imagePath.superagiLogo}
-        alt={'superagi_logo'}
-      />
-
-      <div className={'proxima_nova flex flex-col  self-center'}>
-        <div className={styles.gradient_effect} />
-
+    <Suspense fallback={<div>Loading...</div>}>
+      <div
+        id={'landing_page'}
+        className={`flex h-screen w-screen flex-col px-14 py-10 text-white ${styles.bg_color}`}
+      >
         <CustomImage
-          className={'h-[232px] w-[390px]'}
-          src={imagePath.supercoderImage}
-          alt={'super_coder_image'}
+          className={'h-[32px] w-[166px]'}
+          src={imagePath.superagiLogo}
+          alt={'superagi_logo'}
         />
-        <div className={'mt-20 flex w-full flex-col gap-6'}>
-          <Button
-            onClick={() => forGithubSignIn()}
-            className={`primary_medium`}
-          >
-            <CustomImage
-              className={'size-5'}
-              src={imagePath.githubLogo}
-              alt={'github_logo'}
-            />
-            Continue with Github
-          </Button>
-          <div className="flex items-center">
-            <div className={`h-px flex-grow ${styles.divider}`} />
-            <span className="secondary_color px-2 text-sm">or</span>
-            <div className={`h-px flex-grow ${styles.divider}`} />
-          </div>
-          <div className={'flex flex-col gap-4'}>
-            <div className={'flex flex-col gap-2'}>
-              <span className={'secondary_color text-sm'}>Email</span>
-              <CustomInput
-                placeholder={'Enter your email'}
-                format={'text'}
-                value={email}
-                setter={onSetEmail}
-                disabled={isInvite}
-                isError={emailErrorMsg !== ''}
-                errorMessage={emailErrorMsg}
+
+        <div className={'proxima_nova flex flex-col  self-center'}>
+          <div className={styles.gradient_effect} />
+
+          <CustomImage
+            className={'h-[232px] w-[390px]'}
+            src={imagePath.supercoderImage}
+            alt={'super_coder_image'}
+          />
+          <div className={'mt-20 flex w-full flex-col gap-6'}>
+            <Button
+              onClick={() => forGithubSignIn()}
+              className={`primary_medium`}
+            >
+              <CustomImage
+                className={'size-5'}
+                src={imagePath.githubLogo}
+                alt={'github_logo'}
               />
+              Continue with Github
+            </Button>
+            <div className="flex items-center">
+              <div className={`h-px flex-grow ${styles.divider}`} />
+              <span className="secondary_color px-2 text-sm">or</span>
+              <div className={`h-px flex-grow ${styles.divider}`} />
             </div>
-            {isEmailRegistered !== null && (
+            <div className={'flex flex-col gap-4'}>
               <div className={'flex flex-col gap-2'}>
-                <span className={'secondary_color text-sm'}>Password</span>
+                <span className={'secondary_color text-sm'}>Email</span>
                 <CustomInput
-                  placeholder={
-                    isEmailRegistered ? 'Enter Password' : 'Set Password'
-                  }
-                  format={showPassword ? 'text' : 'password'}
-                  value={password}
-                  setter={onSetPassword}
-                  endIcon={
-                    showPassword
-                      ? imagePath.passwordUnhidden
-                      : imagePath.passwordHidden
-                  }
-                  alt={'password_icons'}
-                  endIconSize={'size-4'}
-                  endIconClick={() =>
-                    setShowPassword((prevState) => !prevState)
-                  }
-                  errorMessage={passwordErrorMsg}
-                  isError={passwordErrorMsg !== ''}
+                  placeholder={'Enter your email'}
+                  format={'text'}
+                  value={email}
+                  setter={onSetEmail}
+                  disabled={isInvite}
+                  isError={emailErrorMsg !== ''}
+                  errorMessage={emailErrorMsg}
                 />
               </div>
-            )}
+              {isEmailRegistered !== null && (
+                <div className={'flex flex-col gap-2'}>
+                  <span className={'secondary_color text-sm'}>Password</span>
+                  <CustomInput
+                    placeholder={
+                      isEmailRegistered ? 'Enter Password' : 'Set Password'
+                    }
+                    format={showPassword ? 'text' : 'password'}
+                    value={password}
+                    setter={onSetPassword}
+                    endIcon={
+                      showPassword
+                        ? imagePath.passwordUnhidden
+                        : imagePath.passwordHidden
+                    }
+                    alt={'password_icons'}
+                    endIconSize={'size-4'}
+                    endIconClick={() =>
+                      setShowPassword((prevState) => !prevState)
+                    }
+                    errorMessage={passwordErrorMsg}
+                    isError={passwordErrorMsg !== ''}
+                  />
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={getButtonFields().onClick}
+              className={`primary_medium`}
+              isLoading={isButtonLoading}
+            >
+              {getButtonFields().text}
+            </Button>
           </div>
-          <Button
-            onClick={getButtonFields().onClick}
-            className={`primary_medium`}
-            isLoading={isButtonLoading}
-          >
-            {getButtonFields().text}
-          </Button>
         </div>
+        <Toaster />
       </div>
-      <Toaster />
-    </div>
+    </Suspense>
   );
 }

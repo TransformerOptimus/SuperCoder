@@ -382,6 +382,7 @@ func main() {
 
 	// Provide OpenSearch Client
 	err = c.Provide(func() (*opensearch.Client, error) {
+		insecureSkipVerify := config.AppEnv() == constants.Development
 		cfg := opensearch.Config{
 			Addresses: []string{
 				config.OpenSearchURL(),
@@ -390,7 +391,7 @@ func main() {
 			Password: config.OpenSearchPassword(),
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
+					InsecureSkipVerify: insecureSkipVerify,
 				},
 			},
 		}
@@ -446,7 +447,6 @@ func main() {
 		ioServer *socketio.Server,
 		nrApp *newrelic.Application,
 		designStoryCtrl *controllers.DesignStoryReviewController,
-		openSearchService *services.CodeBaseSearchService,
 		logger *zap.Logger,
 	) error {
 
@@ -568,10 +568,6 @@ func main() {
 		defer ioServer.Close()
 
 		fmt.Println("Starting Gin server on port 8080...")
-		if err != nil {
-			log.Fatalf("Failed to start the application: %v", err)
-		}
-
 		return r.Run()
 	})
 

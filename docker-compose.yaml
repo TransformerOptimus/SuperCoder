@@ -31,7 +31,6 @@ services:
       AI_DEVELOPER_AWS_REGION: ${AI_DEVELOPER_AWS_REGION}
       AI_DEVELOPER_WORKSPACE_STATIC_FRONTEND_URL: "http://localhost:8083"
       AI_DEVELOPER_OPEN_SEARCH_URL: https://opensearch:9200
-#      AI_DEVELOPER_OPEN_SEARCH_URL: https://localhost:9200
       AI_DEVELOPER_OPEN_SEARCH_USERNAME: admin
       AI_DEVELOPER_OPEN_SEARCH_PASSWORD: 3R29as+N#SPuqlfaHECh
     volumes:
@@ -79,7 +78,6 @@ services:
       AI_DEVELOPER_AWS_REGION: ${AI_DEVELOPER_AWS_REGION}
       AI_DEVELOPER_WORKSPACE_STATIC_FRONTEND_URL: "http://localhost:8083"
       AI_DEVELOPER_OPEN_SEARCH_URL: https://opensearch:9200
-#      AI_DEVELOPER_OPEN_SEARCH_URL: https://localhost:9200
       AI_DEVELOPER_OPEN_SEARCH_USERNAME: admin
       AI_DEVELOPER_OPEN_SEARCH_PASSWORD: 3R29as+N#SPuqlfaHECh
     volumes:
@@ -232,8 +230,6 @@ services:
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=3R29as+N#SPuqlfaHECh
-#      - OPENSEARCH_SECURITY_SSL_HTTP_ENABLED=false
-#      - OPENSEARCH_SECURITY_SSL_TRANSPORT_ENABLED=false
     ulimits:
       memlock:
         soft: -1

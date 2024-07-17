@@ -2,7 +2,6 @@ package config
 
 func OpenSearchURL() string {
 	return config.String("open.search.url")
-
 }
 
 func OpenSearchUsername() string {

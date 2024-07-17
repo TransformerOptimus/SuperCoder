@@ -13,6 +13,7 @@ import {
   removeUserFromOrganisation,
 } from '@/api/DashboardService';
 import { validateEmail } from '@/app/utils';
+import {InviteUserPayload, RemoveUserPayload, UserTeamDetails} from "../../../../types/organisationTypes";
 
 export default function Users() {
   const [openInviteUserModal, setOpenInviteUserModal] =
@@ -20,18 +21,18 @@ export default function Users() {
   const [openRemoveUserModal, setOpenRemoveUserModal] =
     useState<boolean>(false);
 
-  const email = [
-    { email: 'admin@test.com'},
-    { email: 'random@email.com'},
-    { email: 'moin@mail.com'},
-  ];
-
-  const [userList, setUserList] = useState<{email: string}[]>(email);
+  const [userList, setUserList] = useState<UserTeamDetails[]>([]);
   const [inviteUserEmail, setInviteUserEmail] = useState<string>('');
-  const [removeUserEmail, setRemoveUserEmail] = useState<string>('');
+  const [removeUserDetails, setRemoveUserDetails] = useState<UserTeamDetails | null>(null);
   const [emailErrorMsg, setEmailErrorMsg] = useState<string>('');
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
 
   useEffect(() => {
+    let organisation_id = null;
+    if(typeof window !== 'undefined'){
+      organisation_id =  localStorage.getItem('organisationId');
+      setOrganizationId(organisation_id);
+    }
     fetchUsersFromOrganisation().then().catch();
   }, []);
 
@@ -41,10 +42,13 @@ export default function Users() {
 
   async function fetchUsersFromOrganisation() {
     try {
-      const response = await getOrganisationMembers();
+      const userEmail = localStorage.getItem('userEmail')
+      const response = await getOrganisationMembers(organizationId);
       if (response) {
         const data = response.data;
-        setUserList(data.user_list);
+        const users = data.users;
+        const currentUser = users.filter((user: UserTeamDetails) => user.email === userEmail);
+        setUserList([currentUser, ...users.filter((user: UserTeamDetails) => user.email !== userEmail)])
       }
     } catch (error) {
       console.error(error);
@@ -57,7 +61,12 @@ export default function Users() {
         setEmailErrorMsg('Enter a Valid Email.');
         return;
       }
-      const response = await addUserToOrganisation(inviteUserEmail);
+      const data: InviteUserPayload = {
+        organisationId: organizationId,
+        email: inviteUserEmail,
+        current_user_id: userList ? userList[0].id : -1
+      }
+      const response = await addUserToOrganisation(data);
       if (response) {
         fetchUsersFromOrganisation().catch();
       }
@@ -70,7 +79,11 @@ export default function Users() {
 
   async function toRemoveUserFromOrganisation() {
     try {
-      const response = await removeUserFromOrganisation(removeUserEmail);
+      const data: RemoveUserPayload = {
+        organisationId: organizationId,
+        user_id: removeUserDetails.id
+      }
+      const response = await removeUserFromOrganisation(data);
       if (response) {
         fetchUsersFromOrganisation().then().catch();
       }
@@ -78,12 +91,12 @@ export default function Users() {
       console.error(error);
     } finally {
       setOpenRemoveUserModal(false);
-      setRemoveUserEmail('');
+      setRemoveUserDetails(null);
     }
   }
 
-  const handleOpenRemoveModal = (email: string) => {
-    setRemoveUserEmail(email);
+  const handleOpenRemoveModal = (data: UserTeamDetails) => {
+    setRemoveUserDetails(data);
     setOpenRemoveUserModal(true);
   };
 
@@ -128,7 +141,7 @@ export default function Users() {
         <CustomModal.Header title={'Remove User'} />
         <CustomModal.Body padding={'24px 16px'}>
           <span className={'secondary_color text-sm font-normal'}>
-            Are you sure you want to remove {removeUserEmail}?
+            Are you sure you want to remove {removeUserDetails && removeUserDetails.email}?
           </span>
         </CustomModal.Body>
         <CustomModal.Footer>
@@ -173,7 +186,7 @@ export default function Users() {
                   >
                     <CustomDropdown.Item
                       key={'1'}
-                      onClick={() => handleOpenRemoveModal(item.email)}
+                      onClick={() => handleOpenRemoveModal(item)}
                     >
                       <div
                         className={

@@ -15,6 +15,7 @@ import {
   EditDesignStoryPayload,
 } from '../../types/designStoryTypes';
 import { authPayload } from '../../types/authTypes';
+import {InviteUserPayload, RemoveUserPayload} from "../../types/organisationTypes";
 
 export const checkHealth = () => {
   return api.get(`/health`);
@@ -183,14 +184,14 @@ export const updateReviewViewedStatus = (story_id: number) => {
 };
 
 // Teams APIS
-export const getOrganisationMembers = () => {
-  return api.get(``);
+export const getOrganisationMembers = (organisation_id: string) => {
+  return api.get(`/organisation/${organisation_id}/fetch_users`);
 };
 
-export const addUserToOrganisation = (email: string) => {
-  return api.post(``, { email: email });
+export const addUserToOrganisation = (payload: InviteUserPayload) => {
+  return api.post(`/organisation/${payload.organisationId}/invite_user`,  payload );
 };
 
-export const removeUserFromOrganisation = (email: string) => {
-  return api.post('', { email: email });
+export const removeUserFromOrganisation = (payload: RemoveUserPayload) => {
+  return api.post(`/organisation/${payload.organisationId}/remove_user`, payload );
 };

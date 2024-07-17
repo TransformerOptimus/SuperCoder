@@ -36,6 +36,7 @@ func (controller *AuthController) GithubSignIn(c *gin.Context) {
 		c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 
 	}
+	inviteToken := c.Param("invite_token")
 	var githubOauthConfig = &oauth2.Config{
 		RedirectURL:  controller.redirectURL,
 		ClientID:     controller.clientID,
@@ -43,13 +44,18 @@ func (controller *AuthController) GithubSignIn(c *gin.Context) {
 		Scopes:       []string{"user:email"},
 		Endpoint:     oauthGithub.Endpoint,
 	}
-	callback := githubOauthConfig.AuthCodeURL("state", oauth2.AccessTypeOnline)
+	state := "state"
+	if inviteToken != "" {
+		state = "token:" + inviteToken
+	}
+	callback := githubOauthConfig.AuthCodeURL(state, oauth2.AccessTypeOnline)
 	c.Redirect(http.StatusTemporaryRedirect, callback)
 }
 
 func (controller *AuthController) GithubCallback(c *gin.Context) {
 	code := c.Query("code")
-	accessToken, name, email, newExists, organisationId, err := controller.githubOauthService.HandleGithubCallback(code)
+	state := c.Query("state")
+	accessToken, name, email, newExists, organisationId, err := controller.githubOauthService.HandleGithubCallback(code, state)
 	if err != nil {
 		c.Redirect(http.StatusTemporaryRedirect, config.GithubFrontendURL()+"/redirect?error="+err.Error())
 		return
@@ -69,6 +75,17 @@ func (controller *AuthController) GithubCallback(c *gin.Context) {
 
 func (controller *AuthController) SignUp(c *gin.Context) {
 	var createUserRequest request.CreateUserRequest
+	inviteToken := c.GetHeader("X-INVITE-TOKEN")
+	inviteEmail, inviteOrganisationId, err := controller.jwtService.DecodeInviteToken(inviteToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "existing_user": false, "user": nil, "access_token": nil, "error": err.Error()})
+		fmt.Println("Error occurred while creating new user : ", createUserRequest.Email, err)
+		return
+	}
+	if inviteEmail != createUserRequest.Email {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "existing_user": false, "user": nil, "access_token": nil, "error": "Invite Email and Request Email do not match"})
+		return
+	}
 	fmt.Println("Creating new user", createUserRequest.Email)
 	if err := c.ShouldBindJSON(&createUserRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -76,7 +93,7 @@ func (controller *AuthController) SignUp(c *gin.Context) {
 	}
 	var existingUser, _ = controller.userService.GetUserByEmail(createUserRequest.Email)
 	if existingUser == nil {
-		var user, accessToken, err = controller.userService.HandleUserSignUp(createUserRequest)
+		var user, accessToken, err = controller.userService.HandleUserSignUp(createUserRequest, inviteEmail, inviteOrganisationId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "existing_user": false, "user": nil, "access_token": nil, "error": err.Error()})
 			fmt.Println("Error occurred while creating new user : ", createUserRequest.Email, err)

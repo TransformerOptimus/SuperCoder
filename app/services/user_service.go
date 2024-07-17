@@ -48,13 +48,13 @@ func (s *UserService) UpdateUserByEmail(email string, user *models.User) error {
 	return s.userRepo.UpdateUserByEmail(email, user)
 }
 
-func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (*models.User, string, error) {
+func (s *UserService) HandleUserSignUp(request request.CreateUserRequest, inviteEmail string, inviteOrganisationId int) (*models.User, string, error) {
 	newUser := &models.User{
 		Name:     request.Email,
 		Email:    request.Email,
 		Password: request.Password,
 	}
-	if request.OrganisationID == nil {
+	if inviteOrganisationId == 0 {
 		organisation := &models.Organisation{
 			Name: s.orgService.CreateOrganisationName(),
 		}
@@ -66,7 +66,7 @@ func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (*mode
 		}
 		newUser.OrganisationID = organisation.ID
 	} else {
-		newUser.OrganisationID = *request.OrganisationID
+		newUser.OrganisationID = uint(inviteOrganisationId)
 	}
 	newUser, err := s.CreateUser(newUser)
 	if err != nil {

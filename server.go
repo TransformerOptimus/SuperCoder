@@ -204,7 +204,7 @@ func main() {
 		panic(err)
 	}
 
-	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService, organisationService *services.OrganisationService) *services.GithubOauthService {
+	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService, organisationService *services.OrganisationService, organisationUserRepo *repositories.OrganisationUserRepository) *services.GithubOauthService {
 		clientID := config.GithubClientId()
 		clientSecret := config.GithubClientSecret()
 		redirectURL := config.GithubRedirectURL()
@@ -212,6 +212,7 @@ func main() {
 			userService,
 			jwtService,
 			organisationService,
+			organisationUserRepo,
 			clientID,
 			clientSecret,
 			redirectURL,

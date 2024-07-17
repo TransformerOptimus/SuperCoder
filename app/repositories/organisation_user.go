@@ -21,22 +21,13 @@ func (receiver OrganisationUserRepository) CreateOrganisationUser(tx *gorm.DB, o
 	return organisationUser, nil
 }
 
-func (receiver OrganisationUserRepository) GetOrganisationUserByUserID(userID uint) (*models.OrganisationUser, error) {
-	var organisationUser *models.OrganisationUser
-	err := receiver.db.First(&organisationUser, userID).Error
+func (receiver OrganisationUserRepository) GetOrganisationUserByUserIDAndOrganisationID(userID uint, organisationID uint) (*models.OrganisationUser, error) {
+	var organisationUser models.OrganisationUser
+	err := receiver.db.Where("user_id = ? AND organisation_id = ?", userID, organisationID).First(&organisationUser).Error
 	if err != nil {
 		return nil, err
 	}
-	return organisationUser, nil
-}
-
-func (receiver OrganisationUserRepository) GetOrganisationUserByOrganisationID(organisationID string) (*models.OrganisationUser, error) {
-	var organisationUser *models.OrganisationUser
-	err := receiver.db.First(&organisationUser, organisationID).Error
-	if err != nil {
-		return nil, err
-	}
-	return organisationUser, nil
+	return &organisationUser, nil
 }
 
 func NewOrganisationUserRepository(db *gorm.DB) *OrganisationUserRepository {

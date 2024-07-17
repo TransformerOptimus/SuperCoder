@@ -34,7 +34,7 @@ func LoadConfig() (*koanf.Koanf, error) {
 			},
 		},
 		"app.frontend.url": "http://localhost:3000/",
-		"app.backend.url":  "http://localhost:8090/api/",
+		"app.backend.url":  "http://localhost:8080/api/",
 	}, "."), nil)
 	if err != nil {
 		return nil, err

@@ -15,7 +15,7 @@ import CustomInput from '@/components/CustomInput/CustomInput';
 import { authPayload, userData } from '../../../types/authTypes';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { setUserData, validateEmail } from '@/app/utils';
-import toast, {Toaster} from "react-hot-toast";
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function LandingPage() {
   const [email, setEmail] = useState<string>('');
@@ -28,7 +28,7 @@ export default function LandingPage() {
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string>('');
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [isInvite, setIsInvite] = useState<boolean>(false);
-  const [organizationId, setOrganizationId] = useState<string | null>('');
+  const [inviteToken, setInviteToken] = useState<string | null>('');
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -36,16 +36,15 @@ export default function LandingPage() {
   useEffect(() => {
     toCheckHealth().then().catch();
     const email = searchParams.get('user_email');
-    const organizationId = searchParams.get('organisation_id');
+    const inviteToken = searchParams.get('invite_token');
     const error = searchParams.get('error_msg');
-    if (error){
-      toast.error("The invite link has expired.");
-    }
-    else if (email) {
+    if (error) {
+      toast.error('The invite link has expired.');
+    } else if (email) {
       setEmail(email);
       setIsInvite(true);
-      if (organizationId) {
-        setOrganizationId(organizationId);
+      if (inviteToken) {
+        setInviteToken(inviteToken);
         setIsEmailRegistered(false);
       } else {
         setIsEmailRegistered(true);
@@ -172,8 +171,8 @@ export default function LandingPage() {
         email: email,
         password: password,
       };
-      if (organizationId) {
-        payload = { ...payload, organizationId: organizationId };
+      if (inviteToken) {
+        payload = { ...payload, invite_token: inviteToken };
       }
       const response = await signUp(payload);
       if (response) {
@@ -285,7 +284,7 @@ export default function LandingPage() {
           </Button>
         </div>
       </div>
-      <Toaster/>
+      <Toaster />
     </div>
   );
 }

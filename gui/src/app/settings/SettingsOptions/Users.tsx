@@ -13,42 +13,50 @@ import {
   removeUserFromOrganisation,
 } from '@/api/DashboardService';
 import { validateEmail } from '@/app/utils';
-import {InviteUserPayload, RemoveUserPayload, UserTeamDetails} from "../../../../types/organisationTypes";
+import {
+  InviteUserPayload,
+  RemoveUserPayload,
+  UserTeamDetails,
+} from '../../../../types/organisationTypes';
 
 export default function Users() {
   const [openInviteUserModal, setOpenInviteUserModal] =
     useState<boolean>(false);
   const [openRemoveUserModal, setOpenRemoveUserModal] =
     useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [userList, setUserList] = useState<UserTeamDetails[]>([]);
   const [inviteUserEmail, setInviteUserEmail] = useState<string>('');
-  const [removeUserDetails, setRemoveUserDetails] = useState<UserTeamDetails | null>(null);
+  const [removeUserDetails, setRemoveUserDetails] =
+    useState<UserTeamDetails | null>(null);
   const [emailErrorMsg, setEmailErrorMsg] = useState<string>('');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
 
   useEffect(() => {
     let organisation_id = null;
-    if(typeof window !== 'undefined'){
-      organisation_id =  localStorage.getItem('organisationId');
+    if (typeof window !== 'undefined') {
+      organisation_id = localStorage.getItem('organisationId');
       setOrganizationId(organisation_id);
     }
-    fetchUsersFromOrganisation().then().catch();
+    fetchUsersFromOrganisation(organisation_id).then().catch();
   }, []);
 
   useEffect(() => {
     setInviteUserEmail('');
   }, [openInviteUserModal]);
 
-  async function fetchUsersFromOrganisation() {
+  async function fetchUsersFromOrganisation(organisation_id) {
     try {
-      const userEmail = localStorage.getItem('userEmail')
-      const response = await getOrganisationMembers(organizationId);
+      const userEmail = localStorage.getItem('userEmail');
+      const response = await getOrganisationMembers(organisation_id);
       if (response) {
         const data = response.data;
         const users = data.users;
-        const currentUser = users.filter((user: UserTeamDetails) => user.email === userEmail);
-        setUserList([currentUser, ...users.filter((user: UserTeamDetails) => user.email !== userEmail)])
+        setUserList([
+          ...users.filter((user: UserTeamDetails) => user.email === userEmail),
+          ...users.filter((user: UserTeamDetails) => user.email !== userEmail),
+        ]);
       }
     } catch (error) {
       console.error(error);
@@ -61,35 +69,39 @@ export default function Users() {
         setEmailErrorMsg('Enter a Valid Email.');
         return;
       }
+      setIsLoading(true);
       const data: InviteUserPayload = {
         organisationId: organizationId,
         email: inviteUserEmail,
-        current_user_id: userList ? userList[0].id : -1
-      }
+        current_user_id: userList ? userList[0].id : -1,
+      };
       const response = await addUserToOrganisation(data);
       if (response) {
-        fetchUsersFromOrganisation().catch();
+        fetchUsersFromOrganisation(organizationId).catch();
       }
     } catch (error) {
       console.error(error);
     } finally {
+      setIsLoading(false);
       setOpenInviteUserModal(false);
     }
   }
 
   async function toRemoveUserFromOrganisation() {
     try {
+      setIsLoading(true);
       const data: RemoveUserPayload = {
         organisationId: organizationId,
-        user_id: removeUserDetails.id
-      }
+        user_id: removeUserDetails.id,
+      };
       const response = await removeUserFromOrganisation(data);
       if (response) {
-        fetchUsersFromOrganisation().then().catch();
+        fetchUsersFromOrganisation(organizationId).then().catch();
       }
     } catch (error) {
       console.error(error);
     } finally {
+      setIsLoading(false);
       setOpenRemoveUserModal(false);
       setRemoveUserDetails(null);
     }
@@ -127,7 +139,11 @@ export default function Users() {
           </div>
         </CustomModal.Body>
         <CustomModal.Footer>
-          <Button className={'primary_medium'} onClick={sendInvite}>
+          <Button
+            className={'primary_medium'}
+            onClick={sendInvite}
+            isLoading={isLoading}
+          >
             Invite User
           </Button>
         </CustomModal.Footer>
@@ -141,13 +157,15 @@ export default function Users() {
         <CustomModal.Header title={'Remove User'} />
         <CustomModal.Body padding={'24px 16px'}>
           <span className={'secondary_color text-sm font-normal'}>
-            Are you sure you want to remove {removeUserDetails && removeUserDetails.email}?
+            Are you sure you want to remove{' '}
+            {removeUserDetails && removeUserDetails.email}?
           </span>
         </CustomModal.Body>
         <CustomModal.Footer>
           <Button
             className={'primary_medium'}
             onClick={toRemoveUserFromOrganisation}
+            isLoading={isLoading}
           >
             Remove
           </Button>

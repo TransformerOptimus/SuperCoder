@@ -15,7 +15,10 @@ import {
   EditDesignStoryPayload,
 } from '../../types/designStoryTypes';
 import { authPayload } from '../../types/authTypes';
-import {InviteUserPayload, RemoveUserPayload} from "../../types/organisationTypes";
+import {
+  InviteUserPayload,
+  RemoveUserPayload,
+} from '../../types/organisationTypes';
 
 export const checkHealth = () => {
   return api.get(`/health`);
@@ -23,17 +26,17 @@ export const checkHealth = () => {
 
 // Auth APIS
 export const checkUserEmailExists = (user_email: string) => {
-  return api.get(`/user/check_user`, {
+  return api.get(`/auth/check_user`, {
     params: { user_email },
   });
 };
 
 export const login = (payload: authPayload) => {
-  return api.post(`/user/sign_in`, payload);
+  return api.post(`/auth/sign_in`, payload);
 };
 
 export const signUp = (payload: authPayload) => {
-  return api.post(`/user/sign_up`, payload);
+  return api.post(`/auth/sign_up`, payload);
 };
 
 // Project APIs
@@ -188,9 +191,15 @@ export const getOrganisationMembers = (organisation_id: string) => {
 };
 
 export const addUserToOrganisation = (payload: InviteUserPayload) => {
-  return api.post(`/organisation/${payload.organisationId}/invite_user`,  payload );
+  return api.post(
+    `/organisation/${payload.organisationId}/invite_user`,
+    payload,
+  );
 };
 
 export const removeUserFromOrganisation = (payload: RemoveUserPayload) => {
-  return api.post(`/organisation/${payload.organisationId}/remove_user`, payload );
+  return api.post(
+    `/organisation/${payload.organisationId}/remove_user`,
+    payload,
+  );
 };

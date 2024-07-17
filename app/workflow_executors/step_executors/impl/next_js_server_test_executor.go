@@ -152,6 +152,17 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 			fmt.Printf("Error updating story status: %s\n", err.Error())
 			return err
 		}
+		//creating activity log
+		err := e.activityLogService.CreateActivityLog(
+			step.Execution.ID,
+			step.ExecutionStep.ID,
+			"INFO",
+			"Design story completed successfully!",
+		)
+		if err!= nil {
+            fmt.Printf("Error creating activity log: %s\n", err.Error())
+            return err
+        }
 		fmt.Println("Story Status Updated to DONE")
 		return nil
 	}

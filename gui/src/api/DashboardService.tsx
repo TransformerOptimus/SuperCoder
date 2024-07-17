@@ -43,7 +43,8 @@ export const login = (payload: authPayload) => {
 
 export const signUp = (payload: authPayload, invite_token: string = null) => {
   const headers = invite_token ? { 'X-INVITE-TOKEN': invite_token } : {};
-  return api.post(`/auth/sign_ups`, payload, { headers });
+  console.log(headers);
+  return api.post(`/auth/sign_up`, payload, { headers });
 };
 
 // Project APIs

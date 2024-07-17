@@ -39,6 +39,8 @@ ENV PORT 8080
 ENV GIN_MODE debug
 EXPOSE 8080
 
+COPY ./app/utils/email_templates /go/email_templates
+
 ENTRYPOINT ["go", "run", "server.go"]
 
 FROM build-base AS production-base
@@ -120,3 +122,4 @@ EXPOSE 8080
 COPY --from=production-base /go/server /go/server
 COPY --from=production-base /go/worker /go/worker
 COPY ./app/prompts /go/prompts
+COPY ./app/utils/email_templates /go/email_templates

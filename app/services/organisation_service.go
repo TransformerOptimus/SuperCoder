@@ -116,7 +116,7 @@ func (s *OrganisationService) InviteUserToOrganization(organisationID int, userE
 		}, err
 	}
 	url := config.AppUrl() + "/api/organisation/handle_invite?invite_token=" + accessToken
-	htmlContent, err := readFile(filepath.Join("app", "utils", "email_templates", "invite_email.html"))
+	htmlContent, err := readFile(filepath.Join("/", "go", "email_templates", "invite_email.html"))
 	if err != nil {
 		return &response.SendEmailResponse{
 			Success:   false,

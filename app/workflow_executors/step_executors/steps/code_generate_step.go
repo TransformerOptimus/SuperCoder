@@ -4,6 +4,7 @@ type GenerateCodeStep struct {
 	BaseStep
 	WorkflowStep
 	Retry             bool
+	File              string
 	MaxLoopIterations int64
 	PullRequestID     uint
 	PromptFilePath    string

@@ -144,7 +144,11 @@ docker-compose up --build
 
 You can now access the UI at http://localhost:3000.
 
+### 📚 Resources
 
+* [How to get started](https://superagi.com/get-started-with-supercoder/)
+* [SuperCoder Blogs](https://superagi.com/blog/)
+* [YouTube Channel](https://www.youtube.com/@_SuperAGI/videos)
 
 ### 📖 Need Help?
 

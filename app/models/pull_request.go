@@ -21,4 +21,5 @@ type PullRequest struct {
 	UpdatedAt              time.Time `gorm:"autoUpdateTime"`
 	MergedAt               time.Time `gorm:"autoUpdateTime"`
 	ClosedAt               time.Time `gorm:"autoUpdateTime"`
+	PRType                 string     `gorm:"type:varchar(50);not null"`
 }

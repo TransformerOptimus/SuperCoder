@@ -23,10 +23,13 @@ require (
 	gorm.io/gorm v1.25.10
 )
 
+require github.com/jmespath/go-jmespath v0.4.0 // indirect
+
 require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v1.0.0 // indirect
+	github.com/aws/aws-sdk-go v1.54.14
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect

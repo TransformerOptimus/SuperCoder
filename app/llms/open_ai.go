@@ -21,28 +21,28 @@ type OpenAiClient struct {
 	ApiBaseUrl       string
 }
 
-type ChatCompletionMessage struct {
+type OpenAiChatCompletionMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-type ChatCompletionRequest struct {
-	Model            string                  `json:"model"`
-	Messages         []ChatCompletionMessage `json:"messages"`
-	Temperature      float64                 `json:"temperature"`
-	MaxTokens        int                     `json:"max_tokens"`
-	TopP             float64                 `json:"top_p"`
-	FrequencyPenalty float64                 `json:"frequency_penalty"`
-	PresencePenalty  float64                 `json:"presence_penalty"`
-	N                int                     `json:"n"`
+type OpenAiOpenAiChatCompletionRequest struct {
+	Model            string                        `json:"model"`
+	Messages         []OpenAiChatCompletionMessage `json:"messages"`
+	Temperature      float64                       `json:"temperature"`
+	MaxTokens        int                           `json:"max_tokens"`
+	TopP             float64                       `json:"top_p"`
+	FrequencyPenalty float64                       `json:"frequency_penalty"`
+	PresencePenalty  float64                       `json:"presence_penalty"`
+	N                int                           `json:"n"`
 }
 
-type ChatCompletionChoice struct {
-	Message ChatCompletionMessage `json:"message"`
+type OpenAiChatCompletionChoice struct {
+	Message OpenAiChatCompletionMessage `json:"message"`
 }
 
-type ChatCompletionResponse struct {
-	Choices []ChatCompletionChoice `json:"choices"`
+type OpenAiChatCompletionResponse struct {
+	Choices []OpenAiChatCompletionChoice `json:"choices"`
 }
 
 func NewOpenAiClient(apiKey string) *OpenAiClient {
@@ -69,10 +69,10 @@ func (c *OpenAiClient) WithApiKey(apiKey string) {
 	c.ApiKey = apiKey
 }
 
-func (c *OpenAiClient) ChatCompletion(messages []ChatCompletionMessage) (string, error) {
+func (c *OpenAiClient) ChatCompletion(messages []OpenAiChatCompletionMessage) (string, error) {
 	url := fmt.Sprintf("%s/chat/completions", c.ApiBaseUrl)
 
-	requestBody := ChatCompletionRequest{
+	requestBody := OpenAiOpenAiChatCompletionRequest{
 		Model:            c.Model,
 		Messages:         messages,
 		Temperature:      c.Temperature,
@@ -99,7 +99,7 @@ func (c *OpenAiClient) ChatCompletion(messages []ChatCompletionMessage) (string,
 		return "", fmt.Errorf("failed to get response from OpenAI API, status code: %d", response.StatusCode)
 	}
 
-	var chatResponse ChatCompletionResponse
+	var chatResponse OpenAiChatCompletionResponse
 	if err := json.NewDecoder(response.Body).Decode(&chatResponse); err != nil {
 		return "", err
 	}

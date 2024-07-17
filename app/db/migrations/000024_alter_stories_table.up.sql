@@ -1,0 +1,5 @@
+ALTER TABLE stories
+    ADD COLUMN hash_id VARCHAR(100),
+    ADD COLUMN url VARCHAR(100),
+    ADD COLUMN frontend_url VARCHAR(255),
+    ADD COLUMN review_viewed BOOLEAN DEFAULT FALSE;

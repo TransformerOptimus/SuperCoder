@@ -13,11 +13,12 @@ import (
 	"ai-developer/app/utils"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
-	"strconv"
-	"time"
 )
 
 type ProjectService struct {
@@ -53,14 +54,16 @@ func (s *ProjectService) GetAllProjectsOfOrganisation(organisationId int) ([]res
 	allProjects := make([]response.GetAllProjectsResponse, 0, len(projects))
 	for _, project := range projects {
 		allProjects = append(allProjects, response.GetAllProjectsResponse{
-			ProjectId:          project.ID,
-			ProjectName:        project.Name,
-			ProjectDescription: project.Description,
-			ProjectHashID:      project.HashID,
-			ProjectUrl:         project.Url,
-			ProjectBackendURL:  project.BackendURL,
-			ProjectFrontendURL: project.FrontendURL,
-			PullRequestCount:   len(projectPullRequestMap[int(project.ID)]),
+			ProjectId:                project.ID,
+			ProjectName:              project.Name,
+			ProjectDescription:       project.Description,
+			ProjectFramework:         project.BackendFramework,
+			ProjectFrontendFramework: project.FrontendFramework,
+			ProjectHashID:            project.HashID,
+			ProjectUrl:               project.Url,
+			ProjectBackendURL:        project.BackendURL,
+			ProjectFrontendURL:       project.FrontendURL,
+			PullRequestCount:         len(projectPullRequestMap[int(project.ID)]),
 		})
 	}
 
@@ -92,14 +95,15 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 		frontend_url = fmt.Sprintf("https://fe-%s.%s", hashID, host)
 	}
 	project := &models.Project{
-		OrganisationID: uint(organisationID),
-		Name:           requestData.Name,
-		Framework:      requestData.Framework,
-		Description:    requestData.Description,
-		HashID:         hashID,
-		Url:            url,
-		BackendURL:     backend_url,
-		FrontendURL:    frontend_url,
+		OrganisationID:    uint(organisationID),
+		Name:              requestData.Name,
+		BackendFramework:  requestData.Framework,
+		FrontendFramework: requestData.FrontendFramework,
+		Description:       requestData.Description,
+		HashID:            hashID,
+		Url:               url,
+		BackendURL:        backend_url,
+		FrontendURL:       frontend_url,
 	}
 
 	organisation, err := s.organisationRepository.GetOrganisationByID(uint(int(project.OrganisationID)))
@@ -117,15 +121,16 @@ func (s *ProjectService) CreateProject(organisationID int, requestData request.C
 
 	remoteGitURL := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
 	backendService := requestData.Framework
+	frontendService := requestData.FrontendFramework
 	//Making Call to Workspace Service to create workspace on project level
 	_, err = s.workspaceServiceClient.CreateWorkspace(
 		&request.CreateWorkspaceRequest{
-			WorkspaceId:     hashID,
-			BackendTemplate: &backendService,
-			//FrontendTemplate: &backendService,
-			RemoteURL:       remoteGitURL,
-			GitnessUserName: config.GitnessUser(),
-			GitnessToken:    config.GitnessToken(),
+			WorkspaceId:      hashID,
+			BackendTemplate:  &backendService,
+			FrontendTemplate: &frontendService,
+			RemoteURL:        remoteGitURL,
+			GitnessUserName:  config.GitnessUser(),
+			GitnessToken:     config.GitnessToken(),
 		},
 	)
 

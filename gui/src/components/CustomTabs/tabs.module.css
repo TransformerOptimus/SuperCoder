@@ -7,13 +7,13 @@
 .tab_item {
   display: flex;
   flex-direction: row;
-  padding: 10px 12px;
   align-items: center;
   gap: 8px;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.3s ease, color 0.3s ease;
 }
+
 
 .tab_item_selected {
   background: rgb(255 255 255 / 8%);
@@ -57,7 +57,6 @@
 }
 
 .tab_content {
-  margin-top: 16px;
   transition: opacity 0.3s ease, transform 0.3s ease;
   opacity: 0;
   transform: translateY(-10px);
@@ -67,4 +66,9 @@
 .tab_content_active {
   opacity: 1;
   transform: translateY(0);
+}
+
+.tab_container_border {
+  padding: 4px;
+  border-bottom: 1px solid var(--white-opacity-8);
 }

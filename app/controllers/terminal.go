@@ -94,6 +94,8 @@ func (controller *TerminalController) NewTerminal(ctx *gin.Context) {
 	subCtx, cancelFunc := context.WithCancel(ctx)
 	controller.cancelFunc = cancelFunc
 
+	controller.logger.Info("setting up new terminal connection...")
+
 	defer func() {
 		controller.cleanup()
 	}()
@@ -129,7 +131,10 @@ func (controller *TerminalController) setupConnection(ctx context.Context, w gin
 }
 
 func (controller *TerminalController) keepAlive(ctx context.Context, connection *websocket.Conn, waiter *sync.WaitGroup) {
-	defer waiter.Done()
+	defer func() {
+		waiter.Done()
+		controller.logger.Info("keepAlive goroutine exiting...")
+	}()
 	lastPongTime := time.Now()
 	keepalivePingTimeout := controller.KeepalivePingTimeout
 
@@ -144,7 +149,7 @@ func (controller *TerminalController) keepAlive(ctx context.Context, connection 
 			controller.logger.Info("done keeping alive...")
 			return
 		default:
-
+			controller.logger.Info("sending keepalive ping message...")
 			controller.writeMutex.Lock()
 			if err := connection.WriteMessage(websocket.PingMessage, []byte("keepalive")); err != nil {
 				controller.writeMutex.Unlock()
@@ -159,22 +164,24 @@ func (controller *TerminalController) keepAlive(ctx context.Context, connection 
 				controller.logger.Warn("failed to get response from ping, triggering disconnect now...")
 				return
 			}
-			controller.logger.Debug("received response from ping successfully")
+			controller.logger.Info("received response from ping successfully")
 		}
 	}
 }
 
 func (controller *TerminalController) readFromTTY(ctx context.Context, connection *websocket.Conn, waiter *sync.WaitGroup) {
-	defer waiter.Done()
+	defer func() {
+		waiter.Done()
+		controller.logger.Info("readFromTTY goroutine exiting...")
+	}()
 	errorCounter := 0
+	buffer := make([]byte, controller.MaxBufferSizeBytes)
 	for {
 		select {
 		case <-ctx.Done():
 			controller.logger.Info("done reading from tty...")
 			return
 		default:
-
-			buffer := make([]byte, controller.MaxBufferSizeBytes)
 
 			readLength, err := controller.tty.Read(buffer)
 			if err != nil {
@@ -210,7 +217,10 @@ func (controller *TerminalController) readFromTTY(ctx context.Context, connectio
 }
 
 func (controller *TerminalController) writeToTTY(ctx context.Context, connection *websocket.Conn, waiter *sync.WaitGroup) {
-	defer waiter.Done()
+	defer func() {
+		waiter.Done()
+		controller.logger.Info("writeToTTY goroutine exiting...")
+	}()
 	for {
 		select {
 		case <-ctx.Done():
@@ -241,7 +251,7 @@ func (controller *TerminalController) writeToTTY(ctx context.Context, connection
 
 			bytesWritten, err := controller.tty.Write(dataBuffer)
 			if err != nil {
-				controller.logger.Warn(fmt.Sprintf("failed to write %v bytes to tty: %s", len(dataBuffer), err))
+				controller.logger.Error(fmt.Sprintf("failed to write %v bytes to tty: %s", len(dataBuffer), err), zap.Int("bytes_written", bytesWritten), zap.Error(err))
 				continue
 			}
 			controller.logger.Info("bytes written to tty...", zap.Int("bytes_written", bytesWritten))

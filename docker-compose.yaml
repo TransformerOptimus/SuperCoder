@@ -104,15 +104,15 @@ services:
       dockerfile: Dockerfile
       target: python-executor
 
-#  node-executor:
-#    restart: no
-#    hostname: node-executor
-#    container_name: node-executor
-#    image: node-executor:latest
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
-#      target: node-executor
+  node-executor:
+    restart: no
+    hostname: node-executor
+    container_name: node-executor
+    image: node-executor:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: node-executor
 
   terminal:
     restart: no

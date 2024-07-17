@@ -45,6 +45,11 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
   }, [openCreateStoryModal]);
 
   const handleSubmit = () => {
+    if (!titleRef.current?.value) {
+      toast.error('Title cannot be empty');
+      return;
+    }
+
     setIsLoading(true);
     if (editTrue) {
       const data = {

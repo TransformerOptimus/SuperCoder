@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { toGetAllStoriesOfProjectUtils } from '@/app/utils';
 import { StoryList } from '../../../../types/workbenchTypes';
 import { storyTypes } from '@/app/constants/ProjectConstants';
+import { Servers } from '@/app/constants/UtilsConstants';
 
 const DesignWorkBenchPage: React.FC = () => {
   const [storiesList, setStoriesList] = useState<StoryList | null>(null);
@@ -21,11 +22,11 @@ const DesignWorkBenchPage: React.FC = () => {
   };
 
   useEffect(() => {
-    toGetAllStoriesOfProjectUtils(setStoriesList, '', 'frontend')
+    toGetAllStoriesOfProjectUtils(setStoriesList, '', Servers.FRONTEND)
       .then()
       .catch();
     setTimeout(() => {
-      toGetAllStoriesOfProjectUtils(setStoriesList, '', 'frontend')
+      toGetAllStoriesOfProjectUtils(setStoriesList, '', Servers.FRONTEND)
         .then()
         .catch();
     }, 10000);

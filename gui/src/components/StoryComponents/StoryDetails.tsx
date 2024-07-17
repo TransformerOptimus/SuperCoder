@@ -330,13 +330,26 @@ export default function StoryDetails({
                   id={'issue_action_buttons'}
                   className={'my-2 flex flex-row gap-2'}
                 >
-                  <Button
-                    className={'primary_medium'}
-                    onClick={() => handleMoveToInProgressClick().then().catch()}
-                  >
-                    Re-Build
-                  </Button>
-                  <Button className={'light_medium'}>Get Help</Button>
+                  {issue?.actions?.length > 0 &&
+                    issue.actions.map((action, index) => (
+                      <Button
+                        key={index}
+                        onClick={() => {
+                          if (action.link === storyActions.REBUILD) {
+                            handleMoveToInProgressClick().then().catch();
+                          } else {
+                            router.push(action.link);
+                          }
+                        }}
+                        className={
+                          action.label === storyActions.REBUILD
+                            ? 'primary_medium'
+                            : 'light_medium'
+                        }
+                      >
+                        {action.label}
+                      </Button>
+                    ))}
                 </div>
               </div>
             </div>

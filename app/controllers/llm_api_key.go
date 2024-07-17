@@ -33,7 +33,11 @@ func (c *LLMAPIKeyController) CreateLLMAPIKey(context *gin.Context) {
 	}
 
 	for _, apiKey := range createLLMAPIKey.APIKeys {
-		err = c.llmAPIKeyService.CreateOrUpdateLLMAPIKey(orgId, apiKey.LLMModel, apiKey.LLMAPIKey)
+		if apiKey.LLMAPIKey == nil {
+			err = c.llmAPIKeyService.CreateOrUpdateLLMAPIKey(orgId, apiKey.LLMModel, "")
+		} else {
+			err = c.llmAPIKeyService.CreateOrUpdateLLMAPIKey(orgId, apiKey.LLMModel, *apiKey.LLMAPIKey)
+		}
 		if err != nil {
 			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

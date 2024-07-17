@@ -3,6 +3,7 @@ import React from 'react';
 import Models from '@/app/settings/SettingsOptions/Models';
 import CustomSidebar from '@/components/CustomSidebar/CustomSidebar';
 import imagePath from '@/app/imagePath';
+import BackButton from '@/components/BackButton/BackButton';
 import Users from '@/app/settings/SettingsOptions/Users';
 
 export default function Settings() {
@@ -30,7 +31,9 @@ export default function Settings() {
   };
 
   return (
-    <div className={'mx-[20vw] my-8'}>
+    <div className={'mx-[20vw] my-8 flex flex-col gap-3'}>
+      <BackButton id={'settings'} url={'/board'} />
+
       <CustomSidebar
         id={'settings'}
         title={'Settings'}

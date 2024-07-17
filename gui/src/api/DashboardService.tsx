@@ -134,7 +134,6 @@ export const createOrUpdateLLMAPIKey = (
 };
 
 // design Story APIs
-
 export const getAllDesignStoriesOfProject = (project_id: string) => {
   return api.get(`/projects/${project_id}/design/stories`);
 };

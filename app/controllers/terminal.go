@@ -1,22 +1,24 @@
 package controllers
 
 import (
-	"ai-developer/app/types/request"
-	"ai-developer/app/utils"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/creack/pty"
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
-	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"time"
+
+	"ai-developer/app/types/request"
+	"ai-developer/app/utils"
+
+	"github.com/creack/pty"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
 type TTYSize struct {

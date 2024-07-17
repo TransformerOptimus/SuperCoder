@@ -300,49 +300,64 @@ export default function StoryDetails({
             </div>
           </div>
         )}
-        {id !== 'workbench' && storyDetails.status === storyStatus.IN_REVIEW && (
-            <div className={`${styles.issue_container} flex m-4 p-4 gap-2.5 rounded-lg border-l-4`} style={{ borderColor: '#AA7C23', backgroundColor: 'rgba(170, 124, 35, 0.08)' }}>
-              <div className='flex pr-1.5' style={{ width: '40px', height: '142px' }}>
+        {id !== 'workbench' &&
+          storyDetails.status === storyStatus.IN_REVIEW && (
+            <div
+              className={`${styles.issue_container} m-4 flex gap-2.5 rounded-lg border-l-4 p-4`}
+              style={{
+                borderColor: '#AA7C23',
+                backgroundColor: 'rgba(170, 124, 35, 0.08)',
+              }}
+            >
+              <div
+                className={'flex pr-1.5'}
+                style={{ width: '40px', height: '142px' }}
+              >
                 <CustomImage
-                    className='w-10 h-10'
-                    src={imagePath.overviewWarningYellow}
-                    alt='error_icon'
+                  className={'size-10'}
+                  src={imagePath.overviewWarningYellow}
+                  alt={'error_icon'}
                 />
               </div>
-              <div className={'flex flex-col'}>
-                <div className='pt-1.25'>
-                  <span className='text-xl font-bold mb-1.25 text-white'>{issue?.title}</span>
-                  <p className='text-m text-white'>{issue?.description}</p>
+              <div id={'in_review_description'} className={'flex flex-col'}>
+                <div className={'pt-1.25'}>
+                  <span className={'mb-1.25 text-xl font-bold text-white'}>
+                    {issue?.title}
+                  </span>
+                  <p className={'text-m text-white'}>{issue?.description}</p>
                 </div>
-                <div className='flex gap-2.5 mt-2.5'>
-                  {issue?.actions && issue.actions.length > 0 && issue.actions.map((action, index) => (
+
+                <div className={'mt-2.5 flex gap-2.5'}>
+                  {issue?.actions &&
+                    issue.actions.length > 0 &&
+                    issue.actions.map((action, index) => (
                       <Button
-                          key={index}
-                          onClick={() => {
-                            if (action.link === storyActions.REBUILD) {
-                              handleMoveToInProgressClick().then().catch();
-                            } else {
-                              router.push(action.link);
-                            }
-                          }}
-                          className={
-                            action.label === storyActions.REBUILD
-                                ? 'bg-white text-black font-bold'
-                                : 'text-white font-bold'
+                        key={index}
+                        onClick={() => {
+                          if (action.link === storyActions.REBUILD) {
+                            handleMoveToInProgressClick().then().catch();
+                          } else {
+                            router.push(action.link);
                           }
-                          style={
-                            action.label !== storyActions.REBUILD
-                                ? { backgroundColor: 'rgba(170, 124, 35, 0.08)' }
-                                : {}
-                          }
+                        }}
+                        className={
+                          action.label === storyActions.REBUILD
+                            ? 'bg-white font-bold text-black'
+                            : 'font-bold text-white'
+                        }
+                        style={
+                          action.label !== storyActions.REBUILD
+                            ? { backgroundColor: 'rgba(170, 124, 35, 0.08)' }
+                            : {}
+                        }
                       >
                         {action.label}
                       </Button>
-                  ))}
+                    ))}
                 </div>
               </div>
             </div>
-        )}
+          )}
 
         <div id={'story_details_body'} className={tabCSS}>
           <CustomTabs

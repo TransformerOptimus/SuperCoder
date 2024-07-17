@@ -14,6 +14,7 @@ import SetupModelModal from '@/components/StoryComponents/SetupModelModal';
 import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
 import { SkeletonTypes } from '@/app/constants/SkeletonConstants';
 import CustomInput from '@/components/CustomInput/CustomInput';
+import TerminalComponent from '@/components/Terminal/Terminal';
 
 const TaskItem = ({ task, handleStoryClick }) => (
   <div
@@ -88,10 +89,6 @@ export default function Board() {
     setOpenCreateStoryModal(true);
   };
 
-  const handleSearchChange = (search: string) => {
-    toGetAllStoriesOfProject();
-  };
-
   useEffect(() => {
     toGetAllStoriesOfProject();
   }, [searchValue]);
@@ -145,6 +142,7 @@ export default function Board() {
           setOpenSetupModelModal={setOpenSetupModelModal}
         />
       </CustomDrawer>
+
       <SetupModelModal
         openModal={openSetupModelModal}
         setOpenModel={setOpenSetupModelModal}
@@ -172,6 +170,8 @@ export default function Board() {
           Create Story
         </Button>
       </div>
+
+      <TerminalComponent />
 
       <div
         id={'board_task_section'}

@@ -8,6 +8,7 @@ import { removeCookie, setCookie } from '@/utils/CookieUtils';
 import { ProjectTypes } from '../../types/projectsTypes';
 import toast from 'react-hot-toast';
 import { storyStatus } from '@/app/constants/BoardConstants';
+import { Servers } from '@/app/constants/UtilsConstants';
 import { useRouter } from 'next/navigation';
 import { userData } from '../../types/authTypes';
 
@@ -72,9 +73,10 @@ export async function handleInProgressStoryStatus(
   setOpenSetupModelModal,
   numberOfStoriesInProgress: number,
   toUpdateStoryStatus,
+  id: string = Servers.BACKEND,
 ) {
   try {
-    const modelNotAdded = await checkModelNotAdded();
+    const modelNotAdded = await checkModelNotAdded(id);
     if (modelNotAdded) {
       setOpenSetupModelModal(true);
       return false;
@@ -82,9 +84,6 @@ export async function handleInProgressStoryStatus(
     if (numberOfStoriesInProgress >= 1) {
       toast.error('Cannot have two stories simultaneously In Progress', {
         style: {
-          border: '1px solid #713200',
-          padding: '16px',
-          color: '#713200',
           maxWidth: 'none',
           whiteSpace: 'nowrap',
         },
@@ -97,7 +96,7 @@ export async function handleInProgressStoryStatus(
       return true;
     }
   } catch (error) {
-    console.error(error);
+    console.error('Error while changing status: ' + error);
     return false;
   }
 }
@@ -105,7 +104,7 @@ export async function handleInProgressStoryStatus(
 export async function toGetAllStoriesOfProjectUtils(
   setter,
   search = '',
-  type = 'backend',
+  type = Servers.BACKEND,
 ) {
   try {
     const project_id = localStorage.getItem('projectId');
@@ -168,16 +167,17 @@ export function setProjectDetails(project: ProjectTypes) {
   localStorage.setItem('projectName', project.project_name);
 }
 
-export async function checkModelNotAdded() {
+export async function checkModelNotAdded(id: string) {
   try {
     const organisation_id = localStorage.getItem('organisationId');
     const response = await getLLMAPIKeys(organisation_id);
     if (response) {
       const data = response.data;
       if (Array.isArray(data)) {
-        return data.every((model) => model.api_key === '');
+        if (id === Servers.FRONTEND)
+          return data.some((model) => model.api_key === '');
+        else return data.every((model) => model.api_key === '');
       }
-      return true;
     }
   } catch (error) {
     console.error('Error while fetching LLM API Keys: ', error);

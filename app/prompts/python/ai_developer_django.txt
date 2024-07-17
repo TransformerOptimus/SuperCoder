@@ -32,8 +32,8 @@ THOUGHT: "<step-by-step plan to solve the problem>"
 |code|: <code associated with the file>
 |filename|: <name of the file>
 |code|: <code associated with the file>
-|filename|: terminal.txt
-|terminal|: <commands to execute the code, non-repetitive and excluding virtual environment setup>
-|filename|: server_test.txt
-|code|: <URL to check if the server is running>
+|filename| : <terminal.txt>
+|terminal| : <mention the commands needed to execute the code only in a sequence, do not put code for curl here make sure the commands are not repetitive. Also do not generate command to create a virtual environment, you will be given a virtual environment from the system.>
+|filename| : <server_test.txt>
+|code| : <mention only the url to check if server is running or not>
 ```

@@ -340,13 +340,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService, organizationService *services.OrganisationService,
-		organisationUserRepo *repositories.OrganisationUserRepository) *controllers.OrganizationController {
-		return controllers.NewOrganizationController(jwtService, userService, organizationService, organisationUserRepo)
-	})
-	if err != nil {
-		panic(err)
-	}
+	err = c.Provide(controllers.NewOrganizationController)
 	err = c.Provide(controllers.NewDesignStoryReviewController)
 	err = c.Provide(controllers.NewPullRequestController)
 	err = c.Provide(controllers.NewLLMAPIKeyController)

@@ -172,10 +172,7 @@ export default function LandingPage() {
         email: email,
         password: password,
       };
-      if (inviteToken) {
-        payload = { ...payload, invite_token: inviteToken };
-      }
-      const response = await signUp(payload);
+      const response = await signUp(payload, inviteToken);
       if (response) {
         const data = response.data;
         if (data.success) {

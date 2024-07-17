@@ -151,7 +151,7 @@ func NewOrganizationController(
 		jwtService:           jwtService,
 		userService:          userService,
 		organizationService:  organizationService,
-		appRedirectUrl:       config.AppFrontendUrl(),
+		appRedirectUrl:       config.AppUrl(),
 		organisationUserRepo: organisationUserRepo,
 	}
 }

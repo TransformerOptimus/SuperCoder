@@ -2,6 +2,7 @@ package postmark
 
 import (
 	"ai-developer/app/client"
+	"ai-developer/app/config"
 	"ai-developer/app/services/email"
 	"ai-developer/app/types/request"
 	"ai-developer/app/types/response"
@@ -60,9 +61,9 @@ func NewPostmarkClient(
 	httpClient *client.HttpClient,
 ) email.EmailService {
 	return &PostmarkClient{
-		baseURL:     "https://api.postmarkapp.com",
+		baseURL:     config.PostmarkBaseURL(),
 		httpClient:  httpClient,
-		fromEmail:   "noreply@superagi.com",
-		serverToken: "37c57a92-d72d-4895-81f6-4f2bf6875f54",
+		fromEmail:   config.PostmarkFromEmail(),
+		serverToken: config.PostmarkOutboundServerToken(),
 	}
 }

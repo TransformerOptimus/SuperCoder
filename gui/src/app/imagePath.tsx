@@ -56,7 +56,6 @@ export default {
   verticalThreeDots: '/icons/vertical_three_dots.svg',
   yellowBackIcon: '/icons/yellow_back_icon.svg',
   verticalLine: '/icons/vertical_line.svg',
-  clockIcon: '/icons/clock_icon.svg',
   playIcon: '/icons/play_icon.svg',
   todoDot: '/icons/todo_dot.svg',
   inprogressDot: '/icons/inprogress_dot.svg',

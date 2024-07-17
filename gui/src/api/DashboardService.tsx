@@ -19,7 +19,6 @@ import {
   InviteUserPayload,
   RemoveUserPayload,
 } from '../../types/organisationTypes';
-import { headers } from 'next/headers';
 
 export const checkHealth = () => {
   return api.get(`/health`);
@@ -43,7 +42,6 @@ export const login = (payload: authPayload) => {
 
 export const signUp = (payload: authPayload, invite_token: string = null) => {
   const headers = invite_token ? { 'X-INVITE-TOKEN': invite_token } : {};
-  console.log(headers);
   return api.post(`/auth/sign_up`, payload, { headers });
 };
 
@@ -145,7 +143,6 @@ export const createOrUpdateLLMAPIKey = (
 };
 
 // design Story APIs
-
 export const getAllDesignStoriesOfProject = (project_id: string) => {
   return api.get(`/projects/${project_id}/design/stories`);
 };

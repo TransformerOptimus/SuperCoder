@@ -17,7 +17,6 @@ import (
 	"ai-developer/app/services/git_providers"
 	"ai-developer/app/services/s3_providers"
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	ginzap "github.com/gin-contrib/zap"
@@ -381,33 +380,7 @@ func main() {
 	fmt.Println("WorkspaceGateway provided")
 
 	// Provide OpenSearch Client
-	err = c.Provide(func() (*opensearch.Client, error) {
-		insecureSkipVerify := config.AppEnv() == constants.Development
-		cfg := opensearch.Config{
-			Addresses: []string{
-				config.OpenSearchURL(),
-			},
-			Username: config.OpenSearchUsername(),
-			Password: config.OpenSearchPassword(),
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: insecureSkipVerify,
-				},
-			},
-		}
-		openSearchClient, err := opensearch.NewClient(cfg)
-
-		fmt.Println("OpenSearch Client created....")
-		fmt.Println("OpenSearch Client: ", openSearchClient)
-		fmt.Println("Address: ", config.OpenSearchURL())
-		fmt.Println("Username: ", config.OpenSearchUsername())
-		fmt.Println("Password: ", config.OpenSearchPassword())
-
-		if err != nil {
-			return nil, fmt.Errorf("error creating the OpenSearch client: %w", err)
-		}
-		return openSearchClient, nil
-	})
+	err = c.Provide(config.InitOpenSearch)
 	if err != nil {
 		panic(err)
 	}

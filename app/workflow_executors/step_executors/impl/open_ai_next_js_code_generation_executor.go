@@ -9,11 +9,13 @@ import (
 	"ai-developer/app/services/s3_providers"
 	"ai-developer/app/utils"
 	"ai-developer/app/workflow_executors/step_executors/steps"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
 	"go.uber.org/zap"
 )
 
@@ -151,6 +153,8 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 			fmt.Printf("Error updating execution step: %s\n", err.Error())
 			return err
 		}
+		errorString := fmt.Sprintf("LLM API Key for model %s not found in database", constants.CLAUDE_3)
+		return errors.New(errorString)
 	}
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API KEY_________", apiKey)
@@ -163,7 +167,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 			step.Execution.ID,
 			step.ExecutionStep.ID,
 			"INFO",
-			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key is correct. <a href='%s' style='color:%s; text-decoration:%s'>Settings</a>", settingsUrl, "blue", "underline"),
+			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
 		)
 		if err != nil {
 			fmt.Printf("Error creating activity log: %s\n", err.Error())

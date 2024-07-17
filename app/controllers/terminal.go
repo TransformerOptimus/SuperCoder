@@ -96,11 +96,14 @@ func (controller *TerminalController) NewTerminal(ctx *gin.Context) {
 
 	controller.logger.Info("setting up new terminal connection...")
 
-	defer func() {
-		controller.cleanup()
-	}()
-
 	connection, err := controller.setupConnection(ctx, ctx.Writer, ctx.Request)
+	defer func(connection *websocket.Conn) {
+		controller.logger.Info("closing websocket connection...")
+		err := connection.Close()
+		if err != nil {
+			controller.logger.Warn("failed to close connection", zap.Error(err))
+		}
+	}(connection)
 	if err != nil {
 		controller.logger.Warn("failed to setup connection", zap.Error(err))
 		return
@@ -153,7 +156,10 @@ func (controller *TerminalController) keepAlive(ctx context.Context, connection 
 			controller.writeMutex.Lock()
 			if err := connection.WriteMessage(websocket.PingMessage, []byte("keepalive")); err != nil {
 				controller.writeMutex.Unlock()
-				controller.logger.Warn("failed to write ping message", zap.Error(err))
+				controller.logger.Error("failed to write ping message", zap.Error(err))
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+					controller.cancelFunc()
+				}
 				return
 			}
 			controller.writeMutex.Unlock()
@@ -204,6 +210,7 @@ func (controller *TerminalController) readFromTTY(ctx context.Context, connectio
 				}
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 					controller.logger.Info("WebSocket closed by client")
+					controller.cancelFunc()
 					return
 				}
 				continue
@@ -232,6 +239,7 @@ func (controller *TerminalController) writeToTTY(ctx context.Context, connection
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
 					controller.logger.Info("WebSocket closed by client")
+					controller.cancelFunc()
 					return
 				}
 				controller.logger.Warn("failed to get next reader", zap.Error(err))
@@ -272,20 +280,5 @@ func (controller *TerminalController) resizeTTY(dataBuffer []byte) {
 		Cols: ttySize.Cols,
 	}); err != nil {
 		controller.logger.Warn("failed to resize tty", zap.Error(err))
-	}
-}
-
-func (controller *TerminalController) cleanup() {
-	controller.logger.Info("gracefully stopping spawned tty...")
-	if controller.cmd.Process != nil {
-		if err := controller.cmd.Process.Kill(); err != nil {
-			controller.logger.Warn("failed to kill process: %s", zap.Error(err))
-		}
-		if _, err := controller.cmd.Process.Wait(); err != nil {
-			controller.logger.Warn("failed to wait for process to exit: %s", zap.Error(err))
-		}
-	}
-	if controller.cancelFunc != nil {
-		controller.cancelFunc()
 	}
 }

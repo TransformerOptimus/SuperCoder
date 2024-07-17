@@ -48,11 +48,19 @@ func (s *UserService) UpdateUserByEmail(email string, user *models.User) error {
 	return s.userRepo.UpdateUserByEmail(email, user)
 }
 
-func (s *UserService) HandleUserSignUp(request request.CreateUserRequest, inviteEmail string, inviteOrganisationId int) (*models.User, string, error) {
+func (s *UserService) HandleUserSignUp(request request.CreateUserRequest, inviteToken string) (*models.User, string, error) {
 	newUser := &models.User{
 		Name:     request.Email,
 		Email:    request.Email,
 		Password: request.Password,
+	}
+	var inviteOrganisationId int
+	var err error
+	if inviteToken != "" {
+		_, inviteOrganisationId, err = s.jwtService.DecodeInviteToken(inviteToken)
+		if err != nil {
+			return nil, "", err
+		}
 	}
 	if inviteOrganisationId == 0 {
 		organisation := &models.Organisation{
@@ -68,7 +76,7 @@ func (s *UserService) HandleUserSignUp(request request.CreateUserRequest, invite
 	} else {
 		newUser.OrganisationID = uint(inviteOrganisationId)
 	}
-	newUser, err := s.CreateUser(newUser)
+	newUser, err = s.CreateUser(newUser)
 	if err != nil {
 		fmt.Println("Error while creating user: ", err.Error())
 		return nil, "", err

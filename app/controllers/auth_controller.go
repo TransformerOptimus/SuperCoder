@@ -75,17 +75,6 @@ func (controller *AuthController) GithubCallback(c *gin.Context) {
 
 func (controller *AuthController) SignUp(c *gin.Context) {
 	var createUserRequest request.CreateUserRequest
-	inviteToken := c.GetHeader("X-INVITE-TOKEN")
-	inviteEmail, inviteOrganisationId, err := controller.jwtService.DecodeInviteToken(inviteToken)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "existing_user": false, "user": nil, "access_token": nil, "error": err.Error()})
-		fmt.Println("Error occurred while creating new user : ", createUserRequest.Email, err)
-		return
-	}
-	if inviteEmail != createUserRequest.Email {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "existing_user": false, "user": nil, "access_token": nil, "error": "Invite Email and Request Email do not match"})
-		return
-	}
 	fmt.Println("Creating new user", createUserRequest.Email)
 	if err := c.ShouldBindJSON(&createUserRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -93,7 +82,7 @@ func (controller *AuthController) SignUp(c *gin.Context) {
 	}
 	var existingUser, _ = controller.userService.GetUserByEmail(createUserRequest.Email)
 	if existingUser == nil {
-		var user, accessToken, err = controller.userService.HandleUserSignUp(createUserRequest, inviteEmail, inviteOrganisationId)
+		var user, accessToken, err = controller.userService.HandleUserSignUp(createUserRequest, c.GetHeader("X-INVITE-TOKEN"))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "existing_user": false, "user": nil, "access_token": nil, "error": err.Error()})
 			fmt.Println("Error occurred while creating new user : ", createUserRequest.Email, err)

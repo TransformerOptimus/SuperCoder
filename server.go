@@ -3,6 +3,7 @@ package main
 import (
 	"ai-developer/app/client"
 	gitness_git_provider "ai-developer/app/client/git_provider"
+	"ai-developer/app/client/postmark"
 	"ai-developer/app/client/workspace"
 	"ai-developer/app/config"
 	"ai-developer/app/constants"
@@ -134,6 +135,7 @@ func main() {
 		*repositories.PullRequestRepository,
 		*repositories.PullRequestCommentsRepository,
 		*repositories.LLMAPIKeyRepository,
+		*repositories.OrganisationUserRepository,
 	) {
 		return repositories.NewExecutionOutputRepository(db),
 			repositories.NewProjectRepository(db),
@@ -148,7 +150,8 @@ func main() {
 			repositories.NewUserRepository(db),
 			repositories.NewPullRequestRepository(db),
 			repositories.NewPullRequestCommentsRepository(db),
-			repositories.NewLLMAPIKeyRepository(db)
+			repositories.NewLLMAPIKeyRepository(db),
+			repositories.NewOrganisationUserRepository(db)
 	})
 	if err != nil {
 		panic(err)
@@ -179,6 +182,21 @@ func main() {
 		panic(err)
 	}
 
+	err = c.Provide(client.NewHttpClient)
+	if err != nil {
+		panic(err)
+	}
+
+	err = c.Provide(postmark.NewPostmarkClient)
+	if err != nil {
+		panic(err)
+	}
+
+	err = c.Provide(services.NewOrganisationService)
+	if err != nil {
+		panic(err)
+	}
+
 	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService, organisationService *services.OrganisationService) *services.GithubOauthService {
 		clientID := config.GithubClientId()
 		clientSecret := config.GithubClientSecret()
@@ -191,13 +209,6 @@ func main() {
 			clientSecret,
 			redirectURL,
 		)
-	})
-	if err != nil {
-		panic(err)
-	}
-	err = c.Provide(func(organisationRepo *repositories.OrganisationRepository,
-		gitnessService *git_providers.GitnessService, userRepository *repositories.UserRepository) *services.OrganisationService {
-		return services.NewOrganisationService(organisationRepo, gitnessService, userRepository)
 	})
 	if err != nil {
 		panic(err)
@@ -318,8 +329,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService, organizationService *services.OrganisationService) *controllers.OrganizationController {
-		return controllers.NewOrganizationController(jwtService, userService, organizationService)
+	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService, organizationService *services.OrganisationService,
+		organisationUserRepo *repositories.OrganisationUserRepository) *controllers.OrganizationController {
+		return controllers.NewOrganizationController(jwtService, userService, organizationService, organisationUserRepo)
 	})
 	if err != nil {
 		panic(err)
@@ -495,9 +507,13 @@ func main() {
 		authentication.POST("/sign_in", auth.SignIn)
 		authentication.POST("/sign_up", auth.SignUp)
 
-		organizations := api.Group("/organisation", middleware.AuthenticateJWT())
-		organization := organizations.Group("/:organisation_id", orgAuthMiddleware.Authorize())
-		organization.GET("/fetch_users", organizationController.FetchOrganizationUsers)
+		organizations := api.Group("/organisation")
+		organizations.GET("/handle_invite", organizationController.HandleUserInvite)
+		organizations.Use(middleware.AuthenticateJWT())
+		authOrganization := organizations.Group("/:organisation_id", orgAuthMiddleware.Authorize())
+		authOrganization.GET("/fetch_users", organizationController.FetchOrganizationUsers)
+		authOrganization.POST("/invite_user", organizationController.InviteUserToOrganisation)
+		authOrganization.POST("/remove_user", organizationController.RemoveUserFromOrganisation)
 
 		// Wrap the socket.io server as Gin handlers for specific routes
 		r.GET("/api/socket.io/*any", middleware.AuthenticateJWT(), gin.WrapH(ioServer))

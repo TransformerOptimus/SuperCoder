@@ -6,12 +6,14 @@ import (
 	"ai-developer/app/types/request"
 	"fmt"
 	"math/rand"
+	"time"
 )
 
 type UserService struct {
-	userRepo   *repositories.UserRepository
-	orgService *OrganisationService
-	jwtService *JWTService
+	userRepo             *repositories.UserRepository
+	organisationUserRepo *repositories.OrganisationUserRepository
+	orgService           *OrganisationService
+	jwtService           *JWTService
 }
 
 func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
@@ -47,42 +49,52 @@ func (s *UserService) UpdateUserByEmail(email string, user *models.User) error {
 }
 
 func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (*models.User, string, error) {
-	organisation := &models.Organisation{
-		Name: s.orgService.CreateOrganisationName(),
+	newUser := &models.User{
+		Name:     request.Email,
+		Email:    request.Email,
+		Password: request.Password,
 	}
-	var err error = nil
-	organisation, err = s.orgService.CreateOrganisation(organisation)
-	if err != nil {
-		fmt.Println("Error while creating organization: ", err.Error())
-		return nil, "", err
+	if request.OrganisationID == nil {
+		organisation := &models.Organisation{
+			Name: s.orgService.CreateOrganisationName(),
+		}
+		var err error = nil
+		organisation, err = s.orgService.CreateOrganisation(organisation)
+		if err != nil {
+			fmt.Println("Error while creating organization: ", err.Error())
+			return nil, "", err
+		}
+		newUser.OrganisationID = organisation.ID
+	} else {
+		newUser.OrganisationID = *request.OrganisationID
 	}
-
-	var newUser = &models.User{
-		Name:           request.Email,
-		Email:          request.Email,
-		OrganisationID: organisation.ID,
-		Password:       request.Password,
-	}
-	newUser, err = s.CreateUser(newUser)
+	newUser, err := s.CreateUser(newUser)
 	if err != nil {
 		fmt.Println("Error while creating user: ", err.Error())
 		return nil, "", err
 	}
-
+	_, err = s.organisationUserRepo.CreateOrganisationUser(s.organisationUserRepo.GetDB(), &models.OrganisationUser{
+		OrganisationID: newUser.OrganisationID,
+		UserID:         newUser.ID,
+		IsActive:       true,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	})
 	var accessToken, jwtErr = s.jwtService.GenerateToken(int(newUser.ID), newUser.Email)
 	if jwtErr != nil {
 		fmt.Println(" Jwt error: ", accessToken, jwtErr.Error())
 		return nil, "", nil
 	}
-
 	return newUser, accessToken, nil
 }
 
-func NewUserService(userRepo *repositories.UserRepository, orgService *OrganisationService, jwtService *JWTService) *UserService {
+func NewUserService(userRepo *repositories.UserRepository, orgService *OrganisationService, jwtService *JWTService,
+	organisationUserRepo *repositories.OrganisationUserRepository) *UserService {
 	return &UserService{
-		userRepo:   userRepo,
-		orgService: orgService,
-		jwtService: jwtService,
+		userRepo:             userRepo,
+		orgService:           orgService,
+		jwtService:           jwtService,
+		organisationUserRepo: organisationUserRepo,
 	}
 }
 

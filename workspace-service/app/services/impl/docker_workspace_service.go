@@ -20,7 +20,8 @@ import (
 
 type DockerWorkspaceService struct {
 	services.WorkspaceService
-	workspaceServiceConfig *workspaceconfig.WorkspaceServiceConfig
+	workspaceServiceConfig       *workspaceconfig.WorkspaceServiceConfig
+	frontendWorkspaceConfig  *workspaceconfig.FrontendWorkspaceConfig
 	logger                 *zap.Logger
 }
 
@@ -85,9 +86,9 @@ func (ws DockerWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId
 		ws.logger.Error("Failed to rsync folders", zap.Error(err))
 		return err
 	}
-	if frontendTemplate != nil{
+	if frontendTemplate != nil {
 		//creating a frontend folder in the directory
-		frontendPath := "/workspaces/"+workspaceId+"/frontend"
+		frontendPath := "/workspaces/" + workspaceId + "/frontend"
 		err = os.MkdirAll(frontendPath, os.ModePerm)
 		if err != nil {
 			fmt.Println("Error creating directory:", err)
@@ -213,7 +214,8 @@ func (ws DockerWorkspaceService) checkAndCreateWorkspaceFromTemplate(workspaceId
 }
 
 func (ws DockerWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(storyHashId string, workspaceId string, frontendTemplate string) error {
-	exists, err := utils.CheckIfFrontendWorkspaceExists(storyHashId, workspaceId)
+	frontendPath := ws.frontendWorkspaceConfig.FrontendWorkspacePath(workspaceId, storyHashId)
+	exists, err := utils.CheckIfDirExists(frontendPath)
 	if err != nil {
 		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
 		return err
@@ -223,15 +225,21 @@ func (ws DockerWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(sto
 		ws.logger.Info("Workspace already exists", zap.String("workspaceId", workspaceId), zap.String("storyHashId", storyHashId))
 		return nil
 	}
-
-	ws.logger.Info("Creating workspace from template", zap.String("workspaceId", workspaceId), zap.String("frontendTemplate", frontendTemplate))
-
-	err = utils.SudoRsyncFolders("/templates/"+frontendTemplate+"/", "/workspaces/"+workspaceId+"/"+storyHashId)
-	if err != nil {
-		ws.logger.Error("Failed to rsync folders", zap.Error(err))
-		return err
+	if !exists{
+		ws.logger.Info("Creating workspace from template", zap.String("workspaceId", workspaceId), zap.String("frontendTemplate", frontendTemplate), zap.String("storyHashId", storyHashId))
+		err = os.MkdirAll(frontendPath, os.ModePerm)
+		if err != nil {
+			fmt.Println("Error creating directory:", err)
+			return err
+		}
+		err = utils.SudoRsyncFolders("/templates/"+frontendTemplate+"/", frontendPath)
+		if err != nil {
+			ws.logger.Error("Failed to rsync folders", zap.Error(err))
+			return err
+		}
 	}
-	workspacePath := "/workspaces/" + workspaceId + "/" + storyHashId
+
+	workspacePath := ws.frontendWorkspaceConfig.FrontendWorkspacePath(workspaceId, storyHashId)
 	err = utils.ChownRWorkspace("1000", "1000", workspacePath)
 	if err != nil {
 		ws.logger.Error("Failed to chown workspace", zap.Error(err))

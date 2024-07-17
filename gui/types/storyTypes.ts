@@ -64,7 +64,7 @@ export interface StoryDetailsProps {
   tabCSS?: string;
   toGetAllStoriesOfProject?: () => void;
   close?: () => void;
-  number_of_stories_in_progress?: number;
+  numberOfStoriesInProgress?: number;
   setOpenSetupModelModal?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 

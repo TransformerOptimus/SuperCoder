@@ -15,6 +15,7 @@ import (
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/services/s3_providers"
 	"context"
 	"errors"
 	"fmt"
@@ -118,6 +119,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = c.Provide(s3_providers.NewS3Service)
+	if err != nil {
+		panic(err)
+	}
 
 	// Provide Repositories
 	err = c.Provide(func(db *gorm.DB) (
@@ -135,6 +140,7 @@ func main() {
 		*repositories.PullRequestRepository,
 		*repositories.PullRequestCommentsRepository,
 		*repositories.LLMAPIKeyRepository,
+		*repositories.DesignStoryReviewRepository,
 		*repositories.OrganisationUserRepository,
 	) {
 		return repositories.NewExecutionOutputRepository(db),
@@ -151,6 +157,7 @@ func main() {
 			repositories.NewPullRequestRepository(db),
 			repositories.NewPullRequestCommentsRepository(db),
 			repositories.NewLLMAPIKeyRepository(db),
+			repositories.NewDesignStoryReviewRepository(db),
 			repositories.NewOrganisationUserRepository(db)
 	})
 	if err != nil {
@@ -210,6 +217,10 @@ func main() {
 			redirectURL,
 		)
 	})
+	if err != nil {
+		panic(err)
+	}
+	err = c.Provide(services.NewDesignStoryReviewService)
 	if err != nil {
 		panic(err)
 	}
@@ -336,10 +347,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(func(executionOutputPullRequestService *services.PullRequestService, userService *services.UserService,
-		executionOutputService *services.ExecutionOutputService) *controllers.PullRequestController {
-		return controllers.NewPullRequestController(executionOutputPullRequestService, userService, executionOutputService)
-	})
+	err = c.Provide(controllers.NewDesignStoryReviewController)
+	err = c.Provide(controllers.NewPullRequestController)
 	err = c.Provide(controllers.NewLLMAPIKeyController)
 
 	if err = c.Provide(services.NewCodeDownloadService); err != nil {
@@ -393,6 +402,7 @@ func main() {
 		middleware *middleware.JWTClaims,
 		projectsController *controllers.ProjectController,
 		storiesController *controllers.StoryController,
+		designStoryReviewCtrl *controllers.DesignStoryReviewController,
 		llm_api_key *controllers.LLMAPIKeyController,
 		asynqClient *asynq.Client,
 		activityLogCtrl *controllers.ActivityLogController,
@@ -408,6 +418,7 @@ func main() {
 		organisationService *services.OrganisationService,
 		ioServer *socketio.Server,
 		nrApp *newrelic.Application,
+		designStoryCtrl *controllers.DesignStoryReviewController,
 		logger *zap.Logger,
 	) error {
 
@@ -468,11 +479,18 @@ func main() {
 		project.GET("/pull-requests", pullRequestCtrl.GetAllPullRequestsByProjectID)
 		project.GET("/stories", storiesController.GetAllStoriesOfProject)
 		project.GET("/stories/in-progress", storiesController.GetInProgressStoriesByProjectId)
+		project.GET("/design/stories", storiesController.GetDesignStoriesOfProject)
 
 		stories := api.Group("/stories", middleware.AuthenticateJWT())
 
 		stories.POST("", storiesController.CreateStory)
 		stories.POST("/", storiesController.CreateStory)
+
+		designStory := stories.Group("/design", middleware.AuthenticateJWT())
+
+		designStory.POST("", storiesController.CreateDesignStory)
+		designStory.PUT("/edit", storiesController.EditDesignStoryById)
+		designStory.PUT("/review_viewed/:story_id", storiesController.UpdateStoryIsReviewed)
 
 		story := stories.Group("/:story_id", storyAuthMiddleware.Authorize())
 
@@ -484,12 +502,19 @@ func main() {
 		story.POST("/", storiesController.EditStoryByID)
 		story.DELETE("/", storiesController.DeleteStoryById)
 
+		story.GET("/code", storiesController.GetCodeForDesignStory)
+		story.GET("/design", storiesController.GetDesignStoryByID)
+
 		story.GET("/execution-outputs", executionOutputCtrl.GetExecutionOutputsByStoryID)
 		story.GET("/activity-logs", activityLogCtrl.GetActivityLogsByStoryID)
 		story.PUT("/status", storiesController.UpdateStoryStatus)
 
+		designReview := api.Group("/design/review", middleware.AuthenticateJWT())
+		designReview.POST("", designStoryReviewCtrl.CreateCommentForDesignStory)
+
 		pullRequests := api.Group("/pull-requests", middleware.AuthenticateJWT())
 
+		pullRequests.POST("/create", pullRequestCtrl.CreateManualPullRequest)
 		pullRequest := pullRequests.Group("/:pull_request_id", pullRequestAuthMiddleware.Authorize())
 		pullRequest.GET("/diff", pullRequestCtrl.GetPullRequestDiffByPullRequestID)
 		pullRequest.GET("/commits", pullRequestCtrl.FetchPullRequestCommits)

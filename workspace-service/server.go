@@ -69,6 +69,12 @@ func main() {
 		panic(err)
 	}
 
+	err = container.Provide(config.NewFrontendWorkspaceConfig)
+	if err != nil {
+		logger.Error("Failed to provide frontend workspace path config", zap.Error(err))
+		panic(err)
+	}
+
 	_ = container.Provide(func(
 		config *config.NewRelicConfig,
 	) *newrelic.Application {

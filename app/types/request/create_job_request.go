@@ -6,13 +6,15 @@ import (
 )
 
 type CreateJobRequest struct {
-	ExecutionId   int64    `json:"executionId"`
-	ProjectId     string   `json:"projectId"`
-	StoryId       int64    `json:"storyId"`
-	IsReExecution bool     `json:"isReExecution"`
-	Branch        string   `json:"branch"`
-	PullRequestId int64    `json:"pullRequestId"`
-	Env           []string `json:"env"`
+	ExecutionId        int64    `json:"executionId"`
+	ProjectId          string   `json:"projectId"`
+	StoryId            int64    `json:"storyId"`
+	IsReExecution      bool     `json:"isReExecution"`
+	Branch             string   `json:"branch"`
+	PullRequestId      int64    `json:"pullRequestId"`
+	ExecutorImage      string   `json:"executorImage"`
+	Env                []string `json:"env"`
+	WorkspaceMountPath string   `json:"workspaceMountPath"`
 }
 
 func (receiver *CreateJobRequest) WithStoryId(storyId int64) *CreateJobRequest {
@@ -27,6 +29,11 @@ func (receiver *CreateJobRequest) WithProjectId(projectId string) *CreateJobRequ
 
 func (receiver *CreateJobRequest) WithIsReExecution(isReExecution bool) *CreateJobRequest {
 	receiver.IsReExecution = isReExecution
+	return receiver
+}
+
+func (receiver *CreateJobRequest) WithExecutorImage(executorImage string) *CreateJobRequest {
+	receiver.ExecutorImage = executorImage
 	return receiver
 }
 
@@ -49,6 +56,11 @@ func (receiver *CreateJobRequest) WithExecutionId(executionId int64) *CreateJobR
 	receiver.ExecutionId = executionId
 	return receiver
 
+}
+
+func (receiver *CreateJobRequest) WithWorkspaceMountPath(workspaceMountPath string) *CreateJobRequest {
+	receiver.WorkspaceMountPath = workspaceMountPath
+	return receiver
 }
 
 func NewCreateJobRequest() *CreateJobRequest {

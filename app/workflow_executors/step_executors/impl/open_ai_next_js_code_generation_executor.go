@@ -64,7 +64,14 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	openAiCodeGenerator.logger.Info("Is retry", zap.Any("retry", step.Retry))
 	openAiCodeGenerator.logger.Info("File name", zap.Any("fileName", step.File))
 
+	projectDir := config.WorkspaceWorkingDirectory() + "/" + step.Project.HashID
 	storyDir := config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID)
+
+	err := utils.ConditionalBranchCreator(projectDir, int(step.Story.ID))
+	if err!= nil {
+		openAiCodeGenerator.logger.Error("ConditionalBranchCreator returned error", zap.Error(err))
+        return err
+    }
 
 	openAiCodeGenerator.logger.Info("____Project Directory____", zap.Any("storyDir", storyDir))
 	openAiCodeGenerator.logger.Info("Checking for Max Retry")

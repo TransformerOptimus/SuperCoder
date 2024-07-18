@@ -200,3 +200,27 @@ func GitPush(workingDir, origin, branch string) error {
 	}
 	return nil
 }
+
+func ConditionalBranchCreator(projectDir string, storyID int) error {
+	currentBranch, err := GetCurrentBranch(projectDir)
+    if err!= nil {
+        return err
+    }
+    if currentBranch == "main" {
+		branchPrefix, err := RandString(5)
+		if err!= nil {
+            return err
+        }
+		branchName := fmt.Sprintf("branch_%s_%d", branchPrefix, storyID)
+        err = CreateBranch(projectDir, branchName)
+        if err!= nil {
+            return err
+        }
+        err = CheckoutBranch(projectDir, branchName)
+        if err!= nil {
+            return err
+        }
+		fmt.Printf("_____current branch is main creating a new branch %s______", branchName)
+    }
+    return nil
+}

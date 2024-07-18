@@ -80,4 +80,6 @@ export default {
   openAIIcon: '/icons/openai_icon.svg',
   claudeIcon: '/icons/claude_icon.svg',
   backArrow: '/arrows/back_arrow.svg',
+  passwordHidden: 'icons/password_hidden.svg',
+  passwordUnhidden: 'icons/password_unhidden.svg',
 };

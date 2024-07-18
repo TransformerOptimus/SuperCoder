@@ -252,8 +252,6 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 	}
 	fmt.Printf("Building instruction for first execution\n")
 	storyFile, err := openAiCodeGenerator.storyService.GetStoryFileByStoryId(step.Story.ID)
-	//filePath := filepath.Join(storyDir, step.File)
-	//code, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +260,9 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 		return nil, err
 	}
 
-	code, err := openAiCodeGenerator.getFilesContent(storyDir)
+	filePath := filepath.Join(storyDir, "app", step.File)
+	code, err := os.ReadFile(filePath)
+	// code, err := openAiCodeGenerator.getFilesContent(storyDir)
 	if err != nil {
 		return nil, err
 	}
@@ -533,14 +533,6 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetMessages(systemPrompt s
 				{
 					Type: "text",
 					Text: fmt.Sprintf("User Feedback: %s", instruction["feedback"]),
-				},
-				{
-					Type: "text",
-					Text: fmt.Sprintf("Existing Code:\n%s for the file: %s\n", instruction["existingCode"], instruction["fileName"]),
-				},
-				{
-					Type: "text",
-					Text: fmt.Sprintf("Code written in files to incorporate the feedback: %s\n", instruction["feedback"]),
 				},
 			},
 		},

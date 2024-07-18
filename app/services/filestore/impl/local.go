@@ -4,10 +4,12 @@ import (
 	"ai-developer/app/config"
 	"ai-developer/app/services/filestore"
 	"bytes"
-	"go.uber.org/zap"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
+	"path/filepath"
+	"go.uber.org/zap"
 )
 
 type LocalFileStore struct {
@@ -30,6 +32,12 @@ func (lfs LocalFileStore) CreateFileFromContent(path string, content []byte) (er
 	if err != nil {
 		return
 	}
+	// Ensure the directory exists
+	dir := filepath.Dir(filePath)
+	err = os.MkdirAll(dir, 0755)
+	if err != nil {
+		return
+	}
 	err = os.WriteFile(filePath, content, 0644)
 	return
 }
@@ -41,6 +49,7 @@ func (lfs LocalFileStore) ReadFile(path string) (content io.ReadCloser, err erro
 	}
 	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
+		fmt.Println("Failed to read file", err)
 		return
 	}
 	content = io.NopCloser(bytes.NewReader(fileContent))
@@ -57,7 +66,7 @@ func (lfs LocalFileStore) DeleteFile(path string) (err error) {
 }
 
 func NewLocalFileStore(fileStoreConfig *config.FileStoreConfig, logger *zap.Logger) filestore.FileStore {
-	return &LocalFileStore{
+	return LocalFileStore{
 		baseFolder: fileStoreConfig.GetLocalDir(),
 		logger:     logger,
 	}

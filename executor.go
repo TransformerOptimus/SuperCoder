@@ -8,9 +8,12 @@ import (
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
+	"ai-developer/app/services/filestore"
 	"ai-developer/app/services/git_providers"
-	"ai-developer/app/services/local_storage_providers"
-	"ai-developer/app/services/s3_providers"
+	fileStoreImpl "ai-developer/app/services/filestore/impl"
+
+	// "ai-developer/app/services/local_storage_providers"
+	// "ai-developer/app/services/s3_providers"
 	"ai-developer/app/workflow_executors"
 	"ai-developer/app/workflow_executors/step_executors"
 	"ai-developer/app/workflow_executors/step_executors/impl"
@@ -20,6 +23,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
@@ -58,9 +63,42 @@ func main() {
 		log.Println("Error providing Asynq client:", err)
 		panic(err)
 	}
-	err = c.Provide(config.NewWorkspaceServiceConfig)
-	if err != nil {
-		log.Println("Error providing workspace service config:", err)
+
+	if err = c.Provide(config.NewWorkspaceServiceConfig); err != nil {
+		config.Logger.Error("Error providing workspace service config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewAWSConfig); err != nil {
+		config.Logger.Error("Error providing AWS config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewFileStoreConfig); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewAwsSession); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(func(
+		awsConfig *config.AWSConfig,
+		storeConfig *config.FileStoreConfig,
+		awsSession *session.Session,
+		logger *zap.Logger,
+	) filestore.FileStore {
+		if storeConfig.GetFileStoreType() == "s3" {
+			s3fs := fileStoreImpl.NewS3FileSystem(awsSession, storeConfig, logger)
+			return s3fs
+		} else {
+			lfs := fileStoreImpl.NewLocalFileStore(storeConfig, logger)
+			return lfs
+		}
+	}); err != nil {
+		config.Logger.Error("Error providing FileStore", zap.Error(err))
 		panic(err)
 	}
 
@@ -195,9 +233,9 @@ func main() {
 	_ = c.Provide(services.NewPullRequestService)
 	_ = c.Provide(services.NewExecutionOutputService)
 	_ = c.Provide(services.NewLLMAPIKeyService)
-	_ = c.Provide(s3_providers.NewS3Service)
+	// _ = c.Provide(s3_providers.NewS3Service)
 	_ = c.Provide(services.NewDesignStoryReviewService)
-	_ = c.Provide(local_storage_providers.NewLocalStorageService)
+	// _ = c.Provide(local_storage_providers.NewLocalStorageService)
 	fmt.Println("Services Successfully Provided.")
 
 	//GenerateCodeStep

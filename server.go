@@ -16,8 +16,8 @@ import (
 	"ai-developer/app/services/filestore"
 	"ai-developer/app/services/filestore/impl"
 	"ai-developer/app/services/git_providers"
-	"ai-developer/app/services/local_storage_providers"
-	"ai-developer/app/services/s3_providers"
+	// "ai-developer/app/services/local_storage_providers"
+	// "ai-developer/app/services/s3_providers"
 	"context"
 	"errors"
 	"fmt"
@@ -91,23 +91,18 @@ func main() {
 		panic(err)
 	}
 
-	if err = c.Provide(config.NewAwsSession); err != nil {
-		config.Logger.Error("Error providing FileStore config", zap.Error(err))
-		panic(err)
-	}
-
 	if err = c.Provide(func(
 		awsConfig *config.AWSConfig,
 		storeConfig *config.FileStoreConfig,
 		awsSession *session.Session,
 		logger *zap.Logger,
-	) *filestore.FileStore {
+	) filestore.FileStore {
 		if storeConfig.GetFileStoreType() == "s3" {
 			s3fs := impl.NewS3FileSystem(awsSession, storeConfig, logger)
-			return &s3fs
+			return s3fs
 		} else {
 			lfs := impl.NewLocalFileStore(storeConfig, logger)
-			return &lfs
+			return lfs
 		}
 	}); err != nil {
 		config.Logger.Error("Error providing FileStore", zap.Error(err))
@@ -160,14 +155,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(s3_providers.NewS3Service)
-	if err != nil {
-		panic(err)
-	}
-	err = c.Provide(local_storage_providers.NewLocalStorageService)
-	if err != nil {
-		panic(err)
-	}
+	// err = c.Provide(s3_providers.NewS3Service)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// err = c.Provide(local_storage_providers.NewLocalStorageService)
+	// if err != nil {
+	// 	panic(err)
+	// }
 	
 
 	// Provide Repositories
@@ -533,6 +528,7 @@ func main() {
 
 		story.GET("/code", storiesController.GetCodeForDesignStory)
 		story.GET("/design", storiesController.GetDesignStoryByID)
+		story.GET("/fetch_image", storiesController.GetImageByStoryId)
 
 		story.GET("/execution-outputs", executionOutputCtrl.GetExecutionOutputsByStoryID)
 		story.GET("/activity-logs", activityLogCtrl.GetActivityLogsByStoryID)

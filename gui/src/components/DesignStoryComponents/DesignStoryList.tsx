@@ -59,7 +59,7 @@ const DesignStoryList: React.FC = () => {
               >
                 <div className={'relative h-full w-full'}>
                   <Image
-                      src={story.input_file_url}
+                      src={'https://ai-developer-files-120624.s3.amazonaws.com/10/27/twitter_login.jpg'}
                       alt={'design_image'}
                       fill
                       className="object-contain"

@@ -84,7 +84,7 @@ func NewS3FileSystem(
 	fileStoreConfig *config.FileStoreConfig,
 	logger *zap.Logger,
 ) filestore.FileStore {
-	return &S3FileStore{
+	return S3FileStore{
 		s3Client: s3.New(awsSession),
 		bucket:   fileStoreConfig.GetS3Bucket(),
 		basePath: fileStoreConfig.GetS3Path(),

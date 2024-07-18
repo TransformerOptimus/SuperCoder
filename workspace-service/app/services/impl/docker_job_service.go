@@ -3,14 +3,15 @@ package impl
 import (
 	"context"
 	"fmt"
+	"workspace-service/app/config"
+	"workspace-service/app/models/dto"
+	"workspace-service/app/services"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"go.uber.org/zap"
-	"workspace-service/app/config"
-	"workspace-service/app/models/dto"
-	"workspace-service/app/services"
 )
 
 type DockerJobService struct {
@@ -55,6 +56,11 @@ func (js DockerJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Cre
 					Type:   mount.TypeVolume,
 					Source: js.config.VolumeSource(),
 					Target: js.config.VolumeTarget(),
+				},
+				{
+					Type:   mount.TypeVolume,
+					Source: "filestore",
+					Target: "/filestore",
 				},
 			},
 		},

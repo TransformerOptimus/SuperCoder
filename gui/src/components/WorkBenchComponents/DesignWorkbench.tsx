@@ -84,7 +84,7 @@ const ActiveDesignWorkbench: React.FC<DesignWorkbenchProps> = ({
           >
             {selectedStory && (
               <img
-                src={selectedStory.input_file_url}
+                src={'https://ai-developer-files-120624.s3.amazonaws.com/10/27/twitter_login.jpg'}
                 alt="input_image"
                 className={'h-full w-auto'}
               />

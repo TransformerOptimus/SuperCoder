@@ -280,6 +280,18 @@ func (controller *StoryController) UpdateStoryIsReviewed(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"status": "OK"})
 }
 
+func (controller *StoryController) GetImageByStoryId(context *gin.Context) {
+	storyIdStr := context.Param("story_id")
+	storyID, err := strconv.Atoi(storyIdStr)
+
+	base64Image, err := controller.storyService.GetBase64ImageByStoryId(storyID)
+	if err!= nil {
+        context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+	context.JSON(http.StatusOK, gin.H{"image": base64Image})
+}
+
 func NewStoryController(storyService *services.StoryService, executionService *services.ExecutionService) *StoryController {
 	return &StoryController{
 		storyService:     storyService,

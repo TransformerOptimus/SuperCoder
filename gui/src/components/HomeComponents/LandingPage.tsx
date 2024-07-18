@@ -86,7 +86,7 @@ export default function LandingPage() {
     try {
       let url = `${API_BASE_URL}/github/signin`;
       if (inviteToken) {
-        url = `${API_BASE_URL}/github/signin/?invite_token=${inviteToken}`;
+        url = `${API_BASE_URL}/github/signin?invite_token=${inviteToken}`;
       }
       window.location.href = url;
     } catch (error) {

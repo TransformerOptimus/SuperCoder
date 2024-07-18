@@ -1,22 +1,22 @@
 package services
 
 import (
-	fullTextSearchRepository "ai-developer/app/repositories/interface"
+	"ai-developer/app/repositories"
 	"context"
 )
 
 type CodeBaseSearchService struct {
-	repo fullTextSearchRepository.CodeBaseSearchRepository
+	codeFullTextSearchRepository *repositories.CodeBaseOpenSearchRepository
 }
 
-func NewCodeBaseSearchService(repo fullTextSearchRepository.CodeBaseSearchRepository) *CodeBaseSearchService {
-	return &CodeBaseSearchService{repo: repo}
+func NewCodeBaseSearchService(codeFullTextSearchRepository *repositories.CodeBaseOpenSearchRepository) *CodeBaseSearchService {
+	return &CodeBaseSearchService{codeFullTextSearchRepository: codeFullTextSearchRepository}
 }
 
 func (s *CodeBaseSearchService) IndexDocument(ctx context.Context, document interface{}) error {
-	return s.repo.IndexDocument(ctx, document)
+	return s.codeFullTextSearchRepository.IndexDocument(ctx, document)
 }
 
 func (s *CodeBaseSearchService) SearchDocument(ctx context.Context, query interface{}) ([]interface{}, error) {
-	return s.repo.Search(ctx, query)
+	return s.codeFullTextSearchRepository.Search(ctx, query)
 }

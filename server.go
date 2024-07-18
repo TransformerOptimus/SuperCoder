@@ -12,7 +12,6 @@ import (
 	"ai-developer/app/models"
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
-	repository "ai-developer/app/repositories/interface"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
 	"ai-developer/app/services/s3_providers"
@@ -25,7 +24,6 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"github.com/newrelic/go-agent/v3/newrelic"
-	"github.com/opensearch-project/opensearch-go"
 	"go.uber.org/dig"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -162,6 +160,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = c.Provide(repositories.NewCodeBaseOpenSearchRepository)
+	if err != nil {
+		panic(err)
+	}
 
 	// Provide Services
 	err = c.Provide(func(activityLogRepo *repositories.ActivityLogRepository,
@@ -291,6 +293,12 @@ func main() {
 		panic(err)
 	}
 
+	// Provide OpenSearch Service
+	err = c.Provide(services.NewCodeBaseSearchService)
+	if err != nil {
+		panic(err)
+	}
+
 	// Provide Controllers
 	err = c.Provide(func(githubOauthService *services.GithubOauthService, authService *services.AuthService) *controllers.OauthController {
 		clientID := config.GithubClientId()
@@ -381,17 +389,6 @@ func main() {
 
 	// Provide OpenSearch Client
 	err = c.Provide(config.InitOpenSearch)
-	if err != nil {
-		panic(err)
-	}
-
-	// Provide OpenSearch Repository
-	err = c.Provide(func(client *opensearch.Client, logger *zap.Logger) repository.CodeBaseSearchRepository {
-		return repositories.NewCodeBaseOpenSearchRepository(client, logger)
-	})
-
-	// Provide OpenSearch Service
-	err = c.Provide(services.NewCodeBaseSearchService)
 	if err != nil {
 		panic(err)
 	}

@@ -4,6 +4,7 @@ import (
 	"ai-developer/app/models"
 	"ai-developer/app/repositories"
 	"ai-developer/app/types/request"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -57,9 +58,13 @@ func (s *UserService) HandleUserSignUp(request request.CreateUserRequest, invite
 		Password: request.Password,
 	}
 	if inviteToken != "" {
-		_, inviteOrganisationId, err = s.jwtService.DecodeInviteToken(inviteToken)
+		var inviteEmail string
+		inviteEmail, inviteOrganisationId, err = s.jwtService.DecodeInviteToken(inviteToken)
 		if err != nil {
 			return nil, "", err
+		}
+		if inviteEmail != request.Email {
+			return nil, "", errors.New("invite email and user email do not match")
 		}
 	}
 	newUser, err = s.handleNewUserOrg(newUser, inviteOrganisationId)
@@ -75,6 +80,24 @@ func (s *UserService) HandleUserSignUp(request request.CreateUserRequest, invite
 		return nil, "", nil
 	}
 	return newUser, accessToken, nil
+}
+
+func (s *UserService) HandleExistingUserOrg(user *models.User, inviteOrgId int) (*models.User, error) {
+	if inviteOrgId != 0 {
+		user.OrganisationID = uint(inviteOrgId)
+		orgUser, err := s.organisationUserRepo.GetOrganisationUserByUserIDAndOrganisationID(user.ID, uint(inviteOrgId))
+		if err != nil {
+			return nil, err
+		}
+		if orgUser == nil {
+			_, err = s.createOrganisationUser(user)
+		}
+		err = s.userRepo.UpdateUserByEmail(user.Email, user)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return user, nil
 }
 
 func (s *UserService) handleNewUserOrg(user *models.User, inviteOrgId int) (*models.User, error) {

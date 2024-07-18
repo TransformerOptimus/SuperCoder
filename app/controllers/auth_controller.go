@@ -102,7 +102,6 @@ func (controller *AuthController) SignIn(c *gin.Context) {
 		return
 	}
 	var existingUser, err = controller.userService.GetUserByEmail(userSignInRequest.Email)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "user": nil, "error": err.Error()})
 		fmt.Println("Error occurred while fetching user : ", userSignInRequest.Email, err)
@@ -115,6 +114,19 @@ func (controller *AuthController) SignIn(c *gin.Context) {
 	}
 
 	var accessToken, _ = controller.jwtService.GenerateToken(int(existingUser.ID), existingUser.Email)
+
+	if c.GetHeader("X-INVITE-TOKEN") != "" {
+		inviteEmail, inviteOrganisationId, err := controller.jwtService.DecodeInviteToken(c.GetHeader("X-INVITE-TOKEN"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if inviteEmail != existingUser.Email {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invite Email and User Email do not match"})
+			return
+		}
+		existingUser, err = controller.userService.HandleExistingUserOrg(existingUser, inviteOrganisationId)
+	}
 
 	existingUser.Password = ""
 	c.JSON(http.StatusOK, gin.H{"success": true, "user": existingUser, "access_token": accessToken, "error": nil})

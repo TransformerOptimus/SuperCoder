@@ -11,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 type OrganizationController struct {
@@ -70,34 +69,9 @@ func (controller *OrganizationController) InviteUserToOrganisation(c *gin.Contex
 
 func (controller *OrganizationController) HandleUserInvite(c *gin.Context) {
 	var inviteToken = c.Query("invite_token")
-	email, organisationID, err := controller.jwtService.DecodeInviteToken(inviteToken)
+	email, _, err := controller.jwtService.DecodeInviteToken(inviteToken)
 	if err != nil {
 		redirectUrl := controller.appRedirectUrl + "?error_msg=INVALID_TOKEN"
-		c.Redirect(http.StatusTemporaryRedirect, redirectUrl)
-		return
-	}
-	user, err := controller.userService.GetUserByEmail(email)
-	if user != nil {
-		orgUser, err := controller.organisationUserRepo.CreateOrganisationUser(controller.organisationUserRepo.GetDB(), &models.OrganisationUser{
-			OrganisationID: uint(organisationID),
-			UserID:         user.ID,
-			IsActive:       true,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		})
-		if err != nil {
-			redirectUrl := controller.appRedirectUrl + "?error_msg=SERVER_ERROR"
-			c.Redirect(http.StatusTemporaryRedirect, redirectUrl)
-			return
-		}
-		user.OrganisationID = orgUser.OrganisationID
-		err = controller.userService.UpdateUserByEmail(user.Email, user)
-		if err != nil {
-			redirectUrl := controller.appRedirectUrl + "?error_msg=SERVER_ERROR"
-			c.Redirect(http.StatusTemporaryRedirect, redirectUrl)
-			return
-		}
-		redirectUrl := controller.appRedirectUrl + "?user_email=" + email + "&invite_token=" + inviteToken
 		c.Redirect(http.StatusTemporaryRedirect, redirectUrl)
 		return
 	}

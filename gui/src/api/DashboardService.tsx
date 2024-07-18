@@ -123,7 +123,7 @@ export const getPullRequestDiff = (pr_id: number) => {
 
 // Model APIs
 export const getLLMAPIKeys = () => {
-  return api.get(`/llm_api_key/`);
+  return api.get(`/llm_api_key`);
 };
 
 export const createOrUpdateLLMAPIKey = (

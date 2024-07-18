@@ -135,7 +135,7 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 		return 0, err
 	}
 
-	s3Url, err := s.UploadFileBytesToS3(file, fileName, project.HashID ,projectID, int(createdStory.ID))
+	fileUrl, err := s.UploadFileBytes(file, fileName, project.HashID ,projectID, int(createdStory.ID))
 	if err != nil {
 		fmt.Println("Error uploading file to S3", err.Error())
 		err := s.DeleteStoryByID(int(createdStory.ID))
@@ -149,7 +149,7 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 	storyFile := &models.StoryFile{
 		StoryID:  createdStory.ID,
 		Name:     fileName,
-		FilePath: s3Url,
+		FilePath: fileUrl,
 	}
 
 	err = s.storyFileRepo.CreateStoryFile(storyFile)
@@ -191,18 +191,27 @@ func (s *StoryService) UpdateDesignStory(file multipart.File, fileName, title st
 		fmt.Println("Error getting story file", err.Error())
 		return err
 	}
-	// err = s.s3Service.DeleteS3Object(storyFile.FilePath)
-	err = s.localStorageService.DeleteFile(storyFile.FilePath)
-	if err != nil {
-		fmt.Println("Error deleting story file", err.Error())
-		return err
+	env := config.Get("app.env")
+	if env == "production" {
+		err = s.s3Service.DeleteS3Object(storyFile.FilePath)
+		if err!= nil {
+            fmt.Println("Error deleting story file", err.Error())
+            return err
+        }
+	} else {
+		err = s.localStorageService.DeleteFile(storyFile.FilePath)
+		if err != nil {
+			fmt.Println("Error deleting story file", err.Error())
+			return err
+		}
 	}
-	s3Url, err := s.UploadFileBytesToS3(file, fileName, project.HashID, int(story.ProjectID), storyID)
+	
+	fileUrl, err := s.UploadFileBytes(file, fileName, project.HashID, int(story.ProjectID), storyID)
 	if err != nil {
 		fmt.Println("Error uploading file to S3", err.Error())
 		return err
 	}
-	err = s.storyFileRepo.UpdateStoryFileUrl(storyFile, s3Url)
+	err = s.storyFileRepo.UpdateStoryFileUrl(storyFile, fileUrl)
 	if err != nil {
 		fmt.Println("Error updating story file", err.Error())
 		return err
@@ -210,16 +219,24 @@ func (s *StoryService) UpdateDesignStory(file multipart.File, fileName, title st
 	return nil
 }
 
-func (s *StoryService) UploadFileBytesToS3(file multipart.File, fileName string, projectHashID string, projectID, storyID int) (string, error) {
+func (s *StoryService) UploadFileBytes(file multipart.File, fileName string, projectHashID string, projectID, storyID int) (string, error) {
 	//read file to bytes
 	fileBytes, err := utils.ReadFileToBytes(file)
 	if err != nil {
 		fmt.Println("Error reading file", err.Error())
 		return "", err
 	}
-	//upload image to s3
-	// s3Url, err := s.s3Service.UploadFileToS3(fileBytes, fileName, projectID, storyID)
-	filePath, err := s.localStorageService.UploadFile(fileBytes, fileName, projectHashID, projectID, storyID)
+	env := config.Get("app.env")
+	filePath := ""
+	if env == "production" {
+		//upload image to s3
+		filePath, err = s.s3Service.UploadFileToS3(fileBytes, fileName, projectID, storyID)
+		if err!= nil {
+            return "", err
+        }
+	} else {
+		filePath, err = s.localStorageService.UploadFile(fileBytes, fileName, projectHashID, projectID, storyID)
+	}
 	if err != nil {
 		return "", err
 	}

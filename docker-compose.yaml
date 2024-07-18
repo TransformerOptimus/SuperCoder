@@ -194,6 +194,7 @@ services:
       - 3000:3000
     volumes:
       - ./gui:/app
+      - workspaces:/workspaces
       - /app/node_modules/
       - /app/.next/
     depends_on:

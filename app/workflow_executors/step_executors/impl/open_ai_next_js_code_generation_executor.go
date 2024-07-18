@@ -261,9 +261,19 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 	if err != nil {
 		return nil, err
 	}
-	base64Image, imageType, err := openAiCodeGenerator.localStorageService.GetBase64FromLocalUrl(storyFile.FilePath)
-	if err != nil {
-		return nil, err
+	env := config.Get("app.env")
+	base64Image := ""
+	imageType := ""
+	if env == "production" {
+		base64Image, imageType, err = openAiCodeGenerator.s3Service.GetBase64FromS3Url(storyFile.FilePath)
+		if err!= nil {
+            return nil, err
+        }
+	} else {
+		base64Image, imageType, err = openAiCodeGenerator.localStorageService.GetBase64FromLocalUrl(storyFile.FilePath)
+		if err!= nil {
+            return nil, err
+        }
 	}
 
 	code, err := openAiCodeGenerator.getFilesContent(storyDir)
@@ -375,9 +385,19 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecut
 	if err != nil {
 		return nil, err
 	}
-	base64Image, imageType, err := openAiCodeGenerator.localStorageService.GetBase64FromLocalUrl(storyFile.FilePath)
-	if err != nil {
-		return nil, err
+	env := config.Get("app.env")
+	base64Image := ""
+	imageType := ""
+	if env == "production" {
+		base64Image, imageType, err = openAiCodeGenerator.s3Service.GetBase64FromS3Url(storyFile.FilePath)
+		if err!= nil {
+            return nil, err
+        }
+	} else {
+		base64Image, imageType, err = openAiCodeGenerator.localStorageService.GetBase64FromLocalUrl(storyFile.FilePath)
+		if err!= nil {
+            return nil, err
+        }
 	}
 
 	return map[string]string{

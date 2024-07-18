@@ -14,6 +14,7 @@ import (
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/services/integrations"
 	"ai-developer/app/services/s3_providers"
 	"context"
 	"errors"
@@ -376,6 +377,36 @@ func main() {
 	}
 	fmt.Println("WorkspaceGateway provided")
 
+	// Integration
+	{
+		if err = c.Provide(repositories.NewIntegrationsRepository); err != nil {
+			config.Logger.Error("Error providing IntegrationsRepository", zap.Error(err))
+			panic(err)
+		}
+		if err = c.Provide(integrations.NewIntegrationService); err != nil {
+			config.Logger.Error("Error providing IntegrationService", zap.Error(err))
+			panic(err)
+		}
+	}
+
+	// Github Integration
+	{
+		if err = c.Provide(config.NewGithubIntegrationConfig); err != nil {
+			config.Logger.Error("Error providing GithubIntegrationConfig", zap.Error(err))
+			panic(err)
+		}
+
+		if err = c.Provide(integrations.NewGithubIntegrationService); err != nil {
+			config.Logger.Error("Error providing GithubIntegrationService", zap.Error(err))
+			panic(err)
+		}
+
+		if err = c.Provide(controllers.NewGithubIntegrationController); err != nil {
+			config.Logger.Error("Error providing GithubIntegrationController", zap.Error(err))
+			panic(err)
+		}
+	}
+
 	// Setup routes and start the server
 	err = c.Invoke(func(
 		health *controllers.HealthController,
@@ -400,6 +431,7 @@ func main() {
 		ioServer *socketio.Server,
 		nrApp *newrelic.Application,
 		designStoryCtrl *controllers.DesignStoryReviewController,
+		githubIntegrationController *controllers.GithubIntegrationController,
 		logger *zap.Logger,
 	) error {
 
@@ -512,6 +544,14 @@ func main() {
 		authentication.GET("/check_user", auth.CheckUser)
 		authentication.POST("/sign_in", auth.SignIn)
 		authentication.POST("/sign_up", auth.SignUp)
+
+		integrations := api.Group("/integrations", middleware.AuthenticateJWT())
+
+		githubIntegration := integrations.Group("/github")
+		githubIntegration.GET("", githubIntegrationController.CheckIfIntegrationExists)
+		githubIntegration.GET("/repos", githubIntegrationController.GetRepositories)
+		githubIntegration.GET("/authorize", githubIntegrationController.Authorize)
+		githubIntegration.GET("/callback", githubIntegrationController.HandleCallback)
 
 		// Wrap the socket.io server as Gin handlers for specific routes
 		r.GET("/api/socket.io/*any", middleware.AuthenticateJWT(), gin.WrapH(ioServer))

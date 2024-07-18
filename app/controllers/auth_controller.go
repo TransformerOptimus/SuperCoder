@@ -103,7 +103,7 @@ func (controller *AuthController) SignIn(c *gin.Context) {
 		return
 	}
 
-	if existingUser == nil || existingUser.Password != userSignInRequest.Password {
+	if existingUser == nil || !(controller.userService.VerifyUserPassword(userSignInRequest.Password, existingUser.Password)) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "user": nil, "error": "Invalid Credentials"})
 		return
 	}

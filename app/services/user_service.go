@@ -5,6 +5,7 @@ import (
 	"ai-developer/app/repositories"
 	"ai-developer/app/types/request"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 )
 
@@ -57,11 +58,17 @@ func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (*mode
 		return nil, "", err
 	}
 
+	hashedPassword, err := s.hashUserPassword(request.Password)
+	if err != nil {
+		fmt.Println("Error while hashing password: ", err.Error())
+		return nil, "", err
+	}
+
 	var newUser = &models.User{
 		Name:           request.Email,
 		Email:          request.Email,
 		OrganisationID: organisation.ID,
-		Password:       request.Password,
+		Password:       hashedPassword,
 	}
 	newUser, err = s.CreateUser(newUser)
 	if err != nil {
@@ -76,6 +83,19 @@ func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (*mode
 	}
 
 	return newUser, accessToken, nil
+}
+
+func (s *UserService) hashUserPassword(password string) (string, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedPassword), nil
+}
+
+func (s *UserService) VerifyUserPassword(password string, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
 
 func NewUserService(userRepo *repositories.UserRepository, orgService *OrganisationService, jwtService *JWTService) *UserService {

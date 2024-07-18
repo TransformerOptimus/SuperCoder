@@ -32,6 +32,7 @@ services:
       AI_DEVELOPER_WORKSPACE_STATIC_FRONTEND_URL: "http://localhost:8083"
     volumes:
       - workspaces:/workspaces
+      - filestore:/filestore
       - './startup.sh:/startup.sh'
     depends_on:
       - pg
@@ -44,7 +45,7 @@ services:
     hostname: worker
     restart: always
     container_name: worker
-    entrypoint: ["/startup-worker.sh"]
+    entrypoint: [ "/startup-worker.sh" ]
     build:
       context: .
       dockerfile: Dockerfile
@@ -75,6 +76,7 @@ services:
       AI_DEVELOPER_WORKSPACE_STATIC_FRONTEND_URL: "http://localhost:8083"
     volumes:
       - workspaces:/workspaces
+      - filestore:/filestore
       - './startup-worker.sh:/startup-worker.sh'
 
   migrations:
@@ -221,3 +223,4 @@ volumes:
   redis_data:
   workspaces:
   gitness:
+  filestore:

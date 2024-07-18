@@ -1,10 +1,10 @@
 'use client';
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import Loader from '@/components/CustomLoaders/Loader';
 import { Button } from '@nextui-org/react';
-import CustomImage from '@/components/ImageComponents/CustomImage';
 import imagePath from '@/app/imagePath';
+import Loader from '@/components/CustomLoaders/Loader';
+import CustomImage from '@/components/ImageComponents/CustomImage';
 import CustomModal from '@/components/CustomModal/CustomModal';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import { createPullRequest } from '@/api/DashboardService';
@@ -12,15 +12,15 @@ import toast from 'react-hot-toast';
 
 export default function Code() {
   const [projectURL, setProjectURL] = useState('');
-  const initialURL = useRef<string | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const pathName = usePathname();
   const [isIframeLoaded, setIsIframeLoaded] = useState(false);
   const [prTitle, setPRTitle] = useState<string | null>('');
   const [prDescription, setPRDescription] = useState<string | null>('');
   const [isCreatePRModalOpen, setIsCreatePRModalOpen] = useState<
     boolean | null
   >(false);
+  const initialURL = useRef<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const pathName = usePathname();
 
   useEffect(() => {
     const storedURL = localStorage.getItem('projectURL');
@@ -96,7 +96,7 @@ export default function Code() {
         title={'Embedded Workspace'}
         style={{
           width: '100%',
-          height: 'calc(100vh - 92px)',
+          height: 'calc(100vh - 50px)',
           border: 'none',
           position: pathName === '/code' ? 'relative' : 'absolute',
           top: pathName === '/code' ? '0' : '-9999px',
@@ -109,9 +109,11 @@ export default function Code() {
 
   return (
     <div
-      className={`relative ${
-        pathName !== '/code' && 'hidden'
-      } proxima_nova h-screen w-full`}
+      className={
+        pathName !== '/code'
+          ? 'invisible'
+          : 'proxima_nova w-full` relative h-screen'
+      }
     >
       <CustomModal
         isOpen={isCreatePRModalOpen}
@@ -155,10 +157,11 @@ export default function Code() {
         </CustomModal.Footer>
       </CustomModal>
 
-      <div className={'code_header pl-2'}>
+      <div className={pathName !== '/code' ? 'hidden' : 'code_header pl-2'}>
         <span className={'secondary_color text-[13px] font-semibold'}>
           Code Editor
         </span>
+
         <Button
           className={
             'rounded-none bg-transparent px-3 text-[13px] font-semibold text-white hover:bg-gray-600'
@@ -175,8 +178,12 @@ export default function Code() {
       </div>
 
       {!isIframeLoaded && pathName === '/code' && (
-        <div className="absolute left-0 top-0 flex h-[720px] w-full items-center justify-center">
-          <Loader size={120} text="Please wait..." />
+        <div
+          className={
+            'absolute left-0 top-0 flex h-[720px] w-full items-center justify-center'
+          }
+        >
+          <Loader size={120} text={'Please wait...'} />
         </div>
       )}
       {iframeElement}

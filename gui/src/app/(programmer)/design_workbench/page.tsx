@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { toGetAllStoriesOfProjectUtils } from '@/app/utils';
 import { StoryList } from '../../../../types/workbenchTypes';
 import { storyTypes } from '@/app/constants/ProjectConstants';
+import { Servers } from '@/app/constants/UtilsConstants';
 
 const DesignWorkBenchPage: React.FC = () => {
   const [storiesList, setStoriesList] = useState<StoryList | null>(null);
@@ -15,17 +16,17 @@ const DesignWorkBenchPage: React.FC = () => {
   const activeDesignWorkbenchCondition = () => {
     return (
       storiesList &&
-      (storiesList.IN_PROGRESS || storiesList.DONE) &&
-      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0)
+      (storiesList.IN_PROGRESS || storiesList.DONE || storiesList.IN_REVIEW) &&
+      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0 || storiesList.IN_REVIEW.length > 0)
     );
   };
 
   useEffect(() => {
-    toGetAllStoriesOfProjectUtils(setStoriesList, '', 'frontend')
+    toGetAllStoriesOfProjectUtils(setStoriesList, '', Servers.FRONTEND)
       .then()
       .catch();
     setTimeout(() => {
-      toGetAllStoriesOfProjectUtils(setStoriesList, '', 'frontend')
+      toGetAllStoriesOfProjectUtils(setStoriesList, '', Servers.FRONTEND)
         .then()
         .catch();
     }, 10000);

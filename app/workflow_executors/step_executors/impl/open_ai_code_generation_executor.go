@@ -164,7 +164,7 @@ func (openAICodeGenerator OpenAICodeGenerator) Execute(step steps.GenerateCodeSt
 			step.Execution.ID,
 			step.ExecutionStep.ID,
 			"INFO",
-			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", settingsUrl, "blue", "underline"),
+			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.GPT_4O, settingsUrl, "blue", "underline"),
 		)
 		if err != nil {
 			fmt.Printf("Error creating activity log: %s\n", err.Error())
@@ -198,7 +198,8 @@ func (openAICodeGenerator OpenAICodeGenerator) Execute(step steps.GenerateCodeSt
 			fmt.Printf("Error commiting code: %s\n", err.Error())
 			return err
 		}
-		return errors.New("LLM API Key not found in database")
+		errorString := fmt.Sprintf("LLM API Key for model %s not found in database", constants.GPT_4O)
+		return errors.New(errorString)
 	}
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API_KEY_________", apiKey)
@@ -257,7 +258,7 @@ func (openAICodeGenerator *OpenAICodeGenerator) GenerateCode(apiKey string, fram
 			step.Execution.ID,
 			step.ExecutionStep.ID,
 			"INFO",
-			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key is correct. <a href='%s' style='color:%s; text-decoration:%s'>Settings</a>", settingsUrl, "blue", "underline"),
+			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.GPT_4O, settingsUrl, "blue", "underline"),
 		)
 		if err != nil {
 			fmt.Printf("Error creating activity log: %s\n", err.Error())

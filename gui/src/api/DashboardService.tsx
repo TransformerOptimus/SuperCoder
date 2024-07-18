@@ -14,14 +14,25 @@ import {
   CreateDesignStoryPayload,
   EditDesignStoryPayload,
 } from '../../types/designStoryTypes';
+import { authPayload } from '../../types/authTypes';
 
 export const checkHealth = () => {
   return api.get(`/health`);
 };
 
-// GitHub Sign In
-export const githubSignIn = () => {
-  return api.get(`/github/signin`);
+// Auth APIS
+export const checkUserEmailExists = (user_email: string) => {
+  return api.get(`/auth/check_user`, {
+    params: { user_email },
+  });
+};
+
+export const login = (payload: authPayload) => {
+  return api.post(`/auth/sign_in`, payload);
+};
+
+export const signUp = (payload: authPayload) => {
+  return api.post(`/auth/sign_up`, payload);
 };
 
 // Project APIs
@@ -111,8 +122,8 @@ export const getPullRequestDiff = (pr_id: number) => {
 };
 
 // Model APIs
-export const getLLMAPIKeys = (organisation_id: string) => {
-  return api.get(`/llm_api_key/${organisation_id}`);
+export const getLLMAPIKeys = () => {
+  return api.get(`/llm_api_key`);
 };
 
 export const createOrUpdateLLMAPIKey = (

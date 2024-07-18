@@ -14,7 +14,7 @@ type LLMAPIKeyService struct {
 }
 
 func (s *LLMAPIKeyService) CreateOrUpdateLLMAPIKey(organisationID uint, llmModel string, llmAPIKey string) error {
-	if llmModel == "" || llmAPIKey == "" {
+	if llmModel == "" {
 		return errors.New("missing required fields")
 	}
 	err := s.llm_api_key_repo.CreateOrUpdateLLMAPIKey(organisationID, llmModel, llmAPIKey)

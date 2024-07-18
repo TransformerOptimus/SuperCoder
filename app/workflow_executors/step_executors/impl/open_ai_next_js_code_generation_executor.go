@@ -9,11 +9,13 @@ import (
 	"ai-developer/app/services/s3_providers"
 	"ai-developer/app/utils"
 	"ai-developer/app/workflow_executors/step_executors/steps"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
 	"go.uber.org/zap"
 )
 
@@ -124,9 +126,35 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	if openAiCodeGenerator.llmAPIKeyService == nil {
 		fmt.Println("_____NULL_____")
 	}
-	llmAPIKey, err := openAiCodeGenerator.llmAPIKeyService.GetLLMAPIKeyByModelName("claude-3", organisationId)
+	llmAPIKey, err := openAiCodeGenerator.llmAPIKeyService.GetLLMAPIKeyByModelName(constants.CLAUDE_3, organisationId)
 	if err != nil {
 		fmt.Println("Error getting claude api key: ", err)
+	}
+	if llmAPIKey == nil || llmAPIKey.LLMAPIKey == "" {
+		openAiCodeGenerator.logger.Info("_____claude API Key not found_____")
+		settingsUrl := config.Get("app.url").(string) + "/settings"
+		err := openAiCodeGenerator.activityLogService.CreateActivityLog(
+			step.Execution.ID,
+			step.ExecutionStep.ID,
+			"INFO",
+			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
+		)
+		if err != nil {
+			fmt.Printf("Error creating activity log: %s\n", err.Error())
+			return err
+		}
+		//Update Execution Status and Story Status
+		if err := openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
+			fmt.Printf("Error updating story status: %s\n", err.Error())
+			return err
+		}
+		//Update execution status to IN REVIEW
+		if err := openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
+			fmt.Printf("Error updating execution step: %s\n", err.Error())
+			return err
+		}
+		errorString := fmt.Sprintf("LLM API Key for model %s not found in database", constants.CLAUDE_3)
+		return errors.New(errorString)
 	}
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API KEY_________", apiKey)
@@ -139,7 +167,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 			step.Execution.ID,
 			step.ExecutionStep.ID,
 			"INFO",
-			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key is correct. <a href='%s' style='color:%s; text-decoration:%s'>Settings</a>", settingsUrl, "blue", "underline"),
+			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
 		)
 		if err != nil {
 			fmt.Printf("Error creating activity log: %s\n", err.Error())

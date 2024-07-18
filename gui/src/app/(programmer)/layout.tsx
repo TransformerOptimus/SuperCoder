@@ -8,8 +8,8 @@ import { Toaster } from 'react-hot-toast';
 import { SocketProvider } from '@/context/SocketContext';
 
 export default function ProgrammerLayout({
-                                           children,
-                                         }: {
+  children,
+}: {
   children: React.ReactNode;
 }) {
   useEffect(() => {
@@ -19,18 +19,19 @@ export default function ProgrammerLayout({
   }, []);
 
   return (
-      <div className="layout">
-        <NavBar />
-        <div className="main_content">
-          <SideBar />
-          <SocketProvider>
-            <section className="content">
-              <Code />
-              {children}
-            </section>
-          </SocketProvider>
-          <Toaster />
-        </div>
+    <div className={'layout'}>
+      <NavBar />
+      <div className={'main_content'}>
+        <SideBar />
+        <SocketProvider>
+          <section className={'content'}>
+            <Code />
+            {children}
+          </section>
+        </SocketProvider>
+
+        <Toaster />
       </div>
+    </div>
   );
 }

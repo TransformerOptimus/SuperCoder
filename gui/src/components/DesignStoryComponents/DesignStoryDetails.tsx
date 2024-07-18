@@ -74,6 +74,7 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
       setOpenSetupModelModal,
       numberOfStoriesInProgress,
       toUpdateStoryStatus,
+      'frontend',
     );
     if (openWorkbench) {
       router.push(`/design_workbench`);

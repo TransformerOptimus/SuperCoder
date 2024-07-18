@@ -82,7 +82,7 @@ func (e UpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) error {
 		} else if strings.HasPrefix(line, "|code|") || strings.HasPrefix(line, "|terminal|") {
 			isCode = true
 		} else if isCode {
-			if strings.TrimSpace(line) == "```" || strings.TrimSpace(line) == "```plaintext" || strings.TrimSpace(line) == "```bash" || strings.TrimSpace(line) == "```terminal" || strings.TrimSpace(line) == "```python" || strings.TrimSpace(line) == "```css" || strings.TrimSpace(line) == "```html" || strings.TrimSpace(line) == "```javascript" || strings.TrimSpace(line) == "```ini" {
+			if strings.TrimSpace(line) == "```" || strings.TrimSpace(line) == "```shell" || strings.TrimSpace(line) == "```plaintext" || strings.TrimSpace(line) == "```bash" || strings.TrimSpace(line) == "```terminal" || strings.TrimSpace(line) == "```python" || strings.TrimSpace(line) == "```css" || strings.TrimSpace(line) == "```html" || strings.TrimSpace(line) == "```javascript" || strings.TrimSpace(line) == "```ini" {
 				continue
 			}
 			currentContent = append(currentContent, line)

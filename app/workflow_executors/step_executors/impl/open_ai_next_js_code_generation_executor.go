@@ -6,6 +6,7 @@ import (
 	"ai-developer/app/llms"
 	"ai-developer/app/models"
 	"ai-developer/app/services"
+	"ai-developer/app/services/local_storage_providers"
 	"ai-developer/app/services/s3_providers"
 	"ai-developer/app/utils"
 	"ai-developer/app/workflow_executors/step_executors/steps"
@@ -29,6 +30,7 @@ type OpenAiNextJsCodeGenerator struct {
 	s3Service            *s3_providers.S3Service
 	llmAPIKeyService     *services.LLMAPIKeyService
 	logger         		 *zap.Logger
+	localStorageService	 *local_storage_providers.LocalStorageService
 }
 
 func NewOpenAINextJsCodeGenerationExecutor(
@@ -41,6 +43,7 @@ func NewOpenAINextJsCodeGenerationExecutor(
 	s3Service *s3_providers.S3Service,
 	llmAPIKeyService *services.LLMAPIKeyService,
 	logger *zap.Logger,
+	localStorageService *local_storage_providers.LocalStorageService,
 ) *OpenAiNextJsCodeGenerator {
 	return &OpenAiNextJsCodeGenerator{
 		projectService:       projectService,
@@ -52,6 +55,7 @@ func NewOpenAINextJsCodeGenerationExecutor(
 		s3Service:            s3Service,
 		llmAPIKeyService:     llmAPIKeyService,
 		logger:               logger,
+		localStorageService:  localStorageService,
 	}
 }
 
@@ -264,7 +268,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 	if err != nil {
 		return nil, err
 	}
-	base64Image, imageType, err := openAiCodeGenerator.s3Service.GetBase64FromS3Url(storyFile.FilePath)
+	base64Image, imageType, err := openAiCodeGenerator.localStorageService.GetBase64FromLocalUrl(storyFile.FilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +382,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecut
 	if err != nil {
 		return nil, err
 	}
-	base64Image, imageType, err := openAiCodeGenerator.s3Service.GetBase64FromS3Url(storyFile.FilePath)
+	base64Image, imageType, err := openAiCodeGenerator.localStorageService.GetBase64FromLocalUrl(storyFile.FilePath)
 	if err != nil {
 		return nil, err
 	}

@@ -366,7 +366,7 @@ func (openAICodeGenerator *OpenAICodeGenerator) generateFileListForInputContext(
 			return err
 		}
 		// Skip .venv directory and any other directories you want to exclude
-		if info.IsDir() && (info.Name() == ".venv" || info.Name() == ".vscode" || info.Name() == "venv" || info.Name() == "frontend" || info.Name() == ".stories") {
+		if info.IsDir() && (info.Name() == ".venv" || info.Name() == ".vscode" || info.Name() == "venv" || info.Name() == "frontend" || info.Name() == ".stories" || info.Name() == ".storage") {
 			fmt.Printf("Skipping directory: %s\n", path)
 			return filepath.SkipDir
 		}

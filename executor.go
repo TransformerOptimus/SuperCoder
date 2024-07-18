@@ -9,6 +9,7 @@ import (
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/services/local_storage_providers"
 	"ai-developer/app/services/s3_providers"
 	"ai-developer/app/workflow_executors"
 	"ai-developer/app/workflow_executors/step_executors"
@@ -19,7 +20,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
@@ -197,6 +197,7 @@ func main() {
 	_ = c.Provide(services.NewLLMAPIKeyService)
 	_ = c.Provide(s3_providers.NewS3Service)
 	_ = c.Provide(services.NewDesignStoryReviewService)
+	_ = c.Provide(local_storage_providers.NewLocalStorageService)
 	fmt.Println("Services Successfully Provided.")
 
 	//GenerateCodeStep

@@ -10,6 +10,7 @@ import (
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/services/local_storage_providers"
 	"ai-developer/app/services/s3_providers"
 	"ai-developer/app/tasks"
 	"context"
@@ -218,6 +219,10 @@ func main() {
 	err = c.Provide(s3_providers.NewS3Service)
 	if err != nil {
 		fmt.Println("Error providing S3 service:", err)
+		panic(err)
+	}
+	err = c.Provide(local_storage_providers.NewLocalStorageService)
+	if err != nil {
 		panic(err)
 	}
 	// Provide GitnessService

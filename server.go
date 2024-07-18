@@ -14,10 +14,15 @@ import (
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/services/local_storage_providers"
 	"ai-developer/app/services/s3_providers"
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
+	"time"
+
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
@@ -27,9 +32,6 @@ import (
 	"go.uber.org/dig"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"log"
-	"net/http"
-	"time"
 )
 
 func main() {
@@ -122,6 +124,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	err = c.Provide(local_storage_providers.NewLocalStorageService)
+	if err != nil {
+		panic(err)
+	}
+	
 
 	// Provide Repositories
 	err = c.Provide(func(db *gorm.DB) (

@@ -58,7 +58,7 @@ func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (*mode
 		return nil, "", err
 	}
 
-	hashedPassword, err := s.hashUserPassword(request.Password)
+	hashedPassword, err := s.HashUserPassword(request.Password)
 	if err != nil {
 		fmt.Println("Error while hashing password: ", err.Error())
 		return nil, "", err
@@ -85,7 +85,7 @@ func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (*mode
 	return newUser, accessToken, nil
 }
 
-func (s *UserService) hashUserPassword(password string) (string, error) {
+func (s *UserService) HashUserPassword(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err

@@ -17,7 +17,6 @@ export const setUserData = (data: userData) => {
     setCookie('accessToken', data.accessToken);
     localStorage.setItem('userName', data.userName);
     localStorage.setItem('userEmail', data.userEmail);
-    localStorage.setItem('organisationId', data.organisationId);
     if (window.clarity) {
       window.clarity('set', 'User Email', data.userEmail);
     }
@@ -37,7 +36,6 @@ export const logout = () => {
     localStorage.removeItem('projectURLBackend');
     localStorage.removeItem('projectName');
     localStorage.removeItem('storyId');
-    localStorage.removeItem('organisationId');
     localStorage.removeItem('projectFrontendFramework');
   }
 
@@ -169,8 +167,7 @@ export function setProjectDetails(project: ProjectTypes) {
 
 export async function checkModelNotAdded(id: string) {
   try {
-    const organisation_id = localStorage.getItem('organisationId');
-    const response = await getLLMAPIKeys(organisation_id);
+    const response = await getLLMAPIKeys();
     if (response) {
       const data = response.data;
       if (Array.isArray(data)) {

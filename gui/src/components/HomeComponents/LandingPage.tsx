@@ -89,7 +89,6 @@ export default function LandingPage() {
     const userData: userData = {
       userEmail: user.Email,
       userName: user.Name,
-      organisationId: user.OrganisationID,
       accessToken: access_token,
     };
     setUserData(userData);

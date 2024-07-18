@@ -6,6 +6,5 @@ export interface authPayload {
 export interface userData {
   userEmail: string;
   userName: string;
-  organisationId: string;
   accessToken: string;
 }

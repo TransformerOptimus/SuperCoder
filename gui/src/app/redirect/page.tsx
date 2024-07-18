@@ -2,20 +2,19 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import React, { Suspense } from 'react';
-import { setUserData } from '@/app/utils';
-import { userData } from '../../../types/authTypes';
+import { setCookie } from '@/utils/CookieUtils';
 
 function RedirectComponent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const data: userData = {
-        userEmail: searchParams.get('email') || '',
-        userName: searchParams.get('name') || '',
-        accessToken: searchParams.get('accessToken') || '',
-      };
-      setUserData(data);
+      setCookie('accessToken', searchParams.get('token') || '');
+      localStorage.setItem('userName', searchParams.get('name') || '');
+      localStorage.setItem('userEmail', searchParams.get('email') || '');
+      if (window.clarity) {
+        window.clarity('set', 'User Email', searchParams.get('email') || '');
+      }
     }
 
     router.push('/projects');

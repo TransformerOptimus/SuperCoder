@@ -519,7 +519,6 @@ func main() {
 		llmApiKeys := api.Group("/llm_api_key", middleware.AuthenticateJWT())
 		llmApiKeys.POST("", llm_api_key.CreateLLMAPIKey)
 		llmApiKeys.POST("/", llm_api_key.CreateLLMAPIKey)
-
 		llmApiKeys.GET("/:organisation_id", orgAuthMiddleware.Authorize(), llm_api_key.FetchAllLLMAPIKeyByOrganisationID)
 
 		authentication := api.Group("/auth")

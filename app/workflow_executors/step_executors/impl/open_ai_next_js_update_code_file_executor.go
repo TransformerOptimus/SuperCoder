@@ -86,7 +86,9 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Response, step steps.UpdateCodeFileStep) error {
 	var llmResponse map[string]interface{}
 	var filePath string
-	if strings.Contains(response.FileName, "app/") {
+	if response.FileName == "package.json" {
+		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/" + response.FileName
+	} else if strings.Contains(response.FileName, "app/") {
 		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/" + response.FileName
 	} else {
 		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/app/" + response.FileName

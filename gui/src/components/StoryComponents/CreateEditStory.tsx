@@ -11,6 +11,7 @@ import { FormStoryPayload } from '../../../types/storyTypes';
 import { createStory, editStory } from '@/api/DashboardService';
 import { useBoardContext } from '@/context/Boards';
 import InputSection from '@/components/StoryComponents/InputSection';
+import toast from 'react-hot-toast';
 
 const DynamicInputSection: React.FC<DynamicInputSectionProps> = ({
   id,
@@ -90,6 +91,11 @@ const CreateEditStory: React.FC<CreateEditStoryProps> = ({
   const { editTrue, setEditTrue, storyDetails } = useBoardContext();
 
   const handleSubmit = () => {
+    if (!summaryRef.current?.value) {
+      toast.error('Summary cannot be empty');
+      return;
+    }
+
     const data = {
       story_id: story_id,
       project_id: Number(localStorage.getItem('projectId')),

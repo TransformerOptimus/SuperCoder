@@ -4,6 +4,7 @@ import (
 	"ai-developer/app/config"
 	"ai-developer/app/services"
 	"ai-developer/app/types/request"
+	"ai-developer/app/types/response"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
@@ -82,8 +83,12 @@ func (controller *AuthController) SignUp(c *gin.Context) {
 			fmt.Println("Error occurred while creating new user : ", createUserRequest.Email, err)
 			return
 		}
-		user.Password = ""
-		c.JSON(http.StatusOK, gin.H{"success": true, "existing_user": false, "user": user, "access_token": accessToken, "error": nil})
+		c.JSON(http.StatusOK, gin.H{"success": true, "existing_user": false, "user": &response.UserResponse{
+			Id:             user.ID,
+			Name:           user.Name,
+			Email:          user.Email,
+			OrganisationID: user.OrganisationID,
+		}, "access_token": accessToken, "error": nil})
 		return
 	}
 	c.JSON(http.StatusBadRequest, gin.H{"success": false, "existing_user": true, "user": nil, "access_token": nil, "error": nil})
@@ -109,10 +114,12 @@ func (controller *AuthController) SignIn(c *gin.Context) {
 	}
 
 	var accessToken, _ = controller.jwtService.GenerateToken(int(existingUser.ID), existingUser.Email)
-
-	existingUser.Password = ""
-	c.JSON(http.StatusOK, gin.H{"success": true, "user": existingUser, "access_token": accessToken, "error": nil})
-
+	c.JSON(http.StatusOK, gin.H{"success": true, "user": &response.UserResponse{
+		Id:             existingUser.ID,
+		Name:           existingUser.Name,
+		Email:          existingUser.Email,
+		OrganisationID: existingUser.OrganisationID,
+	}, "access_token": accessToken, "error": nil})
 }
 
 func (controller *AuthController) CheckUser(c *gin.Context) {

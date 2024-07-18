@@ -97,7 +97,7 @@ func (controller *OrganizationController) HandleUserInvite(c *gin.Context) {
 			c.Redirect(http.StatusTemporaryRedirect, redirectUrl)
 			return
 		}
-		redirectUrl := controller.appRedirectUrl + "?user_email=" + email
+		redirectUrl := controller.appRedirectUrl + "?user_email=" + email + "&invite_token=" + inviteToken
 		c.Redirect(http.StatusTemporaryRedirect, redirectUrl)
 		return
 	}

@@ -36,8 +36,9 @@ export const checkUserEmailExists = (user_email: string) => {
   });
 };
 
-export const login = (payload: authPayload) => {
-  return api.post(`/auth/sign_in`, payload);
+export const login = (payload: authPayload, invite_token: string = null) => {
+  const headers = invite_token ? { 'X-INVITE-TOKEN': invite_token } : {};
+  return api.post(`/auth/sign_in`, payload, { headers });
 };
 
 export const signUp = (payload: authPayload, invite_token: string = null) => {

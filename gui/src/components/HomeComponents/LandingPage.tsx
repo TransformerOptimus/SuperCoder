@@ -27,8 +27,7 @@ export default function LandingPage() {
   const [emailErrorMsg, setEmailErrorMsg] = useState<string>('');
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string>('');
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
-  const [isInvite, setIsInvite] = useState<boolean>(false);
-  const [inviteToken, setInviteToken] = useState<string | null>('');
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,15 +39,10 @@ export default function LandingPage() {
     const error = searchParams.get('error_msg');
     if (error) {
       toast.error('The invite link has expired.');
-    } else if (email) {
+    } else if (email && inviteToken) {
       setEmail(email);
-      setIsInvite(true);
-      if (inviteToken) {
-        setInviteToken(inviteToken);
-        setIsEmailRegistered(false);
-      } else {
-        setIsEmailRegistered(true);
-      }
+      setInviteToken(inviteToken);
+      toCheckUserEmail(email).then().catch();
     }
   }, []);
 
@@ -56,7 +50,7 @@ export default function LandingPage() {
     const handleKeyDown = (event) => {
       if (event.key === 'Enter') {
         if (isEmailRegistered === null) {
-          toCheckUserEmail().then().catch();
+          toCheckUserEmail(email).then().catch();
         } else if (isEmailRegistered) {
           loginUser().then().catch();
         } else {
@@ -118,7 +112,7 @@ export default function LandingPage() {
     setUserData(userData);
   };
 
-  async function toCheckUserEmail() {
+  async function toCheckUserEmail(email) {
     try {
       if (!validateEmail(email)) {
         setEmailErrorMsg('Enter a Valid Email.');
@@ -148,7 +142,7 @@ export default function LandingPage() {
         email: email,
         password: password,
       };
-      const response = await login(payload);
+      const response = await login(payload, inviteToken);
       if (response) {
         const data = response.data;
         if (data.success) {
@@ -194,7 +188,7 @@ export default function LandingPage() {
   const getButtonFields = () => {
     switch (isEmailRegistered) {
       case null:
-        return { text: 'Continue', onClick: toCheckUserEmail };
+        return { text: 'Continue', onClick: () => toCheckUserEmail(email) };
       case true:
         return { text: 'Sign In', onClick: loginUser };
       case false:
@@ -247,7 +241,7 @@ export default function LandingPage() {
                   format={'text'}
                   value={email}
                   setter={onSetEmail}
-                  disabled={isInvite}
+                  disabled={inviteToken !== null}
                   isError={emailErrorMsg !== ''}
                   errorMessage={emailErrorMsg}
                 />

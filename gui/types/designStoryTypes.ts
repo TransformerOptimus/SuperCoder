@@ -1,6 +1,7 @@
 export interface DesignStoryItem {
   id: number;
   status: string;
+  reason: string;
   title: string;
   input_file_url: string;
   created_on: string;

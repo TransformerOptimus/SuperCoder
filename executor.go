@@ -11,9 +11,6 @@ import (
 	"ai-developer/app/services/filestore"
 	"ai-developer/app/services/git_providers"
 	fileStoreImpl "ai-developer/app/services/filestore/impl"
-
-	// "ai-developer/app/services/local_storage_providers"
-	// "ai-developer/app/services/s3_providers"
 	"ai-developer/app/workflow_executors"
 	"ai-developer/app/workflow_executors/step_executors"
 	"ai-developer/app/workflow_executors/step_executors/impl"
@@ -91,11 +88,11 @@ func main() {
 		logger *zap.Logger,
 	) filestore.FileStore {
 		if storeConfig.GetFileStoreType() == "local" {
-			fmt.Println("____using local_____")
+			config.Logger.Info("Using local file store")
 			lfs := fileStoreImpl.NewLocalFileStore(storeConfig, logger)
 			return lfs
 		} else {
-			fmt.Println("____using s3_____")
+			config.Logger.Info("Using s3 file store")
 			s3fs := fileStoreImpl.NewS3FileSystem(awsSession, storeConfig, logger)
 			return s3fs
 		}
@@ -235,9 +232,7 @@ func main() {
 	_ = c.Provide(services.NewPullRequestService)
 	_ = c.Provide(services.NewExecutionOutputService)
 	_ = c.Provide(services.NewLLMAPIKeyService)
-	// _ = c.Provide(s3_providers.NewS3Service)
 	_ = c.Provide(services.NewDesignStoryReviewService)
-	// _ = c.Provide(local_storage_providers.NewLocalStorageService)
 	fmt.Println("Services Successfully Provided.")
 
 	//GenerateCodeStep

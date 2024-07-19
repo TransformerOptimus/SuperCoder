@@ -12,9 +12,6 @@ import (
 	"ai-developer/app/services/filestore"
 	"ai-developer/app/services/filestore/impl"
 	"ai-developer/app/services/git_providers"
-
-	// "ai-developer/app/services/local_storage_providers"
-	// "ai-developer/app/services/s3_providers"
 	"ai-developer/app/tasks"
 	"context"
 	"fmt"
@@ -102,11 +99,11 @@ func main() {
 		logger *zap.Logger,
 	) filestore.FileStore {
 		if storeConfig.GetFileStoreType() == "local" {
-			fmt.Println("____using local_____")
+			config.Logger.Info("Using local file store")
 			lfs := impl.NewLocalFileStore(storeConfig, logger)
 			return lfs
 		} else {
-			fmt.Println("____using s3_____")
+			config.Logger.Info("Using S3 file store")
 			s3fs := impl.NewS3FileSystem(awsSession, storeConfig, logger)
 			return s3fs
 		}
@@ -254,15 +251,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// err = c.Provide(s3_providers.NewS3Service)
-	// if err != nil {
-	// 	fmt.Println("Error providing S3 service:", err)
-	// 	panic(err)
-	// }
-	// err = c.Provide(local_storage_providers.NewLocalStorageService)
-	// if err != nil {
-	// 	panic(err)
-	// }
 	// Provide GitnessService
 	err = c.Provide(func(client *gitness_git_provider.GitnessClient) *git_providers.GitnessService {
 		return git_providers.NewGitnessService(client)

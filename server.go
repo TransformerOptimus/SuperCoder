@@ -16,8 +16,6 @@ import (
 	"ai-developer/app/services/filestore"
 	"ai-developer/app/services/filestore/impl"
 	"ai-developer/app/services/git_providers"
-	// "ai-developer/app/services/local_storage_providers"
-	// "ai-developer/app/services/s3_providers"
 	"context"
 	"errors"
 	"fmt"
@@ -98,12 +96,11 @@ func main() {
 		logger *zap.Logger,
 	) filestore.FileStore {
 		if storeConfig.GetFileStoreType() == "local" {
-			fmt.Println("____using local_____")
+			config.Logger.Info("Using local file store")
 			lfs := impl.NewLocalFileStore(storeConfig, logger)
 			return lfs
 		} else {
-			fmt.Println("____using s3_____")
-			fmt.Println("aws_session_____", awsSession, "\nstoreConfig______", storeConfig, "\naws_config_____", awsConfig)
+			config.Logger.Info("Using s3 file store")
 			s3fs := impl.NewS3FileSystem(awsSession, storeConfig, logger)
 			return s3fs
 		}
@@ -158,15 +155,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// err = c.Provide(s3_providers.NewS3Service)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// err = c.Provide(local_storage_providers.NewLocalStorageService)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	
 
 	// Provide Repositories
 	err = c.Provide(func(db *gorm.DB) (

@@ -1,8 +1,6 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/knadh/koanf/v2"
 )
 
@@ -19,7 +17,6 @@ func (fsc *FileStoreConfig) GetLocalDir() string {
 }
 
 func (fsc *FileStoreConfig) GetS3Bucket() string {
-	fmt.Println("__BUCKET NAME____",fsc.config.String("filestore.s3.bucket"))
 	return fsc.config.String("filestore.s3.bucket")
 }
 

@@ -9,9 +9,6 @@ import (
 	"ai-developer/app/models/types"
 	"ai-developer/app/repositories"
 	"io"
-
-	// "ai-developer/app/services/local_storage_providers"
-	// "ai-developer/app/services/s3_providers"
 	"ai-developer/app/services/filestore"
 	"ai-developer/app/types/request"
 	"ai-developer/app/types/response"
@@ -38,12 +35,10 @@ type StoryService struct {
 	storyInstructionRepo   *repositories.StoryInstructionRepository
 	asynqClient            *asynq.Client
 	logger                 *zap.Logger
-	// s3Service              *s3_providers.S3Service
 	storyFileRepo          *repositories.StoryFileRepository
 	hashIdGenerator        *utils.HashIDGenerator
 	workspaceServiceClient *workspace.WorkspaceServiceClient
 	projectService         *ProjectService
-	// localStorageService	   *local_storage_providers.LocalStorageService
 	fileStore 			   filestore.FileStore 
 }
 
@@ -191,20 +186,6 @@ func (s *StoryService) UpdateDesignStory(file multipart.File, fileName, title st
 		fmt.Println("Error getting story file", err.Error())
 		return err
 	}
-	// env := config.Get("app.env")
-	// if env == "production" {
-	// 	err = s.s3Service.DeleteS3Object(storyFile.FilePath)
-	// 	if err!= nil {
-    //         fmt.Println("Error deleting story file", err.Error())
-    //         return err
-    //     }
-	// } else {
-	// 	err = s.localStorageService.DeleteFile(storyFile.FilePath)
-	// 	if err != nil {
-	// 		fmt.Println("Error deleting story file", err.Error())
-	// 		return err
-	// 	}
-	// }
 	err = s.fileStore.DeleteFile(storyFile.FilePath)
 	if err!= nil {
         fmt.Println("Error deleting story file", err.Error())
@@ -232,15 +213,6 @@ func (s *StoryService) UploadFileBytes(file multipart.File, fileName string, pro
 		return "", err
 	}
 	filePath := fmt.Sprintf("%d/%d/%s", projectID, storyID, fileName)
-	// if env == "production" {
-	// 	//upload image to s3
-	// 	filePath, err = s.s3Service.UploadFileToS3(fileBytes, fileName, projectID, storyID)
-	// 	if err!= nil {
-    //         return "", err
-    //     }
-	// } else {
-	// 	filePath, err = s.localStorageService.UploadFile(fileBytes, fileName, projectHashID, projectID, storyID)
-	// }
 	err = s.fileStore.CreateFileFromContent(filePath, fileBytes)
 	if err != nil {
 		return "", err
@@ -722,7 +694,7 @@ func (s *StoryService) GetImageReaderByStoryId(storyId int) (io.ReadCloser, int6
     if err != nil {
         return nil, 0, "", fmt.Errorf("error reading file: %w", err)
     }
-	
+
 	ext := strings.ToLower(filepath.Ext(filePath))
     switch ext {
     case ".jpg", ".jpeg":
@@ -740,7 +712,6 @@ func NewStoryService(
 	storyInstructionRepo *repositories.StoryInstructionRepository,
 	asynqClient *asynq.Client,
 	logger *zap.Logger,
-	// s3Service *s3_providers.S3Service,
 	storyFileRepo *repositories.StoryFileRepository,
 	workspaceServiceClient *workspace.WorkspaceServiceClient,
 	projectService *ProjectService,
@@ -752,7 +723,6 @@ func NewStoryService(
 		storyInstructionRepo:   storyInstructionRepo,
 		asynqClient:            asynqClient,
 		logger:                 logger.Named("StoryService"),
-		// s3Service:              s3Service,
 		storyFileRepo:          storyFileRepo,
 		hashIdGenerator:        utils.NewHashIDGenerator(5),
 		workspaceServiceClient: workspaceServiceClient,

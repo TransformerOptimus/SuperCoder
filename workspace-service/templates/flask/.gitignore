@@ -161,4 +161,3 @@ cython_debug/
 .DS_Store
 
 frontend/.stories
-.storage

@@ -179,9 +179,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(func(userRepo *repositories.UserRepository) *services.UserService {
-		return services.NewUserService(userRepo)
-	})
+	err = c.Provide(services.NewUserService)
 
 	err = c.Provide(services.NewLLMAPIKeyService)
 	if err != nil {
@@ -290,11 +288,12 @@ func main() {
 	}
 
 	// Provide Controllers
-	err = c.Provide(func(githubOauthService *services.GithubOauthService, authService *services.AuthService) *controllers.OauthController {
+	err = c.Provide(func(githubOauthService *services.GithubOauthService, authService *services.AuthService,
+		userService *services.UserService, jwtService *services.JWTService) *controllers.AuthController {
 		clientID := config.GithubClientId()
 		clientSecret := config.GithubClientSecret()
 		redirectURL := config.GithubRedirectURL()
-		return controllers.NewOauthController(githubOauthService, authService, clientID, clientSecret, redirectURL)
+		return controllers.NewAuthController(githubOauthService, authService, jwtService, userService, clientID, clientSecret, redirectURL)
 	})
 	if err != nil {
 		panic(err)
@@ -380,7 +379,7 @@ func main() {
 	// Setup routes and start the server
 	err = c.Invoke(func(
 		health *controllers.HealthController,
-		oauth *controllers.OauthController,
+		auth *controllers.AuthController,
 		middleware *middleware.JWTClaims,
 		projectsController *controllers.ProjectController,
 		storiesController *controllers.StoryController,
@@ -439,8 +438,8 @@ func main() {
 		api.GET("/health", health.Health)
 
 		githubAuth := api.Group("/github")
-		githubAuth.GET("/signin", oauth.GithubSignIn)
-		githubAuth.GET("/callback", oauth.GithubCallback)
+		githubAuth.GET("/signin", auth.GithubSignIn)
+		githubAuth.GET("/callback", auth.GithubCallback)
 
 		projects := api.Group("/projects", middleware.AuthenticateJWT())
 
@@ -506,8 +505,13 @@ func main() {
 		llmApiKeys := api.Group("/llm_api_key", middleware.AuthenticateJWT())
 		llmApiKeys.POST("", llm_api_key.CreateLLMAPIKey)
 		llmApiKeys.POST("/", llm_api_key.CreateLLMAPIKey)
+		llmApiKeys.GET("", llm_api_key.FetchAllLLMAPIKeyByOrganisationID)
+		llmApiKeys.GET("/", llm_api_key.FetchAllLLMAPIKeyByOrganisationID)
 
-		llmApiKeys.GET("/:organisation_id", orgAuthMiddleware.Authorize(), llm_api_key.FetchAllLLMAPIKeyByOrganisationID)
+		authentication := api.Group("/auth")
+		authentication.GET("/check_user", auth.CheckUser)
+		authentication.POST("/sign_in", auth.SignIn)
+		authentication.POST("/sign_up", auth.SignUp)
 
 		// Wrap the socket.io server as Gin handlers for specific routes
 		r.GET("/api/socket.io/*any", middleware.AuthenticateJWT(), gin.WrapH(ioServer))

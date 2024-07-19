@@ -240,7 +240,7 @@ func (e NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName strin
 		}
 	}
 
-	err := e.activityLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", "Updated code files.")
+	err := e.activityLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", fmt.Sprintf("Updated file %s", fileName))
 	if err != nil {
 		fmt.Println("Error creating activity log" + err.Error())
 		return err

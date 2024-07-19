@@ -17,7 +17,10 @@ import TestCases from '@/components/StoryComponents/TestCases';
 import { handleInProgressStoryStatus, handleStoryStatus } from '@/app/utils';
 import { useRouter } from 'next/navigation';
 import { StoryDetailsProps } from '../../../types/storyTypes';
-import { storyStatus } from '@/app/constants/BoardConstants';
+import {
+  showStoryDetailsDropdown,
+  storyStatus,
+} from '@/app/constants/BoardConstants';
 import { useBoardContext } from '@/context/Boards';
 import toast from 'react-hot-toast';
 
@@ -95,12 +98,6 @@ export default function StoryDetails({
 
       action: () => toDeleteStory(),
     },
-  ];
-
-  const statusItems = [
-    { key: 'TODO', text: 'To Do', icon: imagePath.todoDot },
-    { key: 'IN_REVIEW', text: 'In Review', icon: imagePath.inReviewDot },
-    { key: 'DONE', text: 'Done', icon: imagePath.doneDot },
   ];
 
   const handleMoveToInProgressClick = async () => {
@@ -214,6 +211,7 @@ export default function StoryDetails({
                 maxHeight={'200px'}
                 gap={'10px'}
                 position={'end'}
+                show={showStoryDetailsDropdown.includes(storyDetails.status)}
               >
                 {dropdownItems &&
                   dropdownItems.map((item) => (

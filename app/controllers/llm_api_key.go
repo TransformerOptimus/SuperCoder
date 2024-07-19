@@ -5,7 +5,6 @@ import (
 	"ai-developer/app/types/request"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strconv"
 )
 
 type LLMAPIKeyController struct {
@@ -53,29 +52,18 @@ func (c *LLMAPIKeyController) FetchAllLLMAPIKeyByOrganisationID(context *gin.Con
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "User ID not found in context"})
 		return
 	}
-	organisationID := context.Param("organisation_id")
-	organisationIDInt, err := strconv.Atoi(organisationID)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid organisation ID"})
-		return
-	}
 	userIDInt, ok := userID.(int)
 	if !ok {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "User ID is not of type int"})
 		return
 	}
-	var organisationIdByUserID uint
-	organisationIdByUserID, err = c.userService.FetchOrganisationIDByUserID(uint(userIDInt))
-	if organisationIDInt != int(organisationIdByUserID) {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": "User does not have access to this organisation"})
-		return
-	}
+	organisationIdByUserID, err := c.userService.FetchOrganisationIDByUserID(uint(userIDInt))
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid organisation ID"})
 		return
 	}
 
-	output, err := c.llmAPIKeyService.GetAllLLMAPIKeyByOrganisationID(uint(organisationIDInt))
+	output, err := c.llmAPIKeyService.GetAllLLMAPIKeyByOrganisationID(organisationIdByUserID)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

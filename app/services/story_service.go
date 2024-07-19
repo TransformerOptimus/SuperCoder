@@ -8,6 +8,8 @@ import (
 	"ai-developer/app/models/dtos/asynq_task"
 	"ai-developer/app/models/types"
 	"ai-developer/app/repositories"
+	"io"
+
 	// "ai-developer/app/services/local_storage_providers"
 	// "ai-developer/app/services/s3_providers"
 	"ai-developer/app/services/filestore"
@@ -23,6 +25,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
@@ -709,23 +712,26 @@ func (s *StoryService) UpdateStoryStatusWithTx(tx *gorm.DB, storyId int, progres
 	return s.storyRepo.UpdateStoryStatusWithTx(tx, storyId, progress)
 }
 
-func (s *StoryService) GetBase64ImageByStoryId(storyId int) (string, error) {
-	filePath, err := s.storyFileRepo.GetFilePathByStoryID(storyId)
-	if err!= nil {
-		fmt.Println("error ocurred while getting file path", err)
-        return "", err
+func (s *StoryService) GetImageReaderByStoryId(storyId int) (io.ReadCloser, int64, string, error) {
+    filePath, err := s.storyFileRepo.GetFilePathByStoryID(storyId)
+    if err != nil {
+        return nil, 0, "", fmt.Errorf("error occurred while getting file path: %w", err)
     }
-	filePathCloser, err := s.fileStore.ReadFile(filePath)
-	if err!= nil {
-		fmt.Println("Error reading file______", zap.Error(err))
-        return "", err
+
+	reader, contentLength, contentType, err := s.fileStore.ReadFileWithInfo(filePath)
+    if err != nil {
+        return nil, 0, "", fmt.Errorf("error reading file: %w", err)
     }
-	base64Image, _, err := utils.EncodeToBase64(filePathCloser)
-	if err!= nil {
-        fmt.Println("Error encoding to base64____", zap.Error(err))
-        return "", err
-    }
-	return base64Image, nil
+	
+	ext := strings.ToLower(filepath.Ext(filePath))
+    switch ext {
+    case ".jpg", ".jpeg":
+        contentType = "image/jpeg"
+    case ".png":
+        contentType = "image/png"
+	}
+
+    return reader, contentLength, contentType, nil
 }
 
 func NewStoryService(

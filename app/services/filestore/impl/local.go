@@ -6,9 +6,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"mime"
 	"net/url"
 	"os"
 	"path/filepath"
+
 	"go.uber.org/zap"
 )
 
@@ -58,6 +60,31 @@ func (lfs LocalFileStore) ReadFile(path string) (content io.ReadCloser, err erro
 	}
 	content = io.NopCloser(bytes.NewReader(fileContent))
 	return content, nil
+}
+
+func (lfs LocalFileStore) ReadFileWithInfo(path string) (content io.ReadCloser, contentLength int64, contentType string, err error) {
+    filePath, err := lfs.getFilePath(path)
+    if err != nil {
+        return nil, 0, "", fmt.Errorf("failed to get file path: %w", err)
+    }
+
+    file, err := os.Open(filePath)
+    if err != nil {
+        return nil, 0, "", fmt.Errorf("failed to open file: %w", err)
+    }
+
+    fileInfo, err := file.Stat()
+    if err != nil {
+        file.Close()
+        return nil, 0, "", fmt.Errorf("failed to get file info: %w", err)
+    }
+
+    contentType = mime.TypeByExtension(filepath.Ext(filePath))
+    if contentType == "" {
+        contentType = "application/octet-stream"
+    }
+
+    return file, fileInfo.Size(), contentType, nil
 }
 
 func (lfs LocalFileStore) DeleteFile(path string) (err error) {

@@ -28,7 +28,7 @@ type OpenAiNextJsCodeGenerator struct {
 	designReviewService  *services.DesignStoryReviewService
 	s3Service            *s3_providers.S3Service
 	llmAPIKeyService     *services.LLMAPIKeyService
-	logger         		 *zap.Logger
+	logger               *zap.Logger
 }
 
 func NewOpenAINextJsCodeGenerationExecutor(
@@ -56,7 +56,7 @@ func NewOpenAINextJsCodeGenerationExecutor(
 }
 
 func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.GenerateCodeStep) error {
-	openAiCodeGenerator.logger.Info("Executing GenerateCodeStep: %s\n", zap.String("step name",step.StepName()))
+	openAiCodeGenerator.logger.Info("Executing GenerateCodeStep: %s\n", zap.String("step name", step.StepName()))
 	openAiCodeGenerator.logger.Info("Working on project details", zap.Any("project", step.Project))
 	openAiCodeGenerator.logger.Info("Working on story details", zap.Any("story", step.Story))
 	openAiCodeGenerator.logger.Info("Max loop iterations", zap.Any("maxLoopIterations", step.MaxLoopIterations))
@@ -70,7 +70,6 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	openAiCodeGenerator.logger.Info("Checking for Max Retry")
 	openAiCodeGenerator.logger.Info("Running command")
 
-	
 	fmt.Printf("\n-----------------------\n")
 	count, err := openAiCodeGenerator.executionStepService.CountExecutionStepsOfName(step.Execution.ID, steps.CODE_GENERATE_STEP.String())
 	if err != nil {
@@ -174,11 +173,11 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 			return err
 		}
 		//Update Execution Status and Story Status
-		if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReview); err != nil {
+		if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
 			fmt.Printf("Error updating story status: %s\n", err.Error())
 			return err
 		}
-		if err = openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReview); err != nil {
+		if err = openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
 			fmt.Printf("Error updating execution step: %s\n", err.Error())
 			return err
 		}
@@ -277,8 +276,8 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getFilesContent(folderPath string) (string, error) {
-	fmt.Println("____folder____",folderPath)
-	folderPath = folderPath+"/app"
+	fmt.Println("____folder____", folderPath)
+	folderPath = folderPath + "/app"
 	files, err := os.ReadDir(folderPath)
 	if err != nil {
 		fmt.Printf("Error reading directory %s\n", folderPath)

@@ -63,3 +63,8 @@
 .tab_item_selected {
     background: var(--white-opacity-8);
 }
+
+.issue_container {
+    border-left: 4px solid var(--warning-container-border);
+    background: var(--warning-container-background);
+}

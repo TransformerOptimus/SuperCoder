@@ -1,14 +1,22 @@
 import styles from '@/components/DesignStoryComponents/desingStory.module.css';
-import { DesignStoryDetailsProps } from '../../../types/designStoryTypes';
+import {
+  DesignStoryDetailsProps,
+  DesignStoryInReviewIssue,
+} from '../../../types/designStoryTypes';
 import imagePath from '@/app/imagePath';
 import CustomImage from '@/components/ImageComponents/CustomImage';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import CustomTag from '@/components/CustomTag/CustomTag';
-import { handleInProgressStoryStatus, handleStoryStatus } from '@/app/utils';
+import {
+  handleInProgressStoryStatus,
+  handleStoryStatus,
+  handleStoryInReviewIssue,
+} from '@/app/utils';
 import { useDesignContext } from '@/context/Design';
+import IssueContainer from '@/components/StoryComponents/InReviewIssue';
 import { deleteStory, updateStoryStatus } from '@/api/DashboardService';
-import { storyStatus } from '@/app/constants/BoardConstants';
+import { storyStatus, storyActions } from '@/app/constants/BoardConstants';
 import { useRouter } from 'next/navigation';
 import { Button } from '@nextui-org/react';
 
@@ -22,6 +30,30 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
 }) => {
   const { selectedStory, setEditTrue } = useDesignContext();
   const router = useRouter();
+
+  const [issue, setIssue] = useState<DesignStoryInReviewIssue | null>({
+    title: null,
+    description: null,
+    actions: [],
+  });
+
+  const resetIssue = () => {
+    setIssue({
+      title: null,
+      description: null,
+      actions: [],
+    });
+  };
+
+  useEffect(() => {
+    if (selectedStory && selectedStory.status === storyStatus.IN_REVIEW) {
+      const issue = handleStoryInReviewIssue({ story: selectedStory });
+      setIssue(issue);
+    } else {
+      resetIssue();
+    }
+  }, [selectedStory]);
+
   const handleEditAction = () => {
     setEditTrue(true);
     close();
@@ -171,6 +203,15 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
             />
           </div>
         </div>
+        {selectedStory.status === storyStatus.IN_REVIEW && (
+          <IssueContainer
+            title={issue?.title}
+            description={issue?.description}
+            actions={issue?.actions || []}
+            imagePath={imagePath}
+            handleMoveToInProgressClick={handleMoveToInProgressClick}
+          />
+        )}
         <div className={'flex flex-col gap-8 p-4'}>
           <div className={'flex flex-col gap-2'}>
             <span className={`secondary_color text-sm font-normal`}>

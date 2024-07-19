@@ -14,18 +14,19 @@ import { Button } from '@nextui-org/react';
 import CustomTag from '@/components/CustomTag/CustomTag';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
 import TestCases from '@/components/StoryComponents/TestCases';
-import { handleInProgressStoryStatus, handleStoryStatus } from '@/app/utils';
+import {
+  handleInProgressStoryStatus,
+  handleStoryStatus,
+  handleStoryInReviewIssue,
+} from '@/app/utils';
 import { useRouter } from 'next/navigation';
-import { StoryDetailsProps } from '../../../types/storyTypes';
+import {
+  StoryDetailsProps,
+  StoryInReviewIssue,
+} from '../../../types/storyTypes';
 import { storyActions, storyStatus } from '@/app/constants/BoardConstants';
 import { useBoardContext } from '@/context/Boards';
 import toast from 'react-hot-toast';
-
-interface Issue {
-  title: string | null;
-  description: string | null;
-  actions: { label: string; link: string }[];
-}
 
 export default function StoryDetails({
   id,
@@ -50,7 +51,7 @@ export default function StoryDetails({
   } = useBoardContext();
   const router = useRouter();
 
-  const [issue, setIssue] = useState<Issue | null>({
+  const [issue, setIssue] = useState<StoryInReviewIssue | null>({
     title: null,
     description: null,
     actions: [],
@@ -157,40 +158,8 @@ export default function StoryDetails({
         setStoryInstructions(data.story.instructions);
 
         if (data.story.status === storyStatus.IN_REVIEW) {
-          let issueTitle = '';
-          let issueDescription = '';
-          const actions = [];
-
-          switch (data.story.reason) {
-            case storyStatus.MAX_LOOP_ITERATIONS:
-              issueTitle =
-                'Action Needed: Maximum number of iterations reached';
-              issueDescription =
-                'The story execution in the workbench has exceeded the maximum allowed iterations. You can update the story details and re-build it.';
-              actions.push(
-                { label: 'Re-Build', link: storyActions.REBUILD },
-                {
-                  label: 'Get Help',
-                  link: 'https://discord.com/invite/dXbRe5BHJC',
-                },
-              );
-              break;
-            case storyStatus.LLM_KEY_NOT_FOUND:
-              issueTitle = 'Action Needed: LLM API Key Configuration Error';
-              issueDescription =
-                'There is an issue with the LLM API Key configuration, which may involve an invalid or expired API key. Please verify the API Key settings and update them to continue.';
-              actions.push(
-                { label: 'Re-Build', link: storyActions.REBUILD },
-                { label: 'Go to Settings', link: '/settings' },
-              );
-              break;
-          }
-
-          setIssue({
-            title: issueTitle,
-            description: issueDescription,
-            actions,
-          });
+          const issue = handleStoryInReviewIssue(data);
+          setIssue(issue);
         } else {
           resetIssue();
         }

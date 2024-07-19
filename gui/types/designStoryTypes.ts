@@ -37,3 +37,9 @@ export interface EditDesignStoryPayload {
   file: Blob;
   imageName: string;
 }
+
+export interface DesignStoryInReviewIssue {
+  title: string | null;
+  description: string | null;
+  actions: { label: string; link: string }[];
+}

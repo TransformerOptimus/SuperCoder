@@ -7,8 +7,10 @@ import {
 import { removeCookie } from '@/utils/CookieUtils';
 import { ProjectTypes } from '../../types/projectsTypes';
 import toast from 'react-hot-toast';
-import { storyStatus } from '@/app/constants/BoardConstants';
+import { storyStatus, storyActions } from '@/app/constants/BoardConstants';
 import { Servers } from '@/app/constants/UtilsConstants';
+import { StoryInReviewIssue } from '../../types/storyTypes';
+import { DesignStoryInReviewIssue } from '../../types/designStoryTypes';
 
 export const logout = () => {
   if (typeof window !== 'undefined') {
@@ -169,4 +171,42 @@ export async function checkModelNotAdded(id: string) {
     console.error('Error while fetching LLM API Keys: ', error);
     return true;
   }
+}
+
+export function handleStoryInReviewIssue(data: {
+  story: { reason: any };
+}): StoryInReviewIssue {
+  let issueTitle = '';
+  let issueDescription = '';
+  const actions = [];
+
+  switch (data.story.reason) {
+    case storyStatus.MAX_LOOP_ITERATIONS:
+      issueTitle = 'Action Needed: Maximum number of iterations reached';
+      issueDescription =
+        'The story execution in the workbench has exceeded the maximum allowed iterations. You can update the story details and re-build it.';
+      actions.push(
+        { label: 'Re-Build', link: storyActions.REBUILD },
+        {
+          label: 'Get Help',
+          link: 'https://discord.com/invite/dXbRe5BHJC',
+        },
+      );
+      break;
+    case storyStatus.LLM_KEY_NOT_FOUND:
+      issueTitle = 'Action Needed: LLM API Key Configuration Error';
+      issueDescription =
+        'There is an issue with the LLM API Key configuration, which may involve an invalid or expired API key. Please verify the API Key settings and update them to continue.';
+      actions.push(
+        { label: 'Re-Build', link: storyActions.REBUILD },
+        { label: 'Go to Settings', link: '/settings' },
+      );
+      break;
+  }
+
+  return {
+    title: issueTitle,
+    description: issueDescription,
+    actions,
+  };
 }

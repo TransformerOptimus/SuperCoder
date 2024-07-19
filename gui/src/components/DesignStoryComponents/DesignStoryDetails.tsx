@@ -1,22 +1,23 @@
 import styles from '@/components/DesignStoryComponents/desingStory.module.css';
-import { DesignStoryDetailsProps } from '../../../types/designStoryTypes';
+import {
+  DesignStoryDetailsProps,
+  DesignStoryInReviewIssue,
+} from '../../../types/designStoryTypes';
 import imagePath from '@/app/imagePath';
 import CustomImage from '@/components/ImageComponents/CustomImage';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
 import React, { useEffect, useState } from 'react';
 import CustomTag from '@/components/CustomTag/CustomTag';
-import { handleInProgressStoryStatus, handleStoryStatus } from '@/app/utils';
+import {
+  handleInProgressStoryStatus,
+  handleStoryStatus,
+  handleStoryInReviewIssue,
+} from '@/app/utils';
 import { useDesignContext } from '@/context/Design';
 import { deleteStory, updateStoryStatus } from '@/api/DashboardService';
 import { storyStatus, storyActions } from '@/app/constants/BoardConstants';
 import { useRouter } from 'next/navigation';
 import { Button } from '@nextui-org/react';
-
-interface Issue {
-  title: string | null;
-  description: string | null;
-  actions: { label: string; link: string }[];
-}
 
 const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
   id,
@@ -29,7 +30,7 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
   const { selectedStory, setEditTrue } = useDesignContext();
   const router = useRouter();
 
-  const [issue, setIssue] = useState<Issue | null>({
+  const [issue, setIssue] = useState<DesignStoryInReviewIssue | null>({
     title: null,
     description: null,
     actions: [],
@@ -45,39 +46,8 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
 
   useEffect(() => {
     if (selectedStory && selectedStory.status === storyStatus.IN_REVIEW) {
-      let issueTitle = '';
-      let issueDescription = '';
-      const actions = [];
-
-      switch (selectedStory.reason) {
-        case storyStatus.MAX_LOOP_ITERATIONS:
-          issueTitle = 'Action Needed: Maximum number of iterations reached';
-          issueDescription =
-            'The story execution in the workbench has exceeded the maximum allowed iterations. You can update the story details and re-build it.';
-          actions.push(
-            { label: 'Re-Build', link: storyActions.REBUILD },
-            {
-              label: 'Get Help',
-              link: 'https://discord.com/invite/dXbRe5BHJC',
-            },
-          );
-          break;
-        case storyStatus.LLM_KEY_NOT_FOUND:
-          issueTitle = 'Action Needed: LLM API Key Configuration Error';
-          issueDescription =
-            'There is an issue with the LLM API Key configuration, which may involve an invalid or expired API key. Please verify the API Key settings and update them to continue.';
-          actions.push(
-            { label: 'Re-Build', link: storyActions.REBUILD },
-            { label: 'Go to Settings', link: '/settings' },
-          );
-          break;
-      }
-
-      setIssue({
-        title: issueTitle,
-        description: issueDescription,
-        actions,
-      });
+      const issue = handleStoryInReviewIssue({ story: selectedStory });
+      setIssue(issue);
     } else {
       resetIssue();
     }

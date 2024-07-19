@@ -67,7 +67,7 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 		return err
 	}
 	if step.Retry {
-		fmt.Println("___Response to UpdateCodeFile___ \n", response)
+		//fmt.Println("___Response to UpdateCodeFile___ \n", response)
 		err = e.UpdateReGeneratedCodeFile(response, step)
 		if err != nil {
 			fmt.Println("Error updating regenerated code: ", err.Error())
@@ -141,6 +141,7 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 }
 
 func (e *NextJsUpdateCodeFileExecutor) EditCode(filePath string, startLine, endLine int, newCode string) error {
+	fmt.Printf("____Editing file %s_____", filePath)
 	fmt.Println("Start Line:", startLine)
 	fmt.Println("End Line:", endLine)
 	file, err := os.Open(filePath)
@@ -192,6 +193,7 @@ func (e *NextJsUpdateCodeFileExecutor) EditCode(filePath string, startLine, endL
 }
 
 func (e *NextJsUpdateCodeFileExecutor) InsertCode(filePath string, lineNumber int, newCode string) error {
+	fmt.Printf("____inserting code in file %s_____", filePath)
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println("Error opening file", filePath, err.Error())
@@ -223,6 +225,7 @@ func (e *NextJsUpdateCodeFileExecutor) InsertCode(filePath string, lineNumber in
 }
 
 func (e NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName string, step steps.UpdateCodeFileStep) error {
+	fmt.Printf("____updating file %s_____", fileName)
 	if strings.HasPrefix(llmResponse, "```") {
 		llmResponse = llmResponse[3:] // Remove the first 3 characters (```)
 		lines := strings.Split(llmResponse, "\n")
@@ -230,8 +233,6 @@ func (e NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName strin
 			llmResponse = strings.Join(lines[1:], "\n") // Join all lines except the first one
 		}
 	}
-
-	fmt.Println("___file name___",fileName)
 	if step.File != "" {
 		storyDir := config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/app/" + fileName
 		err := os.WriteFile(storyDir, []byte(llmResponse), 0644)

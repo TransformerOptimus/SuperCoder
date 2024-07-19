@@ -184,7 +184,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 		}
 		return err
 	}
-	fmt.Printf("_________Generated Code__________: %s\n", code)
+	//fmt.Printf("_________Generated Code__________: %s\n", code)
 
 	if err = openAiCodeGenerator.executionStepService.UpdateExecutionStepResponse(
 		step.ExecutionStep,
@@ -214,11 +214,8 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildFinalInstructionForGeneration(
 	step steps.GenerateCodeStep, storyDir string) (map[string]string, error) {
 	// Initialize the final instruction string
-	finalInstruction, err := openAiCodeGenerator.buildInstructionForFirstExecution(step, storyDir)
-	if err != nil {
-		fmt.Printf("Error building instruction for first execution: %s\n", err.Error())
-		return nil, err
-	}
+	var finalInstruction map[string]string
+	var err error
 	if step.Retry {
 		fmt.Println("Building instruction on retry limit reached for LLM steps")
 		finalInstruction, err = openAiCodeGenerator.buildInstructionOnRetry(step, storyDir)
@@ -232,10 +229,15 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildFinalInstructionForGe
 			fmt.Printf("Error building instruction on re-execution: %s\n", err.Error())
 			return nil, err
 		}
+	} else {
+		finalInstruction, err = openAiCodeGenerator.buildInstructionForFirstExecution(step, storyDir)
+		if err != nil {
+			fmt.Printf("Error building instruction for first execution: %s\n", err.Error())
+			return nil, err
+		}
 	}
-
 	// Print the final instruction
-	fmt.Println("___Final Instruction:___", finalInstruction["existingCode"])
+	//fmt.Println("___Final Instruction:___", finalInstruction["existingCode"])
 	return finalInstruction, nil
 }
 
@@ -350,6 +352,16 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnRetry(st
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecutionWithComments(step steps.GenerateCodeStep, storyDir string) (map[string]string, error) {
+	err := openAiCodeGenerator.activityLogService.CreateActivityLog(
+		step.Execution.ID,
+		step.ExecutionStep.ID,
+		"INFO",
+		fmt.Sprintf("Code generation has started for file: %s", step.File),
+	)
+	if err != nil {
+		fmt.Printf("Error creating activity log: %s\n", err.Error())
+		return nil, err
+	}
 	fmt.Printf("Building instruction on re-execution with comments for step: %s\n", step.StepName())
 	comments, err := openAiCodeGenerator.designReviewService.GetAllDesignReviewsByStoryId(step.Story.ID)
 	if err != nil {

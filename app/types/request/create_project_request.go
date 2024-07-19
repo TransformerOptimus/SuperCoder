@@ -6,3 +6,11 @@ type CreateProjectRequest struct {
 	FrontendFramework string `json:"frontend_framework"`
 	Description       string `json:"description"`
 }
+
+type CreateProjectFromGitRequest struct {
+	Name              string `json:"name"`
+	Framework         string `json:"framework"`
+	FrontendFramework string `json:"frontend_framework"`
+	Description       string `json:"description"`
+	Repository        string `json:"repository"`
+}

@@ -28,11 +28,98 @@ import (
 
 type K8sWorkspaceService struct {
 	services.WorkspaceService
-	clientset                   *kubernetes.Clientset
-	workspaceServiceConfig      *workspaceconfig.WorkspaceServiceConfig
+	clientset               *kubernetes.Clientset
+	workspaceServiceConfig  *workspaceconfig.WorkspaceServiceConfig
 	frontendWorkspaceConfig *workspaceconfig.FrontendWorkspaceConfig
-	k8sControllerClient          client.Client
-	logger                      *zap.Logger
+	k8sControllerClient     client.Client
+	logger                  *zap.Logger
+}
+
+func (ws K8sWorkspaceService) ImportGitRepository(
+	workspaceId string,
+	repository string,
+	username string,
+	password string,
+	remoteURL string,
+	gitnessUser string,
+	gitnessToken string,
+) (details *dto.WorkspaceDetails, err error) {
+	exists, err := utils.CheckIfWorkspaceExists(workspaceId)
+	if err != nil {
+		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
+		return
+	}
+
+	if exists {
+		ws.logger.Info("Workspace already exists", zap.String("workspaceId", workspaceId))
+		return
+	}
+
+	workspaceDir := "/workspaces/" + workspaceId
+
+	repo, err := git.PlainClone(workspaceDir, false, &git.CloneOptions{
+		URL: repository,
+		Auth: &http.BasicAuth{
+			Username: username,
+			Password: password,
+		},
+	})
+
+	if err != nil {
+		ws.logger.Error("Failed to clone repository", zap.Error(err))
+		return
+	}
+
+	// Push to given URL of remote, in main branch
+	ws.logger.Info("Pushing changes to remote repository", zap.String("remoteURL", remoteURL))
+
+	// Add the remote
+	_, err = repo.CreateRemote(&config.RemoteConfig{
+		Name: "gitness",
+		URLs: []string{remoteURL},
+	})
+	if err != nil {
+		ws.logger.Error("Failed to create remote", zap.Error(err))
+		return
+	}
+
+	auth := &http.BasicAuth{
+		Username: gitnessUser,
+		Password: gitnessToken,
+	}
+
+	err = repo.Push(&git.PushOptions{
+		RemoteName: "gitness",
+		Auth:       auth,
+		RefSpecs:   []config.RefSpec{"refs/heads/main:refs/heads/main"},
+	})
+
+	err = repo.DeleteRemote("gitness")
+	if err != nil {
+		ws.logger.Error("Failed to delete remote", zap.Error(err))
+		return
+	}
+
+	err = repo.DeleteRemote("origin")
+	if err != nil {
+		ws.logger.Error("Failed to delete remote", zap.Error(err))
+		return
+	}
+
+	workspaceUrl := fmt.Sprintf("https://%s.%s/?folder=/workspaces/%s", workspaceId, ws.workspaceServiceConfig.WorkspaceHostName(), workspaceId)
+	frontendUrl := fmt.Sprintf("https://fe-%s.%s", workspaceId, ws.workspaceServiceConfig.WorkspaceHostName())
+	backendUrl := fmt.Sprintf("https://be-%s.%s", workspaceId, ws.workspaceServiceConfig.WorkspaceHostName())
+
+	details = &dto.WorkspaceDetails{
+		WorkspaceId:      workspaceId,
+		BackendTemplate:  nil,
+		FrontendTemplate: nil,
+		WorkspaceUrl:     &workspaceUrl,
+		FrontendUrl:      &frontendUrl,
+		BackendUrl:       &backendUrl,
+	}
+
+	return
 }
 
 func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplate string, frontendTemplate *string, remoteURL string, gitnessUser string, gitnessToken string) (*dto.WorkspaceDetails, error) {

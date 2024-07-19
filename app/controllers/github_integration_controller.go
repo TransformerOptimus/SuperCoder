@@ -42,10 +42,9 @@ func (gic *GithubIntegrationController) GetRepositories(c *gin.Context) {
 	response := make([]map[string]interface{}, 0)
 	for _, repo := range repositories {
 		response = append(response, map[string]interface{}{
-			"id":        repo.GetID(),
-			"name":      repo.GetName(),
-			"url":       repo.GetURL(),
-			"full_name": repo.GetFullName(),
+			"id":   repo.GetID(),
+			"url":  repo.GetCloneURL(),
+			"name": repo.GetFullName(),
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"repositories": response})

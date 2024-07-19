@@ -479,6 +479,8 @@ func main() {
 		projects.POST("", projectsController.CreateProject)
 		projects.PUT("", projectsController.UpdateProject)
 
+		projects.POST("/import", projectsController.CreateProjectFromGit)
+
 		projects.GET("/", projectsController.GetAllProjects)
 		projects.POST("/", projectsController.CreateProject)
 		projects.PUT("/", projectsController.UpdateProject)

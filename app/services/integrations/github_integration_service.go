@@ -3,7 +3,6 @@ package integrations
 import (
 	"ai-developer/app/config"
 	"ai-developer/app/models/dtos/integrations"
-	"ai-developer/app/services"
 	"ai-developer/app/utils"
 	"context"
 	"fmt"
@@ -20,7 +19,6 @@ type GithubIntegrationService struct {
 	oauthConfig             oauth2.Config
 	githubIntegrationConfig *config.GithubIntegrationConfig
 
-	userService        *services.UserService
 	integrationService *IntegrationService
 }
 

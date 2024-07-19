@@ -8,6 +8,7 @@ import (
 	"ai-developer/app/models/dtos/asynq_task"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/services/integrations"
 	"ai-developer/app/types/request"
 	"ai-developer/app/types/response"
 	"ai-developer/app/utils"
@@ -22,16 +23,17 @@ import (
 )
 
 type ProjectService struct {
-	redisRepo              *repositories.ProjectConnectionsRepository
-	projectRepo            *repositories.ProjectRepository
-	organisationRepository *repositories.OrganisationRepository
-	storyRepository        *repositories.StoryRepository
-	pullRequestRepository  *repositories.PullRequestRepository
-	gitnessService         *git_providers.GitnessService
-	hashIdGenerator        *utils.HashIDGenerator
-	workspaceServiceClient *workspace.WorkspaceServiceClient
-	asynqClient            *asynq.Client
-	logger                 *zap.Logger
+	redisRepo                *repositories.ProjectConnectionsRepository
+	projectRepo              *repositories.ProjectRepository
+	organisationRepository   *repositories.OrganisationRepository
+	storyRepository          *repositories.StoryRepository
+	pullRequestRepository    *repositories.PullRequestRepository
+	gitnessService           *git_providers.GitnessService
+	hashIdGenerator          *utils.HashIDGenerator
+	workspaceServiceClient   *workspace.WorkspaceServiceClient
+	asynqClient              *asynq.Client
+	githubIntegrationService *integrations.GithubIntegrationService
+	logger                   *zap.Logger
 }
 
 func (s *ProjectService) GetAllProjectsOfOrganisation(organisationId int) ([]response.GetAllProjectsResponse, error) {
@@ -80,6 +82,87 @@ func (s *ProjectService) GetProjectDetailsById(projectId int) (*models.Project, 
 		return nil, err
 	}
 	return project, nil
+}
+
+func (s *ProjectService) CreateProjectFromGit(userId uint, orgId uint, requestData request.CreateProjectFromGitRequest) (project *models.Project, err error) {
+	integrationDetails, err := s.githubIntegrationService.GetGithubIntegrationDetails(uint64(userId))
+	if err != nil {
+		s.logger.Error("Error getting github integration details", zap.Error(err))
+		return nil, err
+	}
+
+	hashID := s.hashIdGenerator.Generate() + "-" + uuid.New().String()
+	url := "http://localhost:8081/?folder=/workspaces/" + hashID
+	backend_url := "http://localhost:5000"
+	frontend_url := "http://localhost:3000"
+	env := config.Get("app.env")
+	host := config.Get("workspace.host")
+	if env == "production" {
+		url = fmt.Sprintf("https://%s.%s/?folder=/workspaces/%s", hashID, host, hashID)
+		backend_url = fmt.Sprintf("https://be-%s.%s", hashID, host)
+		frontend_url = fmt.Sprintf("https://fe-%s.%s", hashID, host)
+	}
+	project = &models.Project{
+		OrganisationID:    orgId,
+		Name:              requestData.Name,
+		BackendFramework:  requestData.Framework,
+		FrontendFramework: requestData.FrontendFramework,
+		Description:       requestData.Description,
+		HashID:            hashID,
+		Url:               url,
+		BackendURL:        backend_url,
+		FrontendURL:       frontend_url,
+	}
+
+	organisation, err := s.organisationRepository.GetOrganisationByID(uint(int(project.OrganisationID)))
+	spaceOrProjectName := s.gitnessService.GetSpaceOrProjectName(organisation)
+	repository, err := s.gitnessService.CreateRepository(spaceOrProjectName, project.Name, project.Description)
+	if err != nil {
+		s.logger.Error("Error creating repository", zap.Error(err))
+		return nil, err
+	}
+	httpPrefix := "https"
+
+	if config.AppEnv() == constants.Development {
+		httpPrefix = "http"
+	}
+
+	remoteGitURL := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
+	//Making Call to Workspace Service to create workspace on project level
+	_, err = s.workspaceServiceClient.ImportGitRepository(
+		&request.ImportGitRepository{
+			WorkspaceId:  hashID,
+			Repository:   requestData.Repository,
+			Username:     integrationDetails.GithubUserId,
+			Password:     integrationDetails.AccessToken,
+			RemoteURL:    remoteGitURL,
+			GitnessUser:  config.GitnessUser(),
+			GitnessToken: config.GitnessToken(),
+		},
+	)
+
+	if err != nil {
+		s.logger.Error("Error creating workspace", zap.Error(err))
+		return nil, err
+	}
+
+	//Enqueue job to delete workspace with updated delay
+	payloadBytes, err := json.Marshal(asynq_task.CreateDeleteWorkspaceTaskPayload{
+		WorkspaceID: project.HashID,
+	})
+	if err != nil {
+		s.logger.Error("Failed to marshal payload", zap.Error(err))
+		return nil, err
+	}
+	_, err = s.asynqClient.Enqueue(
+		asynq.NewTask(constants.DeleteWorkspaceTaskType, payloadBytes),
+		asynq.ProcessIn(constants.ProjectConnectionTTL+10*time.Minute),
+		asynq.MaxRetry(3),
+		asynq.TaskID("delete:fallback:"+project.HashID),
+	)
+
+	s.logger.Info("Project created successfully with repository", zap.Any("project", project), zap.Any("repository", repository))
+	return s.projectRepo.CreateProject(project)
 }
 
 func (s *ProjectService) CreateProject(organisationID int, requestData request.CreateProjectRequest) (*models.Project, error) {
@@ -314,21 +397,23 @@ func NewProjectService(projectRepo *repositories.ProjectRepository,
 	storyRepository *repositories.StoryRepository,
 	pullRequestRepository *repositories.PullRequestRepository,
 	workspaceServiceClient *workspace.WorkspaceServiceClient,
+	githubIntegrationService *integrations.GithubIntegrationService,
 	repo *repositories.ProjectConnectionsRepository,
 	asynqClient *asynq.Client,
 	logger *zap.Logger,
 ) *ProjectService {
 	return &ProjectService{
-		projectRepo:            projectRepo,
-		gitnessService:         gitnessService,
-		organisationRepository: organisationRepository,
-		storyRepository:        storyRepository,
-		pullRequestRepository:  pullRequestRepository,
-		workspaceServiceClient: workspaceServiceClient,
-		redisRepo:              repo,
-		hashIdGenerator:        utils.NewHashIDGenerator(5),
-		logger:                 logger.Named("ProjectService"),
-		asynqClient:            asynqClient,
+		projectRepo:              projectRepo,
+		gitnessService:           gitnessService,
+		organisationRepository:   organisationRepository,
+		storyRepository:          storyRepository,
+		pullRequestRepository:    pullRequestRepository,
+		workspaceServiceClient:   workspaceServiceClient,
+		redisRepo:                repo,
+		hashIdGenerator:          utils.NewHashIDGenerator(5),
+		logger:                   logger.Named("ProjectService"),
+		asynqClient:              asynqClient,
+		githubIntegrationService: githubIntegrationService,
 	}
 }
 

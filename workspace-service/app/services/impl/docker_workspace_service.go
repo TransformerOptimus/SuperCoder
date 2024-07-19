@@ -20,9 +20,94 @@ import (
 
 type DockerWorkspaceService struct {
 	services.WorkspaceService
-	workspaceServiceConfig       *workspaceconfig.WorkspaceServiceConfig
-	frontendWorkspaceConfig  *workspaceconfig.FrontendWorkspaceConfig
-	logger                 *zap.Logger
+	workspaceServiceConfig  *workspaceconfig.WorkspaceServiceConfig
+	frontendWorkspaceConfig *workspaceconfig.FrontendWorkspaceConfig
+	logger                  *zap.Logger
+}
+
+func (ws DockerWorkspaceService) ImportGitRepository(
+	workspaceId string,
+	repository string,
+	username string,
+	password string,
+	remoteURL string,
+	gitnessUser string,
+	gitnessToken string,
+) (details *dto.WorkspaceDetails, err error) {
+	exists, err := utils.CheckIfWorkspaceExists(workspaceId)
+	if err != nil {
+		ws.logger.Error("Failed to check if workspace exists", zap.Error(err))
+		return
+	}
+
+	if exists {
+		ws.logger.Info("Workspace already exists", zap.String("workspaceId", workspaceId))
+		return
+	}
+
+	workspaceDir := "/workspaces/" + workspaceId
+
+	repo, err := git.PlainClone(workspaceDir, false, &git.CloneOptions{
+		URL: repository,
+		Auth: &http.BasicAuth{
+			Username: username,
+			Password: password,
+		},
+	})
+
+	if err != nil {
+		ws.logger.Error("Failed to clone Git repository", zap.Error(err))
+		return
+	}
+
+	ws.logger.Info("Pushing changes to remote repository", zap.String("remoteURL", remoteURL))
+
+	_, err = repo.CreateRemote(&config.RemoteConfig{
+		Name: "gitness",
+		URLs: []string{remoteURL},
+	})
+	if err != nil {
+		ws.logger.Error("Failed to create remote", zap.Error(err))
+		return
+	}
+
+	auth := &http.BasicAuth{
+		Username: gitnessUser,
+		Password: gitnessToken,
+	}
+
+	err = repo.Push(&git.PushOptions{
+		RemoteName: "gitness",
+		Auth:       auth,
+		RefSpecs:   []config.RefSpec{"refs/heads/main:refs/heads/main"},
+	})
+
+	err = repo.DeleteRemote("gitness")
+	if err != nil {
+		ws.logger.Error("Failed to delete remote", zap.Error(err))
+		return
+	}
+
+	err = repo.DeleteRemote("origin")
+	if err != nil {
+		ws.logger.Error("Failed to delete remote", zap.Error(err))
+		return
+	}
+
+	workspaceUrl := "http://localhost:8081/?folder=/workspaces/" + workspaceId
+	frontendUrl := "http://localhost:3000"
+	backendUrl := "http://localhost:5000"
+
+	details = &dto.WorkspaceDetails{
+		WorkspaceId:      workspaceId,
+		BackendTemplate:  nil,
+		FrontendTemplate: nil,
+		WorkspaceUrl:     &workspaceUrl,
+		FrontendUrl:      &frontendUrl,
+		BackendUrl:       &backendUrl,
+	}
+
+	return
 }
 
 func (ws DockerWorkspaceService) CreateWorkspace(workspaceId string, backendTemplate string, frontendTemplate *string, remoteURL string, gitnessUser string, gitnessToken string) (*dto.WorkspaceDetails, error) {
@@ -225,7 +310,7 @@ func (ws DockerWorkspaceService) checkAndCreateFrontendWorkspaceFromTemplate(sto
 		ws.logger.Info("Workspace already exists", zap.String("workspaceId", workspaceId), zap.String("storyHashId", storyHashId))
 		return nil
 	}
-	if !exists{
+	if !exists {
 		ws.logger.Info("Creating workspace from template", zap.String("workspaceId", workspaceId), zap.String("frontendTemplate", frontendTemplate), zap.String("storyHashId", storyHashId))
 		err = os.MkdirAll(frontendPath, os.ModePerm)
 		if err != nil {

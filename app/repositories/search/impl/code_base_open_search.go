@@ -1,6 +1,7 @@
-package repositories
+package impl
 
 import (
+	"ai-developer/app/repositories/search"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,15 +18,15 @@ type CodeBaseOpenSearchRepository struct {
 	index  string
 }
 
-func NewCodeBaseOpenSearchRepository(client *opensearch.Client, logger *zap.Logger) *CodeBaseOpenSearchRepository {
-	return &CodeBaseOpenSearchRepository{
+func NewCodeBaseOpenSearchRepository(client *opensearch.Client, logger *zap.Logger) search.CodeBaseSearchRepository {
+	return CodeBaseOpenSearchRepository{
 		client: client,
 		logger: logger.Named("CodeBaseOpenSearchRepository"),
 		index:  "codebase",
 	}
 }
 
-func (r *CodeBaseOpenSearchRepository) IndexDocument(ctx context.Context, document interface{}) error {
+func (r CodeBaseOpenSearchRepository) IndexDocument(ctx context.Context, document interface{}) error {
 	body, err := json.Marshal(document)
 	if err != nil {
 		return err
@@ -55,7 +56,7 @@ func (r *CodeBaseOpenSearchRepository) IndexDocument(ctx context.Context, docume
 	return nil
 }
 
-func (r *CodeBaseOpenSearchRepository) Search(ctx context.Context, query interface{}) ([]interface{}, error) {
+func (r CodeBaseOpenSearchRepository) Search(ctx context.Context, query interface{}) ([]interface{}, error) {
 	body, err := json.Marshal(query)
 	if err != nil {
 		return nil, err

@@ -12,6 +12,7 @@ import (
 	"ai-developer/app/models"
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
+	"ai-developer/app/repositories/search/impl"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
 	"ai-developer/app/services/s3_providers"
@@ -160,7 +161,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(repositories.NewCodeBaseOpenSearchRepository)
+	err = c.Provide(impl.NewCodeBaseOpenSearchRepository)
 	if err != nil {
 		panic(err)
 	}

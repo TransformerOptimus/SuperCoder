@@ -1,15 +1,15 @@
 package services
 
 import (
-	"ai-developer/app/repositories"
+	"ai-developer/app/repositories/search"
 	"context"
 )
 
 type CodeBaseSearchService struct {
-	codeFullTextSearchRepository *repositories.CodeBaseOpenSearchRepository
+	codeFullTextSearchRepository search.CodeBaseSearchRepository
 }
 
-func NewCodeBaseSearchService(codeFullTextSearchRepository *repositories.CodeBaseOpenSearchRepository) *CodeBaseSearchService {
+func NewCodeBaseSearchService(codeFullTextSearchRepository search.CodeBaseSearchRepository) *CodeBaseSearchService {
 	return &CodeBaseSearchService{codeFullTextSearchRepository: codeFullTextSearchRepository}
 }
 

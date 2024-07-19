@@ -336,6 +336,7 @@ func main() {
 			openAiNextJsCodeGenerator *impl.OpenAiNextJsCodeGenerator,
 			updateCodeFileExecutor *impl.NextJsUpdateCodeFileExecutor,
 			serverStartExecutor *impl.NextJsServerStartTestExecutor,
+			gitMakeBranchExecutor *impl.GitMakeBranchExecutor,
 		) map[steps.StepName]step_executors.StepExecutor {
 			return map[steps.StepName]step_executors.StepExecutor{
 				steps.CODE_GENERATE_CSS_STEP:       *openAiNextJsCodeGenerator,
@@ -347,6 +348,7 @@ func main() {
 				steps.SERVER_START_STEP:            *serverStartExecutor,
 				steps.RETRY_CODE_GENERATE_STEP:     *openAiNextJsCodeGenerator,
 				steps.UPDATE_CODE_FILE_STEP:        *updateCodeFileExecutor,
+				steps.GIT_CREATE_BRANCH_STEP:       *gitMakeBranchExecutor,
 			}
 		})
 	}

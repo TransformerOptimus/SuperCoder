@@ -22,8 +22,6 @@ const SocketContext = createContext<SocketContextProps>({
   disconnectSocket: () => {},
 });
 
-export const useSocket = () => useContext(SocketContext);
-
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -42,7 +40,10 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
         ? 'wss://developer.superagi.com'
         : 'ws://localhost:8080';
 
-    const socketInstance = io(socketUrl, { transports: ['websocket'], path:'/api/socket.io' });
+    const socketInstance = io(socketUrl, {
+      transports: ['websocket'],
+      path: '/api/socket.io',
+    });
 
     socketInstance.on('connect', () => {
       console.log('Connected to websocket server');
@@ -73,6 +74,34 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
+  const connectSocketTerminal = () => {
+    const token = Cookies.get('accessToken');
+    if (!token) {
+      console.error('No access token found');
+      return;
+    }
+    const socketUrl =
+      process.env.NODE_ENV === 'production'
+        ? 'wss://developer.superagi.com/api/terminal?EIO=4&transport=websocket'
+        : 'ws://localhost:8084/api/terminal?EIO=4&transport=websocket';
+    const socketInstance = new WebSocket(socketUrl);
+
+    socketInstance.onopen = () => {
+      console.log('Connected to websocket terminal server');
+      setSocket(socketInstance);
+      socketRef.current = socketInstance;
+    };
+
+    socketInstance.onclose = (event) => {
+      console.log('Disconnected from websocket terminal server', event.reason);
+      setSocket(null);
+    };
+
+    socketInstance.onerror = (error) => {
+      console.error('Socket error:', error);
+    };
+  };
+
   const disconnectSocket = () => {
     if (socketRef.current) {
       socketRef.current.disconnect();
@@ -82,6 +111,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     connectSocket();
+    connectSocketTerminal();
     return () => {
       disconnectSocket();
     };

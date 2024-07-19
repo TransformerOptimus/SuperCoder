@@ -14,6 +14,7 @@ import { Button } from '@nextui-org/react';
 import CustomTag from '@/components/CustomTag/CustomTag';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
 import TestCases from '@/components/StoryComponents/TestCases';
+import IssueContainer from '@/components/StoryComponents/InReviewIssue';
 import {
   handleInProgressStoryStatus,
   handleStoryStatus,
@@ -271,57 +272,13 @@ export default function StoryDetails({
         )}
         {id !== 'workbench' &&
           storyDetails.status === storyStatus.IN_REVIEW && (
-            <div
-              className={`${styles.issue_container} m-4 flex flex-row gap-2 rounded-lg p-3`}
-            >
-              <CustomImage
-                className={'mt-[2px] size-5'}
-                src={imagePath.overviewWarningYellow}
-                alt={'error_icon'}
-              />
-
-              <div
-                id={'in_review_description'}
-                className={'proxima_nova flex flex-col gap-2 text-white'}
-              >
-                <span id={'issue_title'} className={'text-base font-medium'}>
-                  {issue?.title}
-                </span>
-
-                <span
-                  id={'issue_description'}
-                  className={'text-sm font-normal opacity-80'}
-                >
-                  {issue?.description}
-                </span>
-
-                <div
-                  id={'issue_action_buttons'}
-                  className={'my-2 flex flex-row gap-2'}
-                >
-                  {issue?.actions?.length > 0 &&
-                    issue.actions.map((action, index) => (
-                      <Button
-                        key={index}
-                        onClick={() => {
-                          if (action.link === storyActions.REBUILD) {
-                            handleMoveToInProgressClick().then().catch();
-                          } else {
-                            router.push(action.link);
-                          }
-                        }}
-                        className={
-                          action.label === storyActions.REBUILD
-                            ? 'primary_medium'
-                            : 'light_medium'
-                        }
-                      >
-                        {action.label}
-                      </Button>
-                    ))}
-                </div>
-              </div>
-            </div>
+            <IssueContainer
+              title={issue?.title}
+              description={issue?.description}
+              actions={issue?.actions || []}
+              imagePath={imagePath}
+              handleMoveToInProgressClick={handleMoveToInProgressClick}
+            />
           )}
 
         <div id={'story_details_body'} className={tabCSS}>

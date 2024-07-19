@@ -4,13 +4,26 @@ import {
   getLLMAPIKeys,
   getProjectPullRequests,
 } from '@/api/DashboardService';
-import { removeCookie } from '@/utils/CookieUtils';
+import { removeCookie, setCookie } from '@/utils/CookieUtils';
 import { ProjectTypes } from '../../types/projectsTypes';
 import toast from 'react-hot-toast';
 import { storyStatus, storyActions } from '@/app/constants/BoardConstants';
 import { Servers } from '@/app/constants/UtilsConstants';
 import { StoryInReviewIssue } from '../../types/storyTypes';
 import { DesignStoryInReviewIssue } from '../../types/designStoryTypes';
+import { useRouter } from 'next/navigation';
+import { userData } from '../../types/authTypes';
+
+export const setUserData = (data: userData) => {
+  if (typeof window !== 'undefined') {
+    setCookie('accessToken', data.accessToken);
+    localStorage.setItem('userName', data.userName);
+    localStorage.setItem('userEmail', data.userEmail);
+    if (window.clarity) {
+      window.clarity('set', 'User Email', data.userEmail);
+    }
+  }
+};
 
 export const logout = () => {
   if (typeof window !== 'undefined') {
@@ -25,7 +38,6 @@ export const logout = () => {
     localStorage.removeItem('projectURLBackend');
     localStorage.removeItem('projectName');
     localStorage.removeItem('storyId');
-    localStorage.removeItem('organisationId');
     localStorage.removeItem('projectFrontendFramework');
   }
 
@@ -157,8 +169,7 @@ export function setProjectDetails(project: ProjectTypes) {
 
 export async function checkModelNotAdded(id: string) {
   try {
-    const organisation_id = localStorage.getItem('organisationId');
-    const response = await getLLMAPIKeys(organisation_id);
+    const response = await getLLMAPIKeys();
     if (response) {
       const data = response.data;
       if (Array.isArray(data)) {
@@ -171,6 +182,11 @@ export async function checkModelNotAdded(id: string) {
     console.error('Error while fetching LLM API Keys: ', error);
     return true;
   }
+}
+
+export function validateEmail(email: string) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
 }
 
 export function handleStoryInReviewIssue(data: {

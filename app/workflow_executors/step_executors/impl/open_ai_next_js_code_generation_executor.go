@@ -184,7 +184,6 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 		}
 		return err
 	}
-	//fmt.Printf("_________Generated Code__________: %s\n", code)
 
 	if err = openAiCodeGenerator.executionStepService.UpdateExecutionStepResponse(
 		step.ExecutionStep,
@@ -236,8 +235,6 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildFinalInstructionForGe
 			return nil, err
 		}
 	}
-	// Print the final instruction
-	//fmt.Println("___Final Instruction:___", finalInstruction["existingCode"])
 	return finalInstruction, nil
 }
 
@@ -264,7 +261,6 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 
 	filePath := filepath.Join(storyDir, "app", step.File)
 	code, err := os.ReadFile(filePath)
-	// code, err := openAiCodeGenerator.getFilesContent(storyDir)
 	if err != nil {
 		return nil, err
 	}

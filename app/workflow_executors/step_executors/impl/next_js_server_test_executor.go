@@ -69,7 +69,6 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 	}
 
 	buildLogs, err := e.serverRunTest(codeFolder, step.ExecutionStep.ExecutionID, step.ExecutionStep.ID, step.Story.HashID, step.Project.HashID)
-	//fmt.Println("___BUILD LOGS____: ", buildLogs)
 	if err != nil {
 		return err
 	}
@@ -212,7 +211,6 @@ func (e NextJsServerStartTestExecutor) CheckBuildResponse(response map[string]in
 
 func (e NextJsServerStartTestExecutor) CreateMessage(buildLogs string, directoryPlan string) ([]llms.ClaudeChatCompletionMessage, error) {
 	content, err := os.ReadFile("/go/prompts/nextjs/next_js_build_checker.txt")
-	//fmt.Println("____build logs in create msg function___", buildLogs)
 	modifiedContent := strings.Replace(string(content), "{{BUILD_LOGS}}", buildLogs, -1)
 	modifiedContent = strings.Replace(string(modifiedContent), "{{DIRECTORY_STRUCTURE}}", directoryPlan, -1)
 	if err != nil {

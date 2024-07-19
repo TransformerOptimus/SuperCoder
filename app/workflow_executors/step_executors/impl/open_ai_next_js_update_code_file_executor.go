@@ -67,7 +67,6 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 		return err
 	}
 	if step.Retry {
-		//fmt.Println("___Response to UpdateCodeFile___ \n", response)
 		err = e.UpdateReGeneratedCodeFile(response, step)
 		if err != nil {
 			fmt.Println("Error updating regenerated code: ", err.Error())

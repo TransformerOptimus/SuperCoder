@@ -489,7 +489,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instructio
 	claudeClient := llms.NewClaudeClient(apiKey)
 	response, err := claudeClient.ChatCompletion(messages)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate code from OpenAI API: %w", err)
+		return "", fmt.Errorf("failed to generate code from llm: %w", err)
 	}
 	return response, nil
 }

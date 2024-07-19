@@ -177,8 +177,8 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 	claudeClient:= llms.NewClaudeClient(apiKey)
 	response, err := claudeClient.ChatCompletion(messages)
 	if err != nil {
-		fmt.Println("failed to generate code from OpenAI API")
-		return false, nil, fmt.Errorf("failed to generate code from OpenAI API: %w", err)
+		fmt.Println("failed to generate code from llm")
+		return false, nil, fmt.Errorf("failed to generate code from llm: %w", err)
 	}
 	var jsonResponse map[string]interface{}
 	if err = json.Unmarshal([]byte(response), &jsonResponse); err != nil {

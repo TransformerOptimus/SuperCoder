@@ -39,7 +39,11 @@ func (lfs LocalFileStore) CreateFileFromContent(path string, content []byte) (er
 		return
 	}
 	err = os.WriteFile(filePath, content, 0644)
-	return
+	if err!= nil {
+        fmt.Println("Failed to write file", err)
+        return err
+    }
+	return nil
 }
 
 func (lfs LocalFileStore) ReadFile(path string) (content io.ReadCloser, err error) {
@@ -53,7 +57,7 @@ func (lfs LocalFileStore) ReadFile(path string) (content io.ReadCloser, err erro
 		return
 	}
 	content = io.NopCloser(bytes.NewReader(fileContent))
-	return
+	return content, nil
 }
 
 func (lfs LocalFileStore) DeleteFile(path string) (err error) {
@@ -62,7 +66,7 @@ func (lfs LocalFileStore) DeleteFile(path string) (err error) {
 		return
 	}
 	err = os.Remove(filePath)
-	return
+	return nil
 }
 
 func NewLocalFileStore(fileStoreConfig *config.FileStoreConfig, logger *zap.Logger) filestore.FileStore {

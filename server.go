@@ -97,12 +97,15 @@ func main() {
 		awsSession *session.Session,
 		logger *zap.Logger,
 	) filestore.FileStore {
-		if storeConfig.GetFileStoreType() == "s3" {
-			s3fs := impl.NewS3FileSystem(awsSession, storeConfig, logger)
-			return s3fs
-		} else {
+		if storeConfig.GetFileStoreType() == "local" {
+			fmt.Println("____using local_____")
 			lfs := impl.NewLocalFileStore(storeConfig, logger)
 			return lfs
+		} else {
+			fmt.Println("____using s3_____")
+			fmt.Println("aws_session_____", awsSession, "\nstoreConfig______", storeConfig, "\naws_config_____", awsConfig)
+			s3fs := impl.NewS3FileSystem(awsSession, storeConfig, logger)
+			return s3fs
 		}
 	}); err != nil {
 		config.Logger.Error("Error providing FileStore", zap.Error(err))

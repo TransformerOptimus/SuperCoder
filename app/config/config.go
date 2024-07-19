@@ -36,7 +36,7 @@ func LoadConfig() (*koanf.Koanf, error) {
 		"filestore": map[string]interface{}{
 			"type": "local",
 			"local": map[string]interface{}{
-				"dir": "/tmp",
+				"dir": "/filestore",
 			},
 		},
 		"aws": map[string]interface{}{

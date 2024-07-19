@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -16,6 +18,7 @@ func (ac *AWSConfig) AccessKeyID() *string {
 	if accessKeyId == "" {
 		return nil
 	} else {
+		fmt.Println("____Access Key ID____", accessKeyId)
 		return &accessKeyId
 	}
 }
@@ -25,11 +28,13 @@ func (ac *AWSConfig) SecretAccessKey() *string {
 	if secretAccessKey == "" {
 		return nil
 	} else {
+		fmt.Println("____secret access key____", secretAccessKey)
 		return &secretAccessKey
 	}
 }
 
 func (ac *AWSConfig) Region() string {
+	fmt.Println("_____aws region____", ac.config.String("aws.region"))
 	return ac.config.String("aws.region")
 }
 

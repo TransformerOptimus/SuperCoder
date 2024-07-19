@@ -32,7 +32,7 @@ func (s3fs S3FileStore) getFilePath(path string) (filePath string, err error) {
 func (s3fs S3FileStore) CreateFileFromContent(path string, content []byte) (err error) {
 	filePath, err := s3fs.getFilePath(path)
 	if err != nil {
-		return
+		return err
 	}
 	_, err = s3fs.s3Client.PutObject(&s3.PutObjectInput{
 		Key:    aws.String(filePath),
@@ -43,13 +43,13 @@ func (s3fs S3FileStore) CreateFileFromContent(path string, content []byte) (err 
 		s3fs.logger.Error("Failed to put object", zap.Error(err))
 		return err
 	}
-	return
+	return nil
 }
 
 func (s3fs S3FileStore) ReadFile(path string) (content io.ReadCloser, err error) {
 	filePath, err := s3fs.getFilePath(path)
 	if err != nil {
-		return
+		return nil, err
 	}
 	output, err := s3fs.s3Client.GetObject(&s3.GetObjectInput{
 		Key:    aws.String(filePath),
@@ -57,16 +57,16 @@ func (s3fs S3FileStore) ReadFile(path string) (content io.ReadCloser, err error)
 	})
 	if err != nil {
 		s3fs.logger.Error("Failed to get object", zap.Error(err))
-		return
+		return nil, err
 	}
 	content = output.Body
-	return
+	return content, nil
 }
 
 func (s3fs S3FileStore) DeleteFile(path string) (err error) {
 	filePath, err := s3fs.getFilePath(path)
 	if err != nil {
-		return
+		return err
 	}
 	_, err = s3fs.s3Client.DeleteObject(&s3.DeleteObjectInput{
 		Key:    aws.String(filePath),
@@ -74,9 +74,9 @@ func (s3fs S3FileStore) DeleteFile(path string) (err error) {
 	})
 	if err != nil {
 		s3fs.logger.Error("Failed to delete object", zap.Error(err))
-		return
+		return err
 	}
-	return
+	return nil
 }
 
 func NewS3FileSystem(

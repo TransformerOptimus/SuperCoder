@@ -18,7 +18,7 @@ export default function Browser({
   return (
     <div
       id={'browser'}
-      className={'flex w-full flex-col gap-[6px] border-none'}
+      className={'flex w-full flex-col gap-1 border-none p-2'}
     >
       {showUrl && (
         <CustomInput
@@ -31,9 +31,9 @@ export default function Browser({
         />
       )}
       <div
-        className={'relative w-full overflow-hidden'}
+        className={'relative w-full overflow-hidden px-8'}
         style={{
-          height: showUrl ? 'calc(30vh)' : 'calc(35vh)',
+          height: showUrl ? 'calc(33vh)' : 'calc(35vh)',
         }}
       >
         <iframe

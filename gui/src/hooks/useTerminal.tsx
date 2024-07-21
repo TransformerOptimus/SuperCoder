@@ -42,11 +42,11 @@ export const useTerminal = () => {
 
       xtermRef.current = xterm;
 
-      xterm.prompt = () => {
+      const prompt = () => {
         xterm.write('\r\n$ ');
       };
 
-      xterm.prompt();
+      prompt();
 
       window.addEventListener('resize', fitAddon.fit);
 

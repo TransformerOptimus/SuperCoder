@@ -193,7 +193,7 @@ export default function LandingPage() {
         <div className={styles.gradient_effect} />
 
         <CustomImage
-          className={'h-[232px] w-[390px]'}
+          className={'mt-14 h-[232px] w-[390px]'}
           src={imagePath.supercoderImage}
           alt={'super_coder_image'}
         />

@@ -9,17 +9,23 @@ import {
   getStoryById,
   updateStoryStatus,
 } from '@/api/DashboardService';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@nextui-org/react';
 import CustomTag from '@/components/CustomTag/CustomTag';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
 import TestCases from '@/components/StoryComponents/TestCases';
-import { handleInProgressStoryStatus, handleStoryStatus } from '@/app/utils';
+import IssueContainer from '@/components/StoryComponents/InReviewIssue';
+import {
+  handleInProgressStoryStatus,
+  handleStoryStatus,
+  handleStoryInReviewIssue,
+} from '@/app/utils';
 import { useRouter } from 'next/navigation';
 import { StoryDetailsProps } from '../../../types/storyTypes';
 import {
   showStoryDetailsDropdown,
   storyStatus,
+    storyActions,
 } from '@/app/constants/BoardConstants';
 import { useBoardContext } from '@/context/Boards';
 import toast from 'react-hot-toast';
@@ -46,6 +52,21 @@ export default function StoryDetails({
     setEditTrue,
   } = useBoardContext();
   const router = useRouter();
+
+  const [issue, setIssue] = useState<StoryInReviewIssue | null>({
+    title: null,
+    description: null,
+    actions: [],
+  });
+
+  const resetIssue = () => {
+    setIssue({
+      title: null,
+      description: null,
+      actions: [],
+    });
+  };
+
   const tabOptions = [
     {
       key: 'overview',
@@ -131,9 +152,17 @@ export default function StoryDetails({
         setStoryOverview(data.story.overview);
         setStoryTestCases(data.story.test_cases);
         setStoryInstructions(data.story.instructions);
+
+        if (data.story.status === storyStatus.IN_REVIEW) {
+          const issue = handleStoryInReviewIssue(data);
+          setIssue(issue);
+        } else {
+          resetIssue();
+        }
       }
     } catch (error) {
       console.error('Error while fetching story by id:: ', error);
+      resetIssue();
     }
   }
 
@@ -237,6 +266,16 @@ export default function StoryDetails({
             </div>
           </div>
         )}
+        {id !== 'workbench' &&
+          storyDetails.status === storyStatus.IN_REVIEW && (
+            <IssueContainer
+              title={issue?.title}
+              description={issue?.description}
+              actions={issue?.actions || []}
+              imagePath={imagePath}
+              handleMoveToInProgressClick={handleMoveToInProgressClick}
+            />
+          )}
 
         <div id={'story_details_body'} className={tabCSS}>
           <CustomTabs

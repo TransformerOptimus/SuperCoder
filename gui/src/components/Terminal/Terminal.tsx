@@ -7,8 +7,8 @@ const TerminalComponent: React.FC = () => {
   return (
     <div
       ref={terminalRef}
-      className={'w-full'}
-      style={{ height: 'calc(100vh - 546px)' }}
+      className={'w-full overflow-hidden rounded-b-lg'}
+      style={{ height: 'calc(100vh - 532px)' }}
     />
   );
 };

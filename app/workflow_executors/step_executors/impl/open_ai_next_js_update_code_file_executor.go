@@ -10,13 +10,11 @@ import (
 	"os"
 	"strings"
 	"go.uber.org/zap"
-	"go.uber.org/zap"
 )
 
 type NextJsUpdateCodeFileExecutor struct {
 	executionStepService *services.ExecutionStepService
 	activityLogService   *services.ActivityLogService
-	logger               *zap.Logger
 	logger               *zap.Logger
 }
 
@@ -24,12 +22,10 @@ func NewNextJsUpdateCodeFileExecutor(
 	executionStepService *services.ExecutionStepService,
 	activeLogService *services.ActivityLogService,
 	logger *zap.Logger,
-	logger *zap.Logger,
 ) *NextJsUpdateCodeFileExecutor {
 	return &NextJsUpdateCodeFileExecutor{
 		executionStepService: executionStepService,
 		activityLogService:   activeLogService,
-		logger: 			  logger,
 		logger: 			  logger,
 	}
 }

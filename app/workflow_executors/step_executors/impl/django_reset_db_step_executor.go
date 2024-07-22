@@ -42,7 +42,7 @@ func (e ResetDjangoDBStepExecutor) Execute(step steps.ResetDBStep) error {
 
 	// Remove the SQLite database file if it exists
 	dbPath := filepath.Join(projectDir, "db.sqlite3")
-	if err := e.removeFile(dbPath); err != nil {
+	if err := utils.RemoveFile(dbPath); err != nil {
 		e.logger.Error("Error removing database file", zap.Error(err))
 		return err
 	}
@@ -79,18 +79,6 @@ func (e ResetDjangoDBStepExecutor) Execute(step steps.ResetDBStep) error {
 	}
 
 	e.logger.Info("Django DB reset successfully!")
-	return nil
-}
-
-func (e ResetDjangoDBStepExecutor) removeFile(filePath string) error {
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		e.logger.Info("File does not exist", zap.String("file", filePath))
-		return nil
-	}
-	if err := os.Remove(filePath); err != nil {
-		e.logger.Error("Error removing file", zap.String("file", filePath), zap.Error(err))
-		return err
-	}
 	return nil
 }
 

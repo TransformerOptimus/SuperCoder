@@ -542,7 +542,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetMessages(systemPrompt s
 				},
 				{
 					Type: "text",
-					Text: fmt.Sprintf("User Feedback: %s", instruction["feedback"]),
+					Text: fmt.Sprintf("User Feedback: %s", "use react hook form for handling form inputs and validations"),
 				},
 			},
 		},

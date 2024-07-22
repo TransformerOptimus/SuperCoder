@@ -9,20 +9,24 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"go.uber.org/zap"
 )
 
 type NextJsUpdateCodeFileExecutor struct {
 	executionStepService *services.ExecutionStepService
 	activityLogService   *services.ActivityLogService
+	logger               *zap.Logger
 }
 
 func NewNextJsUpdateCodeFileExecutor(
 	executionStepService *services.ExecutionStepService,
 	activeLogService *services.ActivityLogService,
+	logger *zap.Logger,
 ) *NextJsUpdateCodeFileExecutor {
 	return &NextJsUpdateCodeFileExecutor{
 		executionStepService: executionStepService,
 		activityLogService:   activeLogService,
+		logger: 			  logger,
 	}
 }
 
@@ -224,7 +228,7 @@ func (e *NextJsUpdateCodeFileExecutor) InsertCode(filePath string, lineNumber in
 }
 
 func (e NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName string, step steps.UpdateCodeFileStep) error {
-	fmt.Printf("____updating file %s_____", fileName)
+	e.logger.Info("_____Updating file_____ %s", zap.String("fileName", fileName))
 	if strings.HasPrefix(llmResponse, "```") {
 		llmResponse = llmResponse[3:] // Remove the first 3 characters (```)
 		lines := strings.Split(llmResponse, "\n")

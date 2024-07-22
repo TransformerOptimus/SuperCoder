@@ -165,7 +165,6 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	}
 
 	h.logger.Info("Payload for create job request", zap.Any("createJobRequest", createJobRequest))
-	fmt.Println("__payload_____12july", createJobRequest)
 
 	job, err := h.workspaceServiceClient.CreateJob(createJobRequest)
 	if err != nil {
@@ -174,26 +173,19 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 		return err
 	}
 
-	if payload.ReExecute{
+	if payload.ReExecute {
 		err = h.activityLogService.CreateActivityLogWithTx(tx, execution.ID, executionStep.ID, "INFO", fmt.Sprintf("Rebuilding %s story...", story.Type))
 		if err != nil {
 			tx.Rollback()
 			h.logger.Error("Error creating activity log", zap.Error(err))
 			return err
 		}
-		err = h.activityLogService.CreateActivityLogWithTx(tx, execution.ID, executionStep.ID, "INFO", fmt.Sprintf("Initializing Workspace for automated %s development...", story.Type))
-		if err != nil {
-			tx.Rollback()
-			h.logger.Error("Error creating activity log", zap.Error(err))
-			return err
-		}
-	} else {
-		err = h.activityLogService.CreateActivityLogWithTx(tx, execution.ID, executionStep.ID, "INFO",fmt.Sprintf("Initializing Workspace for automated %s development...", story.Type))
-		if err != nil {
-			tx.Rollback()
-			h.logger.Error("Error creating activity log", zap.Error(err))
-			return err
-		}
+	}
+	err = h.activityLogService.CreateActivityLogWithTx(tx, execution.ID, executionStep.ID, "INFO",fmt.Sprintf("Initializing Workspace for automated %s development...", story.Type))
+	if err != nil {
+		tx.Rollback()
+		h.logger.Error("Error creating activity log", zap.Error(err))
+		return err
 	}
 
 	if err := tx.Commit().Error; err != nil {

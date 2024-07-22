@@ -208,7 +208,6 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
             title={issue?.title}
             description={issue?.description}
             actions={issue?.actions || []}
-            imagePath={imagePath}
             handleMoveToInProgressClick={handleMoveToInProgressClick}
           />
         )}

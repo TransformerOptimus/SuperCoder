@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"log"
 )
 
 func WriteToFile(filename string, content []string) error {
@@ -24,6 +25,18 @@ func WriteToFile(filename string, content []string) error {
 	fmt.Println("Content : ", strings.Join(content, "\n"))
 	if err != nil {
 		return fmt.Errorf("failed to write to file: %w", err)
+	}
+	return nil
+}
+
+func RemoveFile(filePath string) error {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		log.Println("File does not exist", filePath)
+		return nil
+	}
+	if err := os.Remove(filePath); err != nil {
+		log.Println("Error removing file: ", filePath, err)
+		return err
 	}
 	return nil
 }

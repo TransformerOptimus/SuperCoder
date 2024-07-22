@@ -4,27 +4,14 @@ import CustomImage from '@/components/ImageComponents/CustomImage';
 import styles from './story.module.css';
 import { useRouter } from 'next/navigation';
 import { storyActions } from '@/app/constants/BoardConstants';
-
-interface Action {
-  label: string;
-  link: string;
-}
-
-interface IssueContainerProps {
-  title: string | null;
-  description: string | null;
-  actions: Action[];
-  imagePath: {
-    overviewWarningYellow: string;
-  };
-  handleMoveToInProgressClick: () => Promise<void>;
-}
+import imagePath from '@/app/imagePath';
+import { IssueContainerProps } from '../../../types/storyTypes';
 
 const IssueContainer: React.FC<IssueContainerProps> = ({
   title,
   description,
   actions,
-  imagePath,
+  image = imagePath.overviewWarningYellow,
   handleMoveToInProgressClick,
 }) => {
   const router = useRouter();
@@ -35,7 +22,7 @@ const IssueContainer: React.FC<IssueContainerProps> = ({
     >
       <CustomImage
         className={'mt-[2px] size-5'}
-        src={imagePath.overviewWarningYellow}
+        src={image}
         alt={'error_icon'}
       />
 

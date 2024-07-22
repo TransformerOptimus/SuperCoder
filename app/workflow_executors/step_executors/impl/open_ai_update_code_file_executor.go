@@ -96,7 +96,7 @@ func (e UpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) error {
 		}
 	}
 
-	err = e.activityLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", "Updated code files.")
+	err = e.activityLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", "Updated code files")
 	if err != nil {
 		fmt.Println("Error creating activity log" + err.Error())
 		return err

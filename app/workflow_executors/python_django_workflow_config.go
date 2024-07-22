@@ -13,6 +13,20 @@ var DjangoWorkflowConfig = &WorkflowConfig{
 			steps.GIT_CREATE_BRANCH_STEP: {
 				Step: &steps.GitMakeBranchStep{},
 				Transitions: map[graph.ExecutionState]*steps.StepName{
+					graph.ExecutionSuccessState: &steps.PACKAGE_INSTALL_STEP,
+					graph.ExecutionErrorState:   nil,
+				},
+			},
+			steps.PACKAGE_INSTALL_STEP: {
+				Step: &steps.PackageInstallStep{},
+				Transitions: map[graph.ExecutionState]*steps.StepName{
+					graph.ExecutionSuccessState: &steps.RESET_DB_STEP,
+					graph.ExecutionErrorState:   nil,
+				},
+			},
+			steps.RESET_DB_STEP: {
+				Step: &steps.ResetDBStep{},
+				Transitions: map[graph.ExecutionState]*steps.StepName{
 					graph.ExecutionSuccessState: &steps.CODE_GENERATE_STEP,
 					graph.ExecutionErrorState:   nil,
 				},
@@ -36,7 +50,6 @@ var DjangoWorkflowConfig = &WorkflowConfig{
 					graph.ExecutionErrorState:   nil,
 				},
 			},
-
 			steps.UPDATE_CODE_FILE_STEP: {
 				Step: &steps.UpdateCodeFileStep{},
 				Transitions: map[graph.ExecutionState]*steps.StepName{
@@ -44,7 +57,6 @@ var DjangoWorkflowConfig = &WorkflowConfig{
 					graph.ExecutionErrorState:   nil,
 				},
 			},
-
 			steps.SERVER_START_STEP: {
 				Step: &steps.ServerStartTestStep{},
 				Transitions: map[graph.ExecutionState]*steps.StepName{
@@ -53,7 +65,6 @@ var DjangoWorkflowConfig = &WorkflowConfig{
 					graph.ExecutionErrorState:   nil,
 				},
 			},
-
 			steps.GIT_COMMIT_STEP: {
 				Step: &steps.GitCommitStep{},
 				Transitions: map[graph.ExecutionState]*steps.StepName{
@@ -61,7 +72,6 @@ var DjangoWorkflowConfig = &WorkflowConfig{
 					graph.ExecutionErrorState:   nil,
 				},
 			},
-
 			steps.GIT_PUSH_STEP: {
 				Step: &steps.GitPushStep{},
 				Transitions: map[graph.ExecutionState]*steps.StepName{
@@ -69,7 +79,6 @@ var DjangoWorkflowConfig = &WorkflowConfig{
 					graph.ExecutionErrorState:   nil,
 				},
 			},
-
 			steps.GIT_CREATE_PULL_REQUEST_STEP: {
 				Step: &steps.GitMakePullRequestStep{},
 				Transitions: map[graph.ExecutionState]*steps.StepName{

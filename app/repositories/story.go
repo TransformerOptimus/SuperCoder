@@ -3,7 +3,9 @@ package repositories
 import (
 	"ai-developer/app/constants"
 	"ai-developer/app/models"
+	"errors"
 	"fmt"
+
 	"gorm.io/gorm"
 )
 
@@ -64,6 +66,9 @@ func (receiver *StoryRepository) GetStoryByProjectIdAndStatus(projectId int, sta
 	var story models.Story
 	err := receiver.db.Where("project_id = ? AND status = ? AND is_deleted = ?", projectId, status, false).First(&story).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &story, nil
@@ -154,6 +159,15 @@ func (receiver *StoryRepository) UpdateStoryStatusWithTx(tx *gorm.DB, storyID in
 		return err
 	}
 	return nil
+}
+
+func (receiver *StoryRepository) GetProjectIdByStoryID(storyID int) (int, error) {
+    var projectID int
+    err := receiver.db.Model(&models.Story{}).Select("project_id").Where("id = ? AND is_deleted = ?", storyID, false).Scan(&projectID).Error
+    if err != nil {
+        return 0, err
+    }
+    return projectID, nil
 }
 
 func NewStoryRepository(db *gorm.DB) *StoryRepository {

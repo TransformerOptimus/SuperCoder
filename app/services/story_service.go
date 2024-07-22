@@ -517,6 +517,7 @@ func (s *StoryService) GetInProgressStoriesByProjectId(projectId int) ([]*respon
 func (s *StoryService) UpdateStoryStatusByUser(storyID int, status string) error {
 	s.logger.Info("Updating story status by user", zap.Int("storyID", storyID), zap.String("status", status))
 	story, err := s.GetStoryById(int64(storyID))
+	projectID, err := s.storyRepo.GetProjectIdByStoryID(storyID)
 	if err != nil {
 		s.logger.Error("Error fetching story", zap.Error(err))
 		return types.ErrInvalidStory
@@ -531,6 +532,15 @@ func (s *StoryService) UpdateStoryStatusByUser(storyID int, status string) error
 		return types.ErrInvalidStatus
 	}
 
+	existingStoryInProgress, err := s.GetStoryByProjectIdAndStatus(projectID, constants.InProgress)
+	if err != nil {
+		s.logger.Error("Error fetching story", zap.Error(err))
+        return err
+	}
+	if existingStoryInProgress!= nil {
+        s.logger.Error("Another story is already in progress.")
+        return errors.New("another story is already in progress!")
+    }
 	//Check if valid transition
 	if status == constants.InProgress {
 		if story.Status == constants.Todo || story.Status == constants.InReview || story.Status == constants.MaxLoopIterationReached ||

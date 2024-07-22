@@ -6,6 +6,7 @@ import (
 	"ai-developer/app/llms"
 	"ai-developer/app/models"
 	"ai-developer/app/models/types"
+	"ai-developer/app/monitoring"
 	"ai-developer/app/services"
 	"ai-developer/app/services/s3_providers"
 	"ai-developer/app/utils"
@@ -32,6 +33,7 @@ type OpenAiNextJsCodeGenerator struct {
 	s3Service            *s3_providers.S3Service
 	llmAPIKeyService     *services.LLMAPIKeyService
 	logger               *zap.Logger
+	slackAlert           *monitoring.SlackAlert
 }
 
 func NewOpenAINextJsCodeGenerationExecutor(
@@ -44,6 +46,7 @@ func NewOpenAINextJsCodeGenerationExecutor(
 	s3Service *s3_providers.S3Service,
 	llmAPIKeyService *services.LLMAPIKeyService,
 	logger *zap.Logger,
+	slackAlert *monitoring.SlackAlert,
 ) *OpenAiNextJsCodeGenerator {
 	return &OpenAiNextJsCodeGenerator{
 		projectService:       projectService,
@@ -55,6 +58,7 @@ func NewOpenAINextJsCodeGenerationExecutor(
 		s3Service:            s3Service,
 		llmAPIKeyService:     llmAPIKeyService,
 		logger:               logger,
+		slackAlert:           slackAlert,
 	}
 }
 
@@ -164,7 +168,40 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	code, err := openAiCodeGenerator.GenerateCode(step, finalInstructionForGeneration, storyDir, apiKey)
 	if err != nil {
 		fmt.Println("____ERROR OCCURRED WHILE GENERATING CODE: ______", err)
-		if err != types.ErrJsonParsingRetriesExceeded {
+		if err == types.ErrJsonParsingRetriesExceeded {
+			err = openAiCodeGenerator.slackAlert.SendAlert(
+				"Max retry limit reached while parsing JSON, error occurred while parsing the generated edit code",
+				map[string]string{
+					"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
+					"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
+					"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
+					"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
+				})
+			if err != nil {
+				fmt.Printf("Error sending slack alert: %s\n", err.Error())
+				return err
+			}
+			err = openAiCodeGenerator.activityLogService.CreateActivityLog(
+				step.Execution.ID,
+				step.ExecutionStep.ID,
+				"INFO",
+				fmt.Sprintf("Json parsing retries exceeded for code generation!"),
+			)
+			if err != nil {
+				fmt.Printf("Error creating activity log: %s\n", err.Error())
+				return err
+			}
+			//Update Execution Status and Story Status
+			if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReview); err != nil {
+				fmt.Printf("Error updating story status: %s\n", err.Error())
+				return err
+			}
+			if err = openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReview); err != nil {
+				fmt.Printf("Error updating execution step: %s\n", err.Error())
+				return err
+			}
+			return err
+		} else {
 			settingsUrl := config.Get("app.url").(string) + "/settings"
 			err = openAiCodeGenerator.activityLogService.CreateActivityLog(
 				step.Execution.ID,
@@ -176,28 +213,17 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 				fmt.Printf("Error creating activity log: %s\n", err.Error())
 				return err
 			}
-		} else {
-			err = openAiCodeGenerator.activityLogService.CreateActivityLog(
-				step.Execution.ID,
-				step.ExecutionStep.ID,
-				"INFO",
-				fmt.Sprintf("Json parsing retries exceeded for code generation!"),
-			)
-			if err != nil {
-				fmt.Printf("Error creating activity log: %s\n", err.Error())
+			//Update Execution Status and Story Status
+			if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
+				fmt.Printf("Error updating story status: %s\n", err.Error())
 				return err
 			}
-		}
-		//Update Execution Status and Story Status
-		if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
-			fmt.Printf("Error updating story status: %s\n", err.Error())
+			if err = openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
+				fmt.Printf("Error updating execution step: %s\n", err.Error())
+				return err
+			}
 			return err
 		}
-		if err = openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
-			fmt.Printf("Error updating execution step: %s\n", err.Error())
-			return err
-		}
-		return err
 	}
 
 	if err = openAiCodeGenerator.executionStepService.UpdateExecutionStepResponse(

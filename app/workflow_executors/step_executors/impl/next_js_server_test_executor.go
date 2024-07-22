@@ -13,8 +13,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
 	"go.uber.org/zap"
+	"ai-developer/app/monitoring"
 )
 
 type NextJsServerStartTestExecutor struct {
@@ -25,6 +25,7 @@ type NextJsServerStartTestExecutor struct {
 	llmAPIKeyService     *services.LLMAPIKeyService
 	storyService         *services.StoryService
 	projectService       *services.ProjectService
+	slackAlert           *monitoring.SlackAlert
 }
 
 func NewNextJsServerStartTestExecutor(
@@ -35,6 +36,7 @@ func NewNextJsServerStartTestExecutor(
 	executionService *services.ExecutionService,
 	storyService *services.StoryService,
 	projectService *services.ProjectService,
+	slackAlert           *monitoring.SlackAlert,
 ) *NextJsServerStartTestExecutor {
 	return &NextJsServerStartTestExecutor{
 		executionStepService: executionStepService,
@@ -44,6 +46,7 @@ func NewNextJsServerStartTestExecutor(
 		executionService:     executionService,
 		storyService:         storyService,
 		projectService:       projectService,
+		slackAlert:           slackAlert,
 	}
 }
 
@@ -98,7 +101,7 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API KEY_________", apiKey)
 
-	buildAnalysis, action, err := e.AnalyseBuildLogs(buildLogs, directoryPlan, apiKey)
+	buildAnalysis, action, err := e.AnalyseBuildLogs(buildLogs, directoryPlan, apiKey, step)
 	fmt.Println("Build Logs Analysis", buildAnalysis)
 	if err != nil {
 		fmt.Println("Error analysing build log" + err.Error())
@@ -167,13 +170,13 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 	}
 }
 
-func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan, apiKey string) (bool, map[string]interface{}, error) {
+func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan, apiKey string, step steps.ServerStartTestStep) (bool, map[string]interface{}, error) {
 	e.logger.Info("____Analyzing build logs____ ", zap.String("buildLogs", buildLogs))
 	claudeClient := llms.NewClaudeClient(apiKey)
 	var jsonResponse map[string]interface{}
 	var response string
 
-	for retryCount := 0; retryCount < 5; retryCount++ {
+	for retryCount := 1; retryCount < 6; retryCount++ {
 		messages, err := e.CreateMessage(buildLogs, directoryPlan, retryCount)
 		if err != nil{
 			fmt.Println("failed to create messages for llm")
@@ -189,7 +192,19 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 		}
 		if err = json.Unmarshal([]byte(response), &jsonResponse); err != nil {
 			fmt.Println("failed to unmarshal response from Claude API, retrying...")
-			if retryCount == 4 {
+			if retryCount == 5 {
+				err := e.slackAlert.SendAlert(
+					"Max retry limit reached while parsing JSON, error occurred while parsing build logs response",
+					map[string]string{
+						"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
+						"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
+						"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
+						"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
+					})
+				if err != nil {
+					fmt.Printf("Error sending slack alert: %s\n", err.Error())
+					return false, nil, err
+				}
 				return false, nil, fmt.Errorf("failed to unmarshal response from Claude API after 5 attempts: %w", err)
 			}
 			continue

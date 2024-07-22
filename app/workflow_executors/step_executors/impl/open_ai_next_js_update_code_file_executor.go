@@ -53,6 +53,7 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 	}
 
 	// Convert JSONMap to a JSON string
+	fmt.Println("____initial response_________", generateCodeSteps[0].Response)
 	responseJSON, err := json.Marshal(generateCodeSteps[0].Response)
 	if err != nil {
 		fmt.Println("Error marshalling JSONMap" + err.Error())
@@ -98,12 +99,24 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 	}
 	err := json.Unmarshal([]byte(response.LLMResponse), &llmResponse)
 	if err != nil {
-		return nil
+		fmt.Println("___error occurred while parsing json_____", err)
+		return err
 	}
 	switch llmResponse["type"].(string) {
 	case "edit", "update":
-		fmt.Println("_________editing file_________")
-		newCode := llmResponse["new_code"].(string)
+		var newCode string
+		switch nc := llmResponse["new_code"].(type) {
+		case string:
+			newCode = nc
+		case map[string]interface{}:
+			newCodeJson, err := json.Marshal(nc)
+			if err != nil {
+				fmt.Printf("Error marshaling new_code: %v\n", err)
+			}
+			newCode = string(newCodeJson)
+		default:
+			fmt.Printf("Unexpected type for new_code: %T\n", nc)
+		}
 		var startLine int
 		switch startLineVal := llmResponse["start_line"].(type) {
 		case float64:
@@ -128,7 +141,6 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 			return err
 		}
 	case "insert", "create":
-		fmt.Println("_________inserting file_________")
 		var lineNumber int
 		switch lineVal := llmResponse["line_number"].(type) {
 		case float64:
@@ -174,7 +186,6 @@ func (e *NextJsUpdateCodeFileExecutor) EditCode(filePath string, startLine, endL
 	endLine--
 
 	newLines := strings.Split(newCode, "\n")
-	fmt.Println("New Lines:", newLines)
 
 	// Edge case handling when startLine and endLine are 0
 	if startLine < 0 {

@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/newrelic/go-agent/v3/internal/logger"
 	"go.uber.org/zap"
 )
 
@@ -53,7 +55,6 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 	}
 
 	// Convert JSONMap to a JSON string
-	fmt.Println("____initial response_________", generateCodeSteps[0].Response)
 	responseJSON, err := json.Marshal(generateCodeSteps[0].Response)
 	if err != nil {
 		fmt.Println("Error marshalling JSONMap" + err.Error())
@@ -99,7 +100,7 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 	}
 	err := json.Unmarshal([]byte(response.LLMResponse), &llmResponse)
 	if err != nil {
-		fmt.Println("___error occurred while parsing json_____", err)
+		logger.Error("___error occurred while parsing json response_____", err)
 		return err
 	}
 	switch llmResponse["type"].(string) {
@@ -131,10 +132,6 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 		case int:
 			endLine = endLineVal
 		}
-		fmt.Println("Start Line:", startLine)
-		fmt.Println("End Line:", endLine)
-		fmt.Println("New Code:", newCode)
-		fmt.Println("File Path:", filePath)
 		err = e.EditCode(filePath, startLine, endLine, newCode)
 		if err != nil {
 			fmt.Println("Error editing code: ", err)
@@ -155,7 +152,6 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 			return err
 		}
 	default:
-		fmt.Println("_____________Unknown llmResponse:____________", llmResponse["type"].(string))
 		fmt.Println("Unknown llmResponse:", llmResponse["type"].(string))
 		return fmt.Errorf("unknown response type: %s", llmResponse["type"])
 	}
@@ -163,7 +159,7 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 }
 
 func (e *NextJsUpdateCodeFileExecutor) EditCode(filePath string, startLine, endLine int, newCode string) error {
-	fmt.Println("____Editing file %s_____", filePath)
+	logger.Info("___Editing file____", filePath)
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println("Error opening file", filePath, err.Error())

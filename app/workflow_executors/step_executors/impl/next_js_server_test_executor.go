@@ -169,7 +169,7 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 }
 
 func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan, apiKey string) (bool, map[string]interface{}, error) {
-	fmt.Println("Analysing Build Logs", buildLogs)
+	e.logger.Info("Analyzing Build Logs", zap.String("buildLogs", buildLogs))
 	messages, err := e.CreateMessage(buildLogs, directoryPlan)
 	if err != nil {
 		return false, nil, err

@@ -271,6 +271,11 @@ func main() {
 		log.Println("Error providing reset flask db step:", err)
 		panic(err)
 	}
+	err = c.Provide(impl.NewResetDjangoDBStepExecutor)
+	if err != nil {
+		log.Println("Error providing reset django db step:", err)
+		panic(err)
+	}
 	err = c.Provide(impl.NewPackageInstallStepExecutor)
 	if err != nil {
 		log.Println("Error providing package install step:", err)
@@ -319,6 +324,8 @@ func main() {
 			gitCommitExecutor *impl.GitCommitExecutor,
 			gitPushExecutor *impl.GitPushExecutor,
 			gitnessMakePullRequestExecutor *impl.GitnessMakePullRequestExecutor,
+			resetDjangoFlaskDBStepExecutor *impl.ResetDjangoDBStepExecutor,
+			poetryPackageInstallStepExecutor *impl.PackageInstallStepExecutor,
 		) map[steps.StepName]step_executors.StepExecutor {
 			return map[steps.StepName]step_executors.StepExecutor{
 				steps.CODE_GENERATE_STEP:           *openAICodeGenerator,
@@ -329,6 +336,8 @@ func main() {
 				steps.GIT_CREATE_PULL_REQUEST_STEP: *gitnessMakePullRequestExecutor,
 				steps.SERVER_START_STEP:            *djangoServerStartTestExecutor,
 				steps.RETRY_CODE_GENERATE_STEP:     *openAICodeGenerator,
+				steps.RESET_DB_STEP:                *resetDjangoFlaskDBStepExecutor,
+				steps.PACKAGE_INSTALL_STEP:         *poetryPackageInstallStepExecutor,
 			}
 		})
 	} else if template == "NEXTJS" {
@@ -336,6 +345,7 @@ func main() {
 			openAiNextJsCodeGenerator *impl.OpenAiNextJsCodeGenerator,
 			updateCodeFileExecutor *impl.NextJsUpdateCodeFileExecutor,
 			serverStartExecutor *impl.NextJsServerStartTestExecutor,
+			gitMakeBranchExecutor *impl.GitMakeBranchExecutor,
 		) map[steps.StepName]step_executors.StepExecutor {
 			return map[steps.StepName]step_executors.StepExecutor{
 				steps.CODE_GENERATE_CSS_STEP:       *openAiNextJsCodeGenerator,
@@ -347,6 +357,7 @@ func main() {
 				steps.SERVER_START_STEP:            *serverStartExecutor,
 				steps.RETRY_CODE_GENERATE_STEP:     *openAiNextJsCodeGenerator,
 				steps.UPDATE_CODE_FILE_STEP:        *updateCodeFileExecutor,
+				steps.GIT_CREATE_BRANCH_STEP:       *gitMakeBranchExecutor,
 			}
 		})
 	}

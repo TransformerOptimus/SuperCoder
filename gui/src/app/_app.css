@@ -53,6 +53,8 @@
   --project-bg-color: rgb(0 0 0 / 24%);
   --selected-image-border-color: rgb(255 255 255 / 80%);
   --github-button-border-color: #d1d5da;
+  --warning-container-background: rgba(170 124 35 / 8%);
+  --warning-container-border: #AA7C23;
 }
 
 body {
@@ -147,6 +149,24 @@ body {
 .secondary_small {
   height: 28px;
   padding: 6px;
+}
+
+.light_medium {
+  border-radius: 8px;
+  border: 1px solid var(--white-opacity-8);
+  background: var(--white-opacity-8);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 34px;
+  color: #FFF;
+  font-family: "Proxima Nova", sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
 }
 
 .input_medium,

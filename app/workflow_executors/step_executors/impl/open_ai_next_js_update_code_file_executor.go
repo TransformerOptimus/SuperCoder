@@ -102,6 +102,7 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 	}
 	switch llmResponse["type"].(string) {
 	case "edit", "update":
+		fmt.Println("_________editing file_________")
 		newCode := llmResponse["new_code"].(string)
 		var startLine int
 		switch startLineVal := llmResponse["start_line"].(type) {
@@ -117,12 +118,17 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 		case int:
 			endLine = endLineVal
 		}
+		fmt.Println("Start Line:", startLine)
+		fmt.Println("End Line:", endLine)
+		fmt.Println("New Code:", newCode)
+		fmt.Println("File Path:", filePath)
 		err = e.EditCode(filePath, startLine, endLine, newCode)
 		if err != nil {
 			fmt.Println("Error editing code: ", err)
 			return err
 		}
 	case "insert", "create":
+		fmt.Println("_________inserting file_________")
 		var lineNumber int
 		switch lineVal := llmResponse["line_number"].(type) {
 		case float64:
@@ -137,6 +143,7 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 			return err
 		}
 	default:
+		fmt.Println("_____________Unknown llmResponse:____________", llmResponse["type"].(string))
 		fmt.Println("Unknown llmResponse:", llmResponse["type"].(string))
 		return fmt.Errorf("unknown response type: %s", llmResponse["type"])
 	}
@@ -144,9 +151,7 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 }
 
 func (e *NextJsUpdateCodeFileExecutor) EditCode(filePath string, startLine, endLine int, newCode string) error {
-	fmt.Printf("____Editing file %s_____", filePath)
-	fmt.Println("Start Line:", startLine)
-	fmt.Println("End Line:", endLine)
+	fmt.Println("____Editing file %s_____", filePath)
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println("Error opening file", filePath, err.Error())

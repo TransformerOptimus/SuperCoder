@@ -276,7 +276,6 @@ export default function StoryDetails({
               title={issue?.title}
               description={issue?.description}
               actions={issue?.actions || []}
-              imagePath={imagePath}
               handleMoveToInProgressClick={handleMoveToInProgressClick}
             />
           )}

@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/newrelic/go-agent/v3/internal/logger"
 	"go.uber.org/zap"
 )
 
@@ -100,7 +98,7 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 	}
 	err := json.Unmarshal([]byte(response.LLMResponse), &llmResponse)
 	if err != nil {
-		logger.Error("___error occurred while parsing json response_____", err)
+		e.logger.Error("___error occurred while parsing json response_____", zap.Any("error", err))
 		return err
 	}
 	switch llmResponse["type"].(string) {
@@ -159,7 +157,7 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Respon
 }
 
 func (e *NextJsUpdateCodeFileExecutor) EditCode(filePath string, startLine, endLine int, newCode string) error {
-	logger.Info("___Editing file____", filePath)
+	e.logger.Info("___Editing file____", zap.Any("filePath", filePath))
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println("Error opening file", filePath, err.Error())

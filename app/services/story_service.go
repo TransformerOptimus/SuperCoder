@@ -539,7 +539,7 @@ func (s *StoryService) UpdateStoryStatusByUser(storyID int, status string) error
 	}
 	if existingStoryInProgress!= nil {
         s.logger.Error("Another story is already in progress.")
-        return errors.New("another story already in progress")
+        return types.ErrAnotherStoryAlreadyInProgress
     }
 	//Check if valid transition
 	if status == constants.InProgress {

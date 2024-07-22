@@ -214,21 +214,23 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildFinalInstructionForGe
 	step steps.GenerateCodeStep, storyDir string) (map[string]string, error) {
 	// Initialize the final instruction string
 	var finalInstruction map[string]string
-	var err error
 	if step.Retry {
 		fmt.Println("Building instruction on retry limit reached for LLM steps")
+		var err error
 		finalInstruction, err = openAiCodeGenerator.buildInstructionOnRetry(step, storyDir)
 		if err != nil {
 			fmt.Printf("Error building instruction on retry: %s\n", err.Error())
 			return nil, err
 		}
 	} else if step.Execution.ReExecution {
+		var err error
 		finalInstruction, err = openAiCodeGenerator.buildInstructionOnReExecutionWithComments(step, storyDir)
 		if err != nil {
 			fmt.Printf("Error building instruction on re-execution: %s\n", err.Error())
 			return nil, err
 		}
 	} else {
+		var err error
 		finalInstruction, err = openAiCodeGenerator.buildInstructionForFirstExecution(step, storyDir)
 		if err != nil {
 			fmt.Printf("Error building instruction for first execution: %s\n", err.Error())

@@ -135,6 +135,7 @@ func (controller *StoryController) UpdateStoryStatus(context *gin.Context) {
 	if errors.Is(err, types.ErrInvalidStatus) ||
 		errors.Is(err, types.ErrStoryDeleted) ||
 		errors.Is(err, types.ErrInvalidStory) ||
+		errors.Is(err, types.ErrAnotherStoryAlreadyInProgress) ||
 		errors.Is(err, types.ErrInvalidStoryStatusTransition) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

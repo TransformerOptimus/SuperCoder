@@ -21,7 +21,7 @@ func (receiver *StoryRepository) CreateStory(story *models.Story) (*models.Story
 	return story, nil
 }
 
-func (receiver *StoryRepository) GetStoriesByProjectId(projectId int, storyType string) ([]models.Story, error) {
+func (receiver *StoryRepository) GetStoriesByProjectIdAndStoryType(projectId int, storyType string) ([]models.Story, error) {
 	var stories []models.Story
 	err := receiver.db.Where("project_id = ? AND is_deleted = ? AND type = ?", projectId, false, storyType).Find(&stories).Error
 	if err != nil {

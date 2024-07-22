@@ -43,19 +43,15 @@ func NewPullRequestService(pullRequestRepo *repositories.PullRequestRepository, 
 }
 
 func (s *PullRequestService) GetAllPullRequests(projectID int, status string) ([]*response.GetAllPullRequests, error) {
-	storyType := constants.Backend
-	backendStories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
+	backendStories, err := s.storyRepo.GetStoriesByProjectIdAndStoryType(projectID, constants.Backend)
 	if err != nil{
 		return nil, err
 	}
-	frontendStories, err := s.storyRepo.GetStoriesByProjectId(projectID, constants.Frontend)
+	frontendStories, err := s.storyRepo.GetStoriesByProjectIdAndStoryType(projectID, constants.Frontend)
 	if err!= nil {
         return nil, err
     }
 	stories := append(backendStories, frontendStories...)
-	if err != nil {
-		return nil, err
-	}
 	storyIDs := make([]uint, len(stories))
 	for i, story := range stories {
 		storyIDs[i] = story.ID

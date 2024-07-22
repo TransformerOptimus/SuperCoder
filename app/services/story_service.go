@@ -342,7 +342,7 @@ func (s *StoryService) GetAllStoriesOfProject(projectId int, searchValue string,
 }
 
 func (s *StoryService) GetDesignStoriesOfProject(projectId int, storyType string) ([]*response.GetDesignStoriesOfProjectId, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectId, storyType)
+	stories, err := s.storyRepo.GetStoriesByProjectIdAndStoryType(projectId, storyType)
 	fmt.Println(stories)
 	if err != nil {
 		return nil, err
@@ -539,7 +539,7 @@ func (s *StoryService) UpdateStoryStatusByUser(storyID int, status string) error
 	}
 	if existingStoryInProgress!= nil {
         s.logger.Error("Another story is already in progress.")
-        return errors.New("another story is already in progress!")
+        return errors.New("another story already in progress")
     }
 	//Check if valid transition
 	if status == constants.InProgress {
@@ -629,7 +629,7 @@ func (s *StoryService) UpdateStoryStatus(storyID int, status string) error {
 
 func (s *StoryService) GetStoriesByProjectId(projectID int) ([]models.Story, error) {
 	storyType := constants.Backend
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
+	stories, err := s.storyRepo.GetStoriesByProjectIdAndStoryType(projectID, storyType)
 	if err != nil {
 		return nil, err
 	}
@@ -638,7 +638,7 @@ func (s *StoryService) GetStoriesByProjectId(projectID int) ([]models.Story, err
 
 func (s *StoryService) GetDesignStoriesByProjectId(projectID int) ([]models.Story, error) {
 	storyType := constants.Frontend
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
+	stories, err := s.storyRepo.GetStoriesByProjectIdAndStoryType(projectID, storyType)
 	if err != nil {
 		return nil, err
 	}

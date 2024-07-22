@@ -165,7 +165,6 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 	}
 
 	h.logger.Info("Payload for create job request", zap.Any("createJobRequest", createJobRequest))
-	fmt.Println("__payload_____12july", createJobRequest)
 
 	job, err := h.workspaceServiceClient.CreateJob(createJobRequest)
 	if err != nil {
@@ -174,7 +173,15 @@ func (h *CreateExecutionJobTaskHandler) HandleTask(ctx context.Context, t *asynq
 		return err
 	}
 
-	err = h.activityLogService.CreateActivityLogWithTx(tx, execution.ID, executionStep.ID, "INFO", "Initializing Workspace for automated development...")
+	if payload.ReExecute {
+		err = h.activityLogService.CreateActivityLogWithTx(tx, execution.ID, executionStep.ID, "INFO", fmt.Sprintf("Rebuilding %s story...", story.Type))
+		if err != nil {
+			tx.Rollback()
+			h.logger.Error("Error creating activity log", zap.Error(err))
+			return err
+		}
+	}
+	err = h.activityLogService.CreateActivityLogWithTx(tx, execution.ID, executionStep.ID, "INFO",fmt.Sprintf("Initializing Workspace for automated %s development...", story.Type))
 	if err != nil {
 		tx.Rollback()
 		h.logger.Error("Error creating activity log", zap.Error(err))

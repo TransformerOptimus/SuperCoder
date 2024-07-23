@@ -22,6 +22,7 @@
     "js-cookie": "^3.0.5",
     "monaco-editor": "^0.50.0",
     "next": "14.2.2",
+    "next-themes": "^0.3.0",
     "react": "^18",
     "react-beautiful-dnd": "^13.1.1",
     "react-diff-view": "^3.2.1",

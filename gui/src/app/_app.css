@@ -28,6 +28,8 @@
 :root {
   --foreground-rgb: #fff;
   --background-color: #000;
+  --border-color: #313134;
+  --container-background: #262626;
   --secondary-color: #888;
   --text-color: #fff;
   --error-color: #FF3E2D;

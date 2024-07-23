@@ -38,19 +38,26 @@ interface CreateOrEditProjectBodyProps {
 const customStyles = {
   control: (provided) => ({
     ...provided,
+    borderRadius: '0.5rem',
     backgroundColor: '#1e1e1e',
     color: '#ffffff',
     borderColor: '#333333',
+    boxShadow: 'none',
     '&:hover': {
       color: '#ffffff',
-      borderColor: '#4a4a4a',
+      borderColor: '#333333',
+      boxShadow: 'none',
     },
   }),
+  indicatorSeparator: (provided) => ({}),
   menu: (provided) => ({
     ...provided,
     backgroundColor: '#1e1e1e',
   }),
-  input: (styles) => ({ ...styles, color: '#ffffff' }),
+  input: (styles) => ({
+    ...styles,
+    color: '#ffffff',
+  }),
   option: (provided, state) => ({
     ...provided,
     backgroundColor: state.isFocused ? '#333333' : '#1e1e1e',
@@ -98,18 +105,14 @@ export default function CreateOrEditProjectBody({
   async function redirectToGithubIntegration() {
     setIntegrationLoading(true);
     try {
-      const interval = setInterval(
-        async () => {
-          const gitIntegrated = await isGithubConnected();
-          if (gitIntegrated) {
-            setIsExternalGitIntegration(true);
-            setIntegrationLoading(false);
-            clearInterval(interval);
-          }
-        },
-        1000,
-        1000,
-      );
+      const interval = setInterval(async () => {
+        const gitIntegrated = await isGithubConnected();
+        if (gitIntegrated) {
+          setIsExternalGitIntegration(true);
+          setIntegrationLoading(false);
+          clearInterval(interval);
+        }
+      }, 1000);
       window.open(`${API_BASE_URL}/integrations/github/authorize`, '_blank');
     } catch (error) {
       console.error('Error: ', error);

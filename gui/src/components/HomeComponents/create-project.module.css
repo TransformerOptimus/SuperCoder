@@ -1,5 +1,5 @@
 .integrate_github_container {
-    background-color: #262628;
+    background-color: var(--container-background);
     border-radius: 0.5rem;
     border-left: #a8a8a8 0.3rem solid;
 }

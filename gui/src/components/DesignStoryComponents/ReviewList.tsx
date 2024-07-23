@@ -49,11 +49,11 @@ const ReviewList: React.FC = () => {
                     className={`${styles.review_image_container} relative flex h-[60px] w-[60px] items-center justify-center overflow-hidden rounded-lg`}
                   >
                     <Image
-                      src={'https://ai-developer-files-120624.s3.amazonaws.com/10/27/twitter_login.jpg'}
+                      src={`/api/stories/${story.id}/fetch_image`}
                       alt={'design_image'}
                       fill
-                      className="object-contain"
-                      loading="lazy"
+                      className={'object-contain'}
+                      loading={'lazy'}
                     />
                   </div>
                   <div

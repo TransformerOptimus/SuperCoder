@@ -6,4 +6,5 @@ type CreateProjectRequest struct {
 	FrontendFramework string  `json:"frontend_framework"`
 	Description       string  `json:"description"`
 	Repository        *string `json:"repository"`
+	RepositoryUrl     *string `json:"repository_url"`
 }

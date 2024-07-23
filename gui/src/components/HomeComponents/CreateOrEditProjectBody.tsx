@@ -76,7 +76,7 @@ export default function CreateOrEditProjectBody({
   const [isExternalGitIntegration, setIsExternalGitIntegration] = useState<boolean>(false);
   const [useExternalGit, setUseExternalGit] = useState<boolean>(false);
   const [repositories, setRepositories] = useState<any[]>([]);
-  const [selectedRepository, setSelectedRepository] = useState<string | null>(null);
+  const [selectedRepository, setSelectedRepository] = useState<{ label: string, value: string } | null>(null);
 
   async function redirectToGithubIntegration() {
     setIntegrationLoading(true);
@@ -114,6 +114,10 @@ export default function CreateOrEditProjectBody({
     setIsLoading(true);
     const projectErrors = [
       {
+        validation: selectedRepository === null && useExternalGit,
+        message: 'Please select a github repository to import.',
+      },
+      {
         validation: handleProjectDuplicationCheck(),
         message: 'A project with the name entered already exists.',
       },
@@ -148,7 +152,8 @@ export default function CreateOrEditProjectBody({
         framework: selectedBackendFramework,
         frontend_framework: selectedFrontendFramework,
         description: projectDescription,
-        repository: useExternalGit ? selectedRepository : undefined,
+        repository: useExternalGit ? selectedRepository.label : undefined,
+        repository_url: useExternalGit ? selectedRepository.value : undefined,
       };
       await toCreateNewProject(newProjectPayload);
     }
@@ -351,7 +356,7 @@ export default function CreateOrEditProjectBody({
           {(useExternalGit && isExternalGitIntegration) && (
             <>
               <Select
-                onChange={(e) => setSelectedRepository(e.value)}
+                onChange={(e) => setSelectedRepository(e)}
                 className="text-white" styles={customStyles}
                 options={repositories}
               />

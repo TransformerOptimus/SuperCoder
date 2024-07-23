@@ -545,9 +545,8 @@ func main() {
 		authentication.POST("/sign_in", auth.SignIn)
 		authentication.POST("/sign_up", auth.SignUp)
 
-		integrations := api.Group("/integrations", middleware.AuthenticateJWT())
-
-		githubIntegration := integrations.Group("/github")
+		integrationsGroup := api.Group("/integrations", middleware.AuthenticateJWT())
+		githubIntegration := integrationsGroup.Group("/github")
 
 		githubIntegration.GET("", githubIntegrationController.CheckIfIntegrationExists)
 		githubIntegration.DELETE("", githubIntegrationController.DeleteIntegration)

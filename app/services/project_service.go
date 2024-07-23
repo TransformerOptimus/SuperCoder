@@ -66,6 +66,7 @@ func (s *ProjectService) GetAllProjectsOfOrganisation(organisationId int) ([]res
 			ProjectBackendURL:        project.BackendURL,
 			ProjectFrontendURL:       project.FrontendURL,
 			PullRequestCount:         len(projectPullRequestMap[int(project.ID)]),
+			ProjectRepository:        project.Repository,
 		})
 	}
 
@@ -112,6 +113,8 @@ func (s *ProjectService) CreateProjectFromGit(userId uint, orgId uint, requestDa
 		Url:               url,
 		BackendURL:        backend_url,
 		FrontendURL:       frontend_url,
+		Repository:        requestData.Repository,
+		RepositoryUrl:     requestData.RepositoryUrl,
 	}
 
 	organisation, err := s.organisationRepository.GetOrganisationByID(uint(int(project.OrganisationID)))
@@ -132,7 +135,7 @@ func (s *ProjectService) CreateProjectFromGit(userId uint, orgId uint, requestDa
 	_, err = s.workspaceServiceClient.ImportGitRepository(
 		&request.ImportGitRepository{
 			WorkspaceId:  hashID,
-			Repository:   *requestData.Repository,
+			Repository:   *requestData.RepositoryUrl,
 			Username:     integrationDetails.GithubUserId,
 			Password:     integrationDetails.AccessToken,
 			RemoteURL:    remoteGitURL,

@@ -13,6 +13,8 @@ type Project struct {
 	Name              string    `gorm:"type:varchar(100);"`
 	BackendFramework  string    `gorm:"type:varchar(100);not null"`
 	FrontendFramework string    `gorm:"type:varchar(100);not null"`
+	Repository        *string   `gorm:"type:varchar(1024);"`
+	RepositoryUrl     *string   `gorm:"type:varchar(1024);"`
 	Description       string    `gorm:"type:text"`
 	OrganisationID    uint      `gorm:"not null"`
 	CreatedAt         time.Time `gorm:"autoCreateTime"`

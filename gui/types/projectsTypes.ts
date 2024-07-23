@@ -18,6 +18,7 @@ export interface ProjectTypes {
   project_description: string;
   project_hash_id: string;
   project_url: string;
+  project_repository: string | undefined;
   project_backend_url: string;
   project_frontend_url: string;
   pull_request_count: number;

@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS integrations;
+DROP TABLE integrations;

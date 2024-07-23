@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS integrations
+CREATE TABLE integrations
 (
     id               SERIAL PRIMARY KEY,
     created_at       TIMESTAMP    NOT NULL,

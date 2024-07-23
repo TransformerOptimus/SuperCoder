@@ -86,7 +86,7 @@ SuperCoder 2.0 supports a variety of languages and frameworks for diverse develo
 
 ## Prerequisites
 Before you proceed, ensure that you have the following installed on your system:
-- Docker and Docker Compose
+- [Docker and Docker Compose](https://docs.docker.com/get-docker/)
 - `direnv`
 
 ### Installing Direnv
@@ -112,24 +112,16 @@ If you are using a shell other than bash, replace bash with your specific shell 
 ## Setup
 
 ### 1.Environment Configuration
-First, create a .envrc file in the root directory of your project and populate it with the necessary environment variables:
+The basic environment variables are included in the Docker setup, making initial configuration quick and easy. However, for using Amazon S3 to store images for the Design Section, you need to configure the following environment variables manually:
 ```bash
 
-export AI_DEVELOPER_GITNESS_URL=http://gitness:3000
-export AI_DEVELOPER_GITNESS_HOST=gitness:3000
-
-export AI_DEVELOPER_GITNESS_PASSWORD=admin
-export AI_DEVELOPER_GITNESS_USER=admin
-
-export AI_DEVELOPER_APP_URL=http://localhost:3000
-
-export AI_DEVELOPER_WORKSPACE_WORKING_DIR=/workspaces
-export AI_DEVELOPER_WORKSPACE_SERVICE_ENDPOINT=http://ws:8080
-
-export NEW_RELIC_ENABLED=false
+export AI_DEVELOPER_AWS_ACCESS_KEY_ID=
+export AI_DEVELOPER_AWS_SECRET_ACCESS_KEY=
+export AI_DEVELOPER_AWS_BUCKET_NAME=
+export AI_DEVELOPER_AWS_REGION=
 ```
 
-To allow direnv to load these settings, run:
+Ensure you fill in the appropriate values for your AWS credentials and S3 bucket details. To allow direnv to load these settings, run:
 
 ```bash
 direnv allow .

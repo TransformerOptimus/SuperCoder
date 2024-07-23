@@ -1,15 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import CustomContainers from '@/components/CustomContainers/CustomContainers';
-import Activity from '@/components/WorkBenchComponents/Activity';
-import Browser from '@/components/WorkBenchComponents/Browser';
 import { DesignStoryItem } from '../../../types/designStoryTypes';
 import { getFrontendCode, getDesignStoryDetails } from '@/api/DashboardService';
-import FrontendCodeSection from '@/components/DesignStoryComponents/FrontendCodeSection';
-import styles from './workbenchComponents.module.css';
-import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
 import { CodeFile } from '../../../types/customComponentTypes';
 import { storyStatus } from '@/app/constants/BoardConstants';
 import { DesignWorkbenchProps } from '../../../types/workbenchTypes';
+import styles from './workbenchComponents.module.css';
+import Activity from '@/components/WorkBenchComponents/Activity';
+import Browser from '@/components/WorkBenchComponents/Browser';
+import FrontendCodeSection from '@/components/DesignStoryComponents/FrontendCodeSection';
+import CustomImage from '@/components/ImageComponents/CustomImage';
+import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
+import CustomContainers from '@/components/CustomContainers/CustomContainers';
 
 const ActiveDesignWorkbench: React.FC<DesignWorkbenchProps> = ({
   activityLogs,
@@ -83,9 +84,9 @@ const ActiveDesignWorkbench: React.FC<DesignWorkbenchProps> = ({
             style={{ height: 'calc(100% - 34px)', overflow: 'hidden' }}
           >
             {selectedStory && (
-              <img
-                src={'https://ai-developer-files-120624.s3.amazonaws.com/10/27/twitter_login.jpg'}
-                alt="input_image"
+              <CustomImage
+                src={`/api/stories/${selectedStoryId}/fetch_image`}
+                alt={'input_image'}
                 className={'h-full w-auto'}
               />
             )}

@@ -6,10 +6,12 @@ import (
 	"ai-developer/app/client/workspace"
 	"ai-developer/app/config"
 	"ai-developer/app/constants"
+	"ai-developer/app/controllers"
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/git_providers"
+	"ai-developer/app/services/integrations"
 	"ai-developer/app/services/s3_providers"
 	"ai-developer/app/tasks"
 	"context"
@@ -265,6 +267,36 @@ func main() {
 			DB:   config.RedisDB(),
 		}, nil)
 	})
+
+	// Integration
+	{
+		if err = c.Provide(repositories.NewIntegrationsRepository); err != nil {
+			config.Logger.Error("Error providing IntegrationsRepository", zap.Error(err))
+			panic(err)
+		}
+		if err = c.Provide(integrations.NewIntegrationService); err != nil {
+			config.Logger.Error("Error providing IntegrationService", zap.Error(err))
+			panic(err)
+		}
+	}
+
+	// Github Integration
+	{
+		if err = c.Provide(config.NewGithubIntegrationConfig); err != nil {
+			config.Logger.Error("Error providing GithubIntegrationConfig", zap.Error(err))
+			panic(err)
+		}
+
+		if err = c.Provide(integrations.NewGithubIntegrationService); err != nil {
+			config.Logger.Error("Error providing GithubIntegrationService", zap.Error(err))
+			panic(err)
+		}
+
+		if err = c.Provide(controllers.NewGithubIntegrationController); err != nil {
+			config.Logger.Error("Error providing GithubIntegrationController", zap.Error(err))
+			panic(err)
+		}
+	}
 
 	err = c.Provide(func(
 		deleteWorkspaceTaskHandler *tasks.DeleteWorkspaceTaskHandler,

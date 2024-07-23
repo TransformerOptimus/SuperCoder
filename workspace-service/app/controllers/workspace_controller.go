@@ -12,6 +12,39 @@ type WorkspaceController struct {
 	logger    *zap.Logger
 }
 
+func (wc *WorkspaceController) ImportExistingWorkspace(c *gin.Context) {
+	body := dto.ImportGitRepository{}
+	if err := c.BindJSON(&body); err != nil {
+		wc.logger.Error("Failed to bind json", zap.Error(err))
+		c.AbortWithStatusJSON(400, gin.H{
+			"error": "Bad Request",
+		})
+		return
+	}
+
+	wsDetails, err := wc.wsService.ImportGitRepository(
+		body.WorkspaceId,
+		body.Repository,
+		body.Username,
+		body.Password,
+		body.RemoteURL,
+		body.GitnessUser,
+		body.GitnessToken,
+	)
+
+	if err != nil {
+		c.AbortWithStatusJSON(
+			500,
+			gin.H{"error": "Internal Server Error"},
+		)
+		return
+	}
+	c.JSON(
+		200,
+		gin.H{"message": "success", "workspace": wsDetails},
+	)
+}
+
 func (wc *WorkspaceController) CreateWorkspace(c *gin.Context) {
 	body := dto.CreateWorkspace{}
 	if err := c.BindJSON(&body); err != nil {

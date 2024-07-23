@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"ai-developer/app/models"
 	"ai-developer/app/services"
 	"ai-developer/app/types/request"
 	"net/http"
@@ -72,7 +73,14 @@ func (controller *ProjectController) CreateProject(context *gin.Context) {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
 		return
 	}
-	project, err := controller.projectService.CreateProject(int(user.OrganisationID), createProjectRequest)
+
+	var project *models.Project
+	if createProjectRequest.Repository == nil {
+		project, err = controller.projectService.CreateProject(int(user.OrganisationID), createProjectRequest)
+	} else {
+		project, err = controller.projectService.CreateProjectFromGit(user.ID, user.OrganisationID, createProjectRequest)
+	}
+
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

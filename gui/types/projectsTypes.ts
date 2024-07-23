@@ -3,6 +3,7 @@ export interface CreateProjectPayload {
   framework: string;
   frontend_framework: string;
   description: string;
+  repository: string | undefined;
 }
 
 export interface UpdateProjectPayload {
@@ -17,6 +18,7 @@ export interface ProjectTypes {
   project_description: string;
   project_hash_id: string;
   project_url: string;
+  project_repository: string | undefined;
   project_backend_url: string;
   project_frontend_url: string;
   pull_request_count: number;

@@ -48,7 +48,7 @@ func LoadConfig() (*koanf.Koanf, error) {
 	return config, err
 }
 
-// Get returns the value for a given key.
+// Deprecated: This is a misuse of the config package.
 func Get(key string) interface{} {
 	return config.Get(key)
 }

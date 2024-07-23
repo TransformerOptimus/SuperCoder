@@ -173,12 +173,20 @@ func main() {
 			c.Set("newRelicTransaction", txn)
 			c.Next()
 		})
-		r.Handle("GET", "/api/health", healthController.Health)
-		r.Handle("POST", "/api/v1/workspaces", wsController.CreateWorkspace)
-		r.Handle("POST", "/api/v1/frontend/workspaces", wsController.CreateFrontendWorkspace)
-		r.Handle("DELETE", "/api/v1/workspaces/:workspaceId", wsController.DeleteWorkspace)
 
-		r.Handle("POST", "/api/v1/jobs", jobsController.CreateWorkspace)
+		api := r.Group("/api")
+		api.Handle("GET", "/health", healthController.Health)
+
+		apiV1 := api.Group("/v1")
+
+		apiV1.Handle("POST", "/workspaces", wsController.CreateWorkspace)
+		apiV1.Handle("DELETE", "/workspaces/:workspaceId", wsController.DeleteWorkspace)
+
+		apiV1.Handle("POST", "/workspaces/import", wsController.ImportExistingWorkspace)
+
+		apiV1.Handle("POST", "/frontend/workspaces", wsController.CreateFrontendWorkspace)
+
+		apiV1.Handle("POST", "/jobs", jobsController.CreateWorkspace)
 		return r.Run()
 	})
 

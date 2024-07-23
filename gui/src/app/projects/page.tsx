@@ -11,6 +11,7 @@ import CreateOrEditProjectBody from '@/components/HomeComponents/CreateOrEditPro
 import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
 import { SkeletonTypes } from '@/app/constants/SkeletonConstants';
 import CustomImage from '@/components/ImageComponents/CustomImage';
+import Image from 'next/image';
 
 export default function Projects() {
   const [openNewProjectModal, setOpenNewProjectModal] = useState<
@@ -79,6 +80,20 @@ export default function Projects() {
                     </div>
 
                     <div className={'flex flex-row items-center gap-3'}>
+                      {project.project_repository && (
+                        <div className="flex items-center">
+                          <div className="-mt-1 mr-2 h-3.5 w-3.5">
+                            <CustomImage
+                              className={'h-full w-full'}
+                              src={imagePath.githubLightLogo}
+                              alt={'github_logo'}
+                            />
+                          </div>
+                          <span className="secondary_color text-[11px] font-normal">
+                            {project.project_repository.split('/').join(' / ')}
+                          </span>
+                        </div>
+                      )}
                       <CustomTextImage
                         gap={'gap-1'}
                         textCSS={'text-[11px] secondary_color font-normal'}

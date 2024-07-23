@@ -4,6 +4,7 @@ import Models from '@/app/settings/SettingsOptions/Models';
 import CustomSidebar from '@/components/CustomSidebar/CustomSidebar';
 import imagePath from '@/app/imagePath';
 import BackButton from '@/components/BackButton/BackButton';
+import Integrations from '@/app/settings/SettingsOptions/Integrations';
 
 export default function Settings() {
   const options = [
@@ -14,6 +15,14 @@ export default function Settings() {
       unselected: imagePath.modelsIconUnselected,
       icon_css: 'size-4',
       component: <Models />,
+    },
+    {
+      key: 'integrations',
+      text: 'Integrations',
+      selected: imagePath.modelsIconSelected,
+      unselected: imagePath.modelsIconUnselected,
+      icon_css: 'size-4',
+      component: <Integrations />,
     },
   ];
 

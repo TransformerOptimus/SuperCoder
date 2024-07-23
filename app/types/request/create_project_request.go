@@ -1,8 +1,10 @@
 package request
 
 type CreateProjectRequest struct {
-	Name              string `json:"name"`
-	Framework         string `json:"framework"`
-	FrontendFramework string `json:"frontend_framework"`
-	Description       string `json:"description"`
+	Name              string  `json:"name"`
+	Framework         string  `json:"framework"`
+	FrontendFramework string  `json:"frontend_framework"`
+	Description       string  `json:"description"`
+	Repository        *string `json:"repository"`
+	RepositoryUrl     *string `json:"repository_url"`
 }

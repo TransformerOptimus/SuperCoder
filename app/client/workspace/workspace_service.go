@@ -21,6 +21,55 @@ type WorkspaceServiceClient struct {
 	slackAlert *monitoring.SlackAlert
 }
 
+func (ws *WorkspaceServiceClient) ImportGitRepository(importRepository *request.ImportGitRepository) (createWorkspaceResponse *response.CreateWorkspaceResponse, err error) {
+	payload, err := json.Marshal(importRepository)
+	if err != nil {
+		log.Printf("failed to marshal import git repository request: %v", err)
+		return
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/v1/workspaces/import", ws.endpoint), bytes.NewBuffer(payload))
+	if err != nil {
+		log.Printf("failed to create import git repository request: %v", err)
+		return
+	}
+
+	res, err := ws.client.Do(req)
+	if err != nil {
+		log.Printf("failed to send import git repository request: %v", err)
+		return
+	}
+
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		err := ws.slackAlert.SendAlert(fmt.Sprintf("failed to import git repository: %s", res.Status), map[string]string{
+			"workspace_id": importRepository.WorkspaceId,
+			"repository":   importRepository.Repository,
+		})
+		if err != nil {
+			log.Printf("failed to send slack alert: %v", err)
+			return nil, err
+		}
+		return nil, errors.New(fmt.Sprintf("invalid res from workspace service for import git repository request"))
+	}
+
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(res.Body)
+
+	responseBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("failed to read res payload: %v", err)
+		return
+	}
+
+	createWorkspaceResponse = &response.CreateWorkspaceResponse{}
+	if err = json.Unmarshal(responseBody, &createWorkspaceResponse); err != nil {
+		log.Printf("failed to unmarshal create workspace res: %v", err)
+		return
+	}
+	return
+}
+
 func (ws *WorkspaceServiceClient) CreateWorkspace(createWorkspaceRequest *request.CreateWorkspaceRequest) (createWorkspaceResponse *response.CreateWorkspaceResponse, err error) {
 	payload, err := json.Marshal(createWorkspaceRequest)
 	if err != nil {

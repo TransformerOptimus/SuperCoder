@@ -16,7 +16,10 @@ const GithubStarModal = () => {
 
   const setModalInteraction = () => {
     const fourWeeksFromNow = new Date();
+    console.log(fourWeeksFromNow.getDate());
+    console.log('Todays Date: ', fourWeeksFromNow);
     fourWeeksFromNow.setDate(fourWeeksFromNow.getDate() + 28);
+    console.log('Enabling Date: ', fourWeeksFromNow);
     localStorage.setItem(
       'githubStarHiddenTill',
       fourWeeksFromNow.toISOString(),
@@ -32,6 +35,7 @@ const GithubStarModal = () => {
     }
     return false;
   };
+
   useEffect(() => {
     if (!checkModalInteraction()) {
       setShowGithubStar(true);
@@ -39,6 +43,7 @@ const GithubStarModal = () => {
       setShowGithubStar(false);
     }
   }, []);
+
   return (
     <CustomModal
       isOpen={showGithubStar}

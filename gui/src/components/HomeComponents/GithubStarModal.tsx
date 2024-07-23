@@ -16,6 +16,7 @@ const GithubStarModal = () => {
 
   const setModalInteraction = () => {
     const fourWeeksFromNow = new Date();
+    console.log(fourWeeksFromNow.getDate());
     console.log('Todays Date: ', fourWeeksFromNow);
     fourWeeksFromNow.setDate(fourWeeksFromNow.getDate() + 28);
     console.log('Enabling Date: ', fourWeeksFromNow);

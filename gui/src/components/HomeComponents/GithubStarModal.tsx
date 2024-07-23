@@ -16,7 +16,6 @@ const GithubStarModal = () => {
 
   const setModalInteraction = () => {
     const fourWeeksFromNow = new Date();
-    console.log(fourWeeksFromNow.getDate());
     console.log('Todays Date: ', fourWeeksFromNow);
     fourWeeksFromNow.setDate(fourWeeksFromNow.getDate() + 28);
     console.log('Enabling Date: ', fourWeeksFromNow);
@@ -50,12 +49,12 @@ const GithubStarModal = () => {
       onClose={handleGithubStarClose}
       width={'32vw'}
     >
-      <CustomModal.Body padding={'24px'}>
+      <CustomModal.Body padding={'22px'}>
         <div
           className={'proxima_nova flex flex-col items-center gap-3 text-white'}
         >
           <div className={'text-base font-medium'}>
-            Support the project by leaving a star on GitHub repository
+            Support the project by leaving a star on GitHub
           </div>
 
           <Button

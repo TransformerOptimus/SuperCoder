@@ -98,18 +98,14 @@ export default function CreateOrEditProjectBody({
   async function redirectToGithubIntegration() {
     setIntegrationLoading(true);
     try {
-      const interval = setInterval(
-        async () => {
-          const gitIntegrated = await isGithubConnected();
-          if (gitIntegrated) {
-            setIsExternalGitIntegration(true);
-            setIntegrationLoading(false);
-            clearInterval(interval);
-          }
-        },
-        1000,
-        1000,
-      );
+      const interval = setInterval(async () => {
+        const gitIntegrated = await isGithubConnected();
+        if (gitIntegrated) {
+          setIsExternalGitIntegration(true);
+          setIntegrationLoading(false);
+          clearInterval(interval);
+        }
+      }, 1000);
       window.open(`${API_BASE_URL}/integrations/github/authorize`, '_blank');
     } catch (error) {
       console.error('Error: ', error);

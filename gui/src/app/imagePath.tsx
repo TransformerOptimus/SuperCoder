@@ -4,6 +4,7 @@ export default {
   superagiLogo: '/logos/superagi_logo.svg',
   superagiLogoRound: '/logos/superagi_logo_round.svg',
   supercoderImage: '/images/supercoder_image.svg',
+  githubLightLogo: '/logos/github_light_logo.svg',
   githubLogo: '/logos/github_logo.svg',
   frontendWorkbenchIconSelected: '/icons/selected/frontend_workbench.svg',
   backendWorkbenchIconSelected: '/icons/selected/backend_workbench.svg',

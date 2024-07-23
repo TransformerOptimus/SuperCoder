@@ -115,13 +115,10 @@ If you are using a shell other than bash, replace bash with your specific shell 
 The basic environment variables are included in the Docker setup, making initial configuration quick and easy. However, for using Amazon S3 to store images for the Design Section, you need to configure the following environment variables manually:
 ```bash
 
-export AI_DEVELOPER_AWS_ACCESS_KEY_ID=
-export AI_DEVELOPER_AWS_SECRET_ACCESS_KEY=
-export AI_DEVELOPER_AWS_BUCKET_NAME=
-export AI_DEVELOPER_AWS_REGION=
+export AI_DEVELOPER_FILESTORE_TYPE="local"
 ```
 
-Ensure you fill in the appropriate values for your AWS credentials and S3 bucket details. To allow direnv to load these settings, run:
+To allow direnv to load these settings, run:
 
 ```bash
 direnv allow .

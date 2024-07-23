@@ -24,6 +24,22 @@ func (ir *IntegrationsRepository) FindIntegrationIdByUserIdAndType(userId uint64
 	return
 }
 
+func (ir *IntegrationsRepository) DeleteIntegration(userId uint64, integrationType string) (err error) {
+	ir.logger.Info(
+		"Deleting integration",
+		zap.Uint64("userId", userId),
+		zap.String("integrationType", integrationType),
+	)
+	err = ir.db.Unscoped().Where(&models.Integration{
+		UserId:          userId,
+		IntegrationType: integrationType,
+	}).Delete(&models.Integration{
+		UserId:          userId,
+		IntegrationType: integrationType,
+	}).Error
+	return
+}
+
 func (ir *IntegrationsRepository) AddOrUpdateIntegration(
 	userId uint64,
 	integrationType string,

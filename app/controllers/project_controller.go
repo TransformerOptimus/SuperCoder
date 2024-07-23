@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"ai-developer/app/models"
 	"ai-developer/app/services"
 	"ai-developer/app/types/request"
 	"net/http"
@@ -56,44 +57,6 @@ func (controller *ProjectController) GetProjectById(context *gin.Context) {
 	context.JSON(http.StatusOK, project)
 }
 
-func (controller *ProjectController) CreateProjectFromGit(context *gin.Context) {
-	var createProjectRequest request.CreateProjectFromGitRequest
-	if err := context.ShouldBindJSON(&createProjectRequest); err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	email, _ := context.Get("email")
-	user, err := controller.userService.GetUserByEmail(email.(string))
-	if err != nil {
-		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if user == nil {
-		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
-		return
-	}
-
-	project, err := controller.projectService.CreateProjectFromGit(user.ID, user.OrganisationID, createProjectRequest)
-	if err != nil {
-		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	context.JSON(
-		http.StatusOK,
-		gin.H{
-			"project_id":                 project.ID,
-			"project_url":                project.Url,
-			"project_name":               project.Name,
-			"project_frontend_url":       project.FrontendURL,
-			"project_backend_url":        project.BackendURL,
-			"project_framework":          project.BackendFramework,
-			"project_frontend_framework": project.FrontendFramework,
-		},
-	)
-	return
-}
-
 func (controller *ProjectController) CreateProject(context *gin.Context) {
 	var createProjectRequest request.CreateProjectRequest
 	if err := context.ShouldBindJSON(&createProjectRequest); err != nil {
@@ -110,7 +73,14 @@ func (controller *ProjectController) CreateProject(context *gin.Context) {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
 		return
 	}
-	project, err := controller.projectService.CreateProject(int(user.OrganisationID), createProjectRequest)
+
+	var project *models.Project
+	if createProjectRequest.Repository == nil {
+		project, err = controller.projectService.CreateProject(int(user.OrganisationID), createProjectRequest)
+	} else {
+		project, err = controller.projectService.CreateProjectFromGit(user.ID, user.OrganisationID, createProjectRequest)
+	}
+
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

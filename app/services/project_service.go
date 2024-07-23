@@ -84,7 +84,7 @@ func (s *ProjectService) GetProjectDetailsById(projectId int) (*models.Project, 
 	return project, nil
 }
 
-func (s *ProjectService) CreateProjectFromGit(userId uint, orgId uint, requestData request.CreateProjectFromGitRequest) (project *models.Project, err error) {
+func (s *ProjectService) CreateProjectFromGit(userId uint, orgId uint, requestData request.CreateProjectRequest) (project *models.Project, err error) {
 	integrationDetails, err := s.githubIntegrationService.GetGithubIntegrationDetails(uint64(userId))
 	if err != nil {
 		s.logger.Error("Error getting github integration details", zap.Error(err))
@@ -132,7 +132,7 @@ func (s *ProjectService) CreateProjectFromGit(userId uint, orgId uint, requestDa
 	_, err = s.workspaceServiceClient.ImportGitRepository(
 		&request.ImportGitRepository{
 			WorkspaceId:  hashID,
-			Repository:   requestData.Repository,
+			Repository:   *requestData.Repository,
 			Username:     integrationDetails.GithubUserId,
 			Password:     integrationDetails.AccessToken,
 			RemoteURL:    remoteGitURL,

@@ -479,8 +479,6 @@ func main() {
 		projects.POST("", projectsController.CreateProject)
 		projects.PUT("", projectsController.UpdateProject)
 
-		projects.POST("/import", projectsController.CreateProjectFromGit)
-
 		projects.GET("/", projectsController.GetAllProjects)
 		projects.POST("/", projectsController.CreateProject)
 		projects.PUT("/", projectsController.UpdateProject)
@@ -550,7 +548,10 @@ func main() {
 		integrations := api.Group("/integrations", middleware.AuthenticateJWT())
 
 		githubIntegration := integrations.Group("/github")
+
 		githubIntegration.GET("", githubIntegrationController.CheckIfIntegrationExists)
+		githubIntegration.DELETE("", githubIntegrationController.DeleteIntegration)
+
 		githubIntegration.GET("/repos", githubIntegrationController.GetRepositories)
 		githubIntegration.GET("/authorize", githubIntegrationController.Authorize)
 		githubIntegration.GET("/callback", githubIntegrationController.HandleCallback)

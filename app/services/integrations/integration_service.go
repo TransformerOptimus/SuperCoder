@@ -16,6 +16,10 @@ func (is *IntegrationService) FindIntegrationIdByUserIdAndType(userId uint64, in
 	return is.integrationsRepository.FindIntegrationIdByUserIdAndType(userId, integrationType)
 }
 
+func (is *IntegrationService) DeleteIntegration(userId uint64, integrationType string) (err error) {
+	return is.integrationsRepository.DeleteIntegration(userId, integrationType)
+}
+
 func (is *IntegrationService) AddOrUpdateIntegration(
 	userId uint64,
 	integrationType string,

@@ -5,11 +5,13 @@ import (
 	"ai-developer/app/models/dtos/integrations"
 	"ai-developer/app/utils"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/google/go-github/github"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	githubOAuth "golang.org/x/oauth2/github"
+	"gorm.io/gorm"
 	"strconv"
 )
 
@@ -22,12 +24,20 @@ type GithubIntegrationService struct {
 	integrationService *IntegrationService
 }
 
+func (gis *GithubIntegrationService) DeleteIntegration(userId uint64) (err error) {
+	err = gis.integrationService.DeleteIntegration(userId, GithubIntegrationType)
+	return
+}
+
 func (gis *GithubIntegrationService) GetRedirectUrl(userId uint64) string {
 	return gis.oauthConfig.AuthCodeURL(fmt.Sprintf("%d", userId), oauth2.AccessTypeOnline)
 }
 
 func (gis *GithubIntegrationService) HasGithubIntegration(userId uint64) (hasIntegration bool, err error) {
 	integration, err := gis.integrationService.FindIntegrationIdByUserIdAndType(userId, GithubIntegrationType)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
 	if err != nil {
 		return
 	}
@@ -37,7 +47,11 @@ func (gis *GithubIntegrationService) HasGithubIntegration(userId uint64) (hasInt
 
 func (gis *GithubIntegrationService) GetRepositories(userId uint64) (repos []*github.Repository, err error) {
 	integration, err := gis.integrationService.FindIntegrationIdByUserIdAndType(userId, GithubIntegrationType)
-	if err != nil || integration == nil {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return make([]*github.Repository, 0), nil
+	}
+
+	if err != nil {
 		return
 	}
 

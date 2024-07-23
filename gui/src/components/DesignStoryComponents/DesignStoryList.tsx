@@ -16,6 +16,7 @@ const DesignStoryList: React.FC = () => {
     setSelectedStory,
   } = useDesignContext();
   const [searchTerm, setSearchTerm] = useState('');
+
   const handleOpenStoryDetails = (storyDetails) => {
     setOpenStoryDetailsModal(true);
     setSelectedStory(storyDetails);
@@ -25,6 +26,7 @@ const DesignStoryList: React.FC = () => {
   const filteredStories = storyList.filter((story) =>
     story.title.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
   return (
     <div className={'flex flex-col gap-4'}>
       <div className={'flex flex-row gap-2'}>
@@ -59,26 +61,26 @@ const DesignStoryList: React.FC = () => {
               >
                 <div className={'relative h-full w-full'}>
                   <Image
-                      src={'https://ai-developer-files-120624.s3.amazonaws.com/10/27/twitter_login.jpg'}
-                      alt={'design_image'}
-                      fill
-                      className="object-contain"
-                      loading="lazy"
+                    src={`/api/stories/${story.id}/fetch_image`}
+                    alt={'design_image'}
+                    fill
+                    className="object-contain"
+                    loading="lazy"
                   />
                 </div>
                 <div className={'absolute left-[5px] top-1.5'}>
                   <CustomTag
-                      icon={null}
-                      iconClass={'size-4'}
-                      className={'rounded-lg'}
-                      text={handleStoryStatus(story.status).text}
-                      color={handleStoryStatus(story.status).color}
+                    icon={null}
+                    iconClass={'size-4'}
+                    className={'rounded-lg'}
+                    text={handleStoryStatus(story.status).text}
+                    color={handleStoryStatus(story.status).color}
                   />
                 </div>
               </div>
               <div className={'flex flex-row gap-2'}>
                 <span
-                    className={`${styles.story_number} justify-center text-sm font-normal leading-normal`}
+                  className={`${styles.story_number} justify-center text-sm font-normal leading-normal`}
                 >
                   #{story.id}
                 </span>

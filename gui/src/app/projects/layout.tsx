@@ -1,7 +1,6 @@
 import React, { ReactNode } from 'react';
 import NavBar from '@/components/LayoutComponents/NavBar';
 import styles from './projects.module.css';
-import { SocketProvider } from '@/context/SocketContext';
 
 export default function ProjectsLayout({
   children,

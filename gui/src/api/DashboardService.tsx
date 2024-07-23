@@ -1,20 +1,14 @@
 import api from './apiConfig';
+import {CreateProjectPayload, UpdateProjectPayload,} from '../../types/projectsTypes';
+import {FormStoryPayload} from '../../types/storyTypes';
 import {
-  CreateProjectPayload,
-  UpdateProjectPayload,
-} from '../../types/projectsTypes';
-import { FormStoryPayload } from '../../types/storyTypes';
-import {
-  CommentReBuildPayload,
   CommentReBuildDesignStoryPayload,
+  CommentReBuildPayload,
   CreatePullRequestPayload,
 } from '../../types/pullRequestsTypes';
-import { CreateOrUpdateLLMAPIKeyPayload } from '../../types/modelsTypes';
-import {
-  CreateDesignStoryPayload,
-  EditDesignStoryPayload,
-} from '../../types/designStoryTypes';
-import { authPayload } from '../../types/authTypes';
+import {CreateOrUpdateLLMAPIKeyPayload} from '../../types/modelsTypes';
+import {CreateDesignStoryPayload, EditDesignStoryPayload,} from '../../types/designStoryTypes';
+import {authPayload} from '../../types/authTypes';
 
 export const checkHealth = () => {
   return api.get(`/health`);
@@ -180,3 +174,20 @@ export const rebuildDesignStory = (
 export const updateReviewViewedStatus = (story_id: number) => {
   return api.put(`/stories/design/review_viewed/${story_id}`, {});
 };
+
+export const isGithubConnected = async () => {
+  const response = await api.get(`/integrations/github`);
+  const { integrated }: { integrated: boolean } = response.data;
+  return integrated;
+}
+
+export const getGithubRepos = async () => {
+  const response = await api.get(`/integrations/github/repos`);
+  const { repositories } = response.data;
+  return repositories;
+}
+
+export const deleteGithubIntegration = async () => {
+  const response = await api.delete(`/integrations/github`);
+  return response.data;
+}

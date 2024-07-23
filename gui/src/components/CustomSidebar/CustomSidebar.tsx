@@ -1,16 +1,21 @@
 'use client';
-import React, { useState, useCallback } from 'react';
+import React, {useCallback, useState} from 'react';
 import styles from './sidebar.module.css';
 import CustomImage from '@/components/ImageComponents/CustomImage';
-import { CustomSidebarProps } from '../../../types/customComponentTypes';
+import {CustomSidebarProps} from '../../../types/customComponentTypes';
+import {useSearchParams} from 'next/navigation'
 
 const CustomSidebar: React.FC<CustomSidebarProps> = ({
-  id,
-  title,
-  options,
-  onOptionSelect,
-}) => {
-  const [selectedKey, setSelectedKey] = useState<string | null>(options[0].key);
+                                                       id,
+                                                       title,
+                                                       options,
+                                                       onOptionSelect,
+                                                     }) => {
+  const searchParams = useSearchParams();
+  const page = searchParams.get("page");
+  const selectedPage = options?.find((option) => option.key === page) || options[0];
+
+  const [selectedKey, setSelectedKey] = useState<string | null>(selectedPage.key);
 
   const handleOptionClick = useCallback(
     (key: string) => {

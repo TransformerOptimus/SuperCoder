@@ -1,25 +1,18 @@
 import CustomModal from '@/components/CustomModal/CustomModal';
 import CustomImageSelector from '@/components/ImageComponents/CustomImageSelector';
-import {
-  backendFrameworkOptions,
-  frontendFrameworkOptions,
-} from '@/app/constants/ProjectConstants';
-import { Button } from '@nextui-org/react';
-import { useEffect, useRef, useState } from 'react';
-import {
-  CreateProjectPayload,
-  ProjectTypes,
-  UpdateProjectPayload,
-} from '../../../types/projectsTypes';
-import {
-  createProject,
-  getProjectById,
-  updateProject,
-} from '@/api/DashboardService';
-import { useRouter } from 'next/navigation';
-import { setProjectDetails } from '@/app/utils';
+import {backendFrameworkOptions, frontendFrameworkOptions,} from '@/app/constants/ProjectConstants';
+import {Button} from '@nextui-org/react';
+import {useEffect, useRef, useState} from 'react';
+import {CreateProjectPayload, ProjectTypes, UpdateProjectPayload,} from '../../../types/projectsTypes';
+import {createProject, getGithubRepos, getProjectById, isGithubConnected, updateProject,} from '@/api/DashboardService';
+import {useRouter} from 'next/navigation';
+import {setProjectDetails} from '@/app/utils';
 import CustomImage from '@/components/ImageComponents/CustomImage';
 import CustomInput from '@/components/CustomInput/CustomInput';
+import styles from './create-project.module.css';
+import imagePath from "@/app/imagePath";
+import {API_BASE_URL} from "@/api/apiConfig";
+import Select from "react-select";
 
 interface CreateOrEditProjectBodyProps {
   id: string;
@@ -29,13 +22,44 @@ interface CreateOrEditProjectBodyProps {
   edit?: boolean;
 }
 
+const customStyles = {
+  control: (provided) => ({
+    ...provided,
+    backgroundColor: '#1e1e1e',
+    color: '#ffffff',
+    borderColor: '#333333',
+    '&:hover': {
+      color: '#ffffff',
+      borderColor: '#4a4a4a'
+    }
+  }),
+  menu: (provided) => ({
+    ...provided,
+    backgroundColor: '#1e1e1e',
+  }),
+  input: (styles) => ({ ...styles, color: '#ffffff' }),
+  option: (provided, state) => ({
+    ...provided,
+    backgroundColor: state.isFocused ? '#333333' : '#1e1e1e',
+    color: '#ffffff',
+    '&:hover': {
+      backgroundColor: '#2a2a2a',
+      color: '#ffffff',
+    },
+  }),
+  singleValue: (provided) => ({
+    ...provided,
+    color: '#ffffff'
+  }),
+};
+
 export default function CreateOrEditProjectBody({
-  id,
-  openProjectModal,
-  setOpenProjectModal,
-  projectsList,
-  edit = false,
-}: CreateOrEditProjectBodyProps) {
+                                                  id,
+                                                  openProjectModal,
+                                                  setOpenProjectModal,
+                                                  projectsList,
+                                                  edit = false,
+                                                }: CreateOrEditProjectBodyProps) {
   const [selectedBackendFramework, setSelectedBackendFramework] =
     useState<string>(backendFrameworkOptions[0].id);
   const [selectedFrontendFramework, setSelectedFrontendFramework] =
@@ -47,6 +71,29 @@ export default function CreateOrEditProjectBody({
   const [errorMessage, setErrorMessage] = useState<string | null>('');
   const projectIdRef = useRef(null);
   const router = useRouter();
+
+  const [integrationLoading, setIntegrationLoading] = useState<boolean>(false);
+  const [isExternalGitIntegration, setIsExternalGitIntegration] = useState<boolean>(false);
+  const [useExternalGit, setUseExternalGit] = useState<boolean>(false);
+  const [repositories, setRepositories] = useState<any[]>([]);
+  const [selectedRepository, setSelectedRepository] = useState<string | null>(null);
+
+  async function redirectToGithubIntegration() {
+    setIntegrationLoading(true);
+    try {
+      const interval = setInterval(async () => {
+        const gitIntegrated = await isGithubConnected();
+        if (gitIntegrated) {
+          setIsExternalGitIntegration(true);
+          setIntegrationLoading(false);
+          clearInterval(interval);
+        }
+      }, 1000, 1000);
+      window.open(`${API_BASE_URL}/integrations/github/authorize`, '_blank');
+    } catch (error) {
+      console.error('Error: ', error);
+    }
+  }
 
   const handleProjectDuplicationCheck = () => {
     if (!projectsList) {
@@ -101,10 +148,32 @@ export default function CreateOrEditProjectBody({
         framework: selectedBackendFramework,
         frontend_framework: selectedFrontendFramework,
         description: projectDescription,
+        repository: useExternalGit ? selectedRepository : undefined,
       };
       await toCreateNewProject(newProjectPayload);
     }
   };
+
+  useEffect(() => {
+    (async function () {
+      const repositories = await getGithubRepos();
+      const options = repositories.map((repository: { name: string, url: string }) => {
+        const { name, url } = repository;
+        return {
+          value: url,
+          label: name,
+        };
+      });
+      setRepositories(options);
+    })();
+  }, [isExternalGitIntegration]);
+
+  useEffect(() => {
+    (async function () {
+      const gitIntegrated = await isGithubConnected();
+      setIsExternalGitIntegration(gitIntegrated);
+    })();
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -175,7 +244,7 @@ export default function CreateOrEditProjectBody({
       width={'30vw'}
       onClose={() => setOpenProjectModal(false)}
     >
-      <CustomModal.Header title={edit ? 'Edit Project' : 'New Project'} />
+      <CustomModal.Header title={edit ? 'Edit Project' : 'New Project'}/>
       <CustomModal.Body>
         <div className={'flex flex-col gap-6'}>
           <div className={'flex flex-col gap-1'} id={'name_section'}>
@@ -261,6 +330,60 @@ export default function CreateOrEditProjectBody({
               />
             )}
           </div>
+
+          <div>
+            <label className="block text-sm font-medium secondary_color mb-1">Repository</label>
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input type="radio" checked={!useExternalGit} onClick={() => setUseExternalGit(false)}
+                       name="import-repository" className="mr-2 text-white"/>
+                <span className="text-white">Create new repository</span>
+              </label>
+              <label className="flex items-center">
+                <input type="radio" checked={useExternalGit} onClick={() => setUseExternalGit(true)}
+                       name="import-repository" className="mr-2 text-white"/>
+                <span className="text-white">Import from github</span>
+              </label>
+            </div>
+            <p className="text-xs opacity-40 mt-1">*Repository name will be named after the project name itself.</p>
+          </div>
+
+          {(useExternalGit && isExternalGitIntegration) && (
+            <>
+              <Select
+                onChange={(e) => setSelectedRepository(e.value)}
+                className="text-white" styles={customStyles}
+                options={repositories}
+              />
+            </>
+          )}
+
+          {(useExternalGit && !isExternalGitIntegration) && (
+            <div className={`p-3 rounded-md ${styles.integrate_github_container}`}>
+              <div className="flex">
+                <span className="inline-block font-light mr-1">ⓘ</span>
+                <div className="ml-1">
+                  <p className="text-sm text-gray-300 font-medium mb-2">
+                    Please connect your github account to continue. This will allow the supercoder to import your
+                    repositories.
+                  </p>
+                  <Button
+                    onClick={() => redirectToGithubIntegration()}
+                    className={`primary_medium`}
+                    isLoading={integrationLoading}
+                  >
+                    <CustomImage
+                      className={'size-5'}
+                      src={imagePath.githubLogo}
+                      alt={'github_logo'}
+                    />
+                    Connect to Github
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className={'flex flex-col gap-1'} id={'description_section'}>
             <span className={'secondary_color text-[13px] font-normal'}>
               {' '}

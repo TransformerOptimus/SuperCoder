@@ -3,6 +3,7 @@ export interface CreateProjectPayload {
   framework: string;
   frontend_framework: string;
   description: string;
+  repository: string | undefined;
 }
 
 export interface UpdateProjectPayload {

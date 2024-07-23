@@ -19,6 +19,7 @@ export default {
   boardIconUnselected: '/icons/unselected/board.svg',
   overviewIconSelected: '/icons/selected/overview.svg',
   overviewIconUnselected: '/icons/unselected/overview.svg',
+  overviewWarningYellow: 'icons/overview_warning_yellow.svg',
   instructionsIconSelected: '/icons/selected/instructions.svg',
   instructionsIconUnselected: '/icons/unselected/instructions.svg',
   filesChangedIconSelected: '/icons/selected/files_changed.svg',
@@ -80,4 +81,6 @@ export default {
   openAIIcon: '/icons/openai_icon.svg',
   claudeIcon: '/icons/claude_icon.svg',
   backArrow: '/arrows/back_arrow.svg',
+  passwordHidden: 'icons/password_hidden.svg',
+  passwordUnhidden: 'icons/password_unhidden.svg',
 };

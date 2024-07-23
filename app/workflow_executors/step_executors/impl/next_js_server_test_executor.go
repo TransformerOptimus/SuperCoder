@@ -2,6 +2,7 @@ package impl
 
 import (
 	"ai-developer/app/config"
+	"ai-developer/app/constants"
 	"ai-developer/app/llms"
 	"ai-developer/app/services"
 	"ai-developer/app/utils"
@@ -69,7 +70,6 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 	}
 
 	buildLogs, err := e.serverRunTest(codeFolder, step.ExecutionStep.ExecutionID, step.ExecutionStep.ID, step.Story.HashID, step.Project.HashID)
-	fmt.Println("___BUILD LOGS____: ", buildLogs)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API KEY_________", apiKey)
 
-	buildAnalysis, action, err := e.AnalyseBuildLogs(buildLogs, directoryPlan, apiKey)
+	buildAnalysis, action, err := e.AnalyseBuildLogs(buildLogs, directoryPlan, apiKey, step)
 	fmt.Println("Build Logs Analysis", buildAnalysis)
 	if err != nil {
 		fmt.Println("Error analysing build log" + err.Error())
@@ -168,8 +168,8 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 	}
 }
 
-func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan, apiKey string) (bool, map[string]interface{}, error) {
-	fmt.Println("Analysing Build Logs", buildLogs)
+func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan, apiKey string, step steps.ServerStartTestStep) (bool, map[string]interface{}, error) {
+	e.logger.Info("____Analyzing build logs____ ", zap.String("buildLogs", buildLogs))
 	messages, err := e.CreateMessage(buildLogs, directoryPlan)
 	if err != nil {
 		return false, nil, err
@@ -177,8 +177,28 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 	claudeClient:= llms.NewClaudeClient(apiKey)
 	response, err := claudeClient.ChatCompletion(messages)
 	if err != nil {
-		fmt.Println("failed to generate code from OpenAI API")
-		return false, nil, fmt.Errorf("failed to generate code from OpenAI API: %w", err)
+		settingsUrl := config.Get("app.url").(string) + "/settings"
+		err = e.activityLogService.CreateActivityLog(
+			step.Execution.ID,
+			step.ExecutionStep.ID,
+			"INFO",
+			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
+		)
+		if err != nil {
+			fmt.Printf("Error creating activity log: %s\n", err.Error())
+			return false, nil, err
+		}
+		//Update Execution Status and Story Status
+		if err = e.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
+			fmt.Printf("Error updating story status: %s\n", err.Error())
+			return false, nil, err
+		}
+		if err = e.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
+			fmt.Printf("Error updating execution step: %s\n", err.Error())
+			return false, nil, err
+		}
+		fmt.Println("failed to generate code from llm")
+		return false, nil, fmt.Errorf("failed to generate code from llm: %w", err)
 	}
 	var jsonResponse map[string]interface{}
 	if err = json.Unmarshal([]byte(response), &jsonResponse); err != nil {
@@ -212,7 +232,6 @@ func (e NextJsServerStartTestExecutor) CheckBuildResponse(response map[string]in
 
 func (e NextJsServerStartTestExecutor) CreateMessage(buildLogs string, directoryPlan string) ([]llms.ClaudeChatCompletionMessage, error) {
 	content, err := os.ReadFile("/go/prompts/nextjs/next_js_build_checker.txt")
-	fmt.Println("____build logs in create msg function___", buildLogs)
 	modifiedContent := strings.Replace(string(content), "{{BUILD_LOGS}}", buildLogs, -1)
 	modifiedContent = strings.Replace(string(modifiedContent), "{{DIRECTORY_STRUCTURE}}", directoryPlan, -1)
 	if err != nil {

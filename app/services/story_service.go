@@ -98,7 +98,7 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 	env := config.Get("app.env")
 	frontendBaseUrl := config.WorkspaceStaticFrontendUrl()
 	frontendConstant := constants.Frontend
-	frontendUrl := frontendBaseUrl + "/" + project.HashID + "/"+frontendConstant+"/%2Estories/" + hashID + "/out/"
+	frontendUrl := frontendBaseUrl + "/" + project.HashID + "/" + frontendConstant + "/%2Estories/" + hashID + "/out/"
 	if env == "production" {
 		url = "https://" + hashID + ".workspace.superagi.com/?folder=/workspaces/" + project.HashID + "/frontend/.stories/" + hashID
 	}
@@ -139,7 +139,7 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 	if err != nil {
 		fmt.Println("Error uploading file", err.Error())
 		err := s.DeleteStoryByID(int(createdStory.ID))
-		if err!=nil{
+		if err != nil {
 			fmt.Println("Error deleting story")
 		}
 		return 0, err
@@ -352,7 +352,7 @@ func (s *StoryService) GetAllStoriesOfProject(projectId int, searchValue string,
 }
 
 func (s *StoryService) GetDesignStoriesOfProject(projectId int, storyType string) ([]*response.GetDesignStoriesOfProjectId, error) {
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectId, storyType)
+	stories, err := s.storyRepo.GetStoriesByProjectIdAndStoryType(projectId, storyType)
 	fmt.Println(stories)
 	if err != nil {
 		return nil, err
@@ -361,7 +361,9 @@ func (s *StoryService) GetDesignStoriesOfProject(projectId int, storyType string
 	for _, story := range stories {
 		storyFile, err := s.storyFileRepo.GetFileByStoryID(story.ID)
 		status := story.Status
-		if status == constants.MaxLoopIterationReached {
+		reason := ""
+		if status == constants.MaxLoopIterationReached || status == constants.InReviewLLMKeyNotFound {
+			reason = status
 			status = constants.InReview
 		}
 		if err != nil {
@@ -372,6 +374,7 @@ func (s *StoryService) GetDesignStoriesOfProject(projectId int, storyType string
 			StoryID:           int(story.ID),
 			StoryName:         story.Title,
 			StoryStatus:       status,
+			Reason:            reason,
 			StoryInputFileURL: storyFile.FilePath,
 			CreatedAt:         story.CreatedAt.Format("Jan 2"),
 			ReviewViewed:      story.ReviewViewed,
@@ -524,6 +527,7 @@ func (s *StoryService) GetInProgressStoriesByProjectId(projectId int) ([]*respon
 func (s *StoryService) UpdateStoryStatusByUser(storyID int, status string) error {
 	s.logger.Info("Updating story status by user", zap.Int("storyID", storyID), zap.String("status", status))
 	story, err := s.GetStoryById(int64(storyID))
+	projectID, err := s.storyRepo.GetProjectIdByStoryID(storyID)
 	if err != nil {
 		s.logger.Error("Error fetching story", zap.Error(err))
 		return types.ErrInvalidStory
@@ -538,9 +542,19 @@ func (s *StoryService) UpdateStoryStatusByUser(storyID int, status string) error
 		return types.ErrInvalidStatus
 	}
 
+	existingStoryInProgress, err := s.GetStoryByProjectIdAndStatus(projectID, constants.InProgress)
+	if err != nil {
+		s.logger.Error("Error fetching story", zap.Error(err))
+        return err
+	}
+	if existingStoryInProgress!= nil {
+        s.logger.Error("Another story is already in progress.")
+        return types.ErrAnotherStoryAlreadyInProgress
+    }
 	//Check if valid transition
 	if status == constants.InProgress {
-		if story.Status == constants.Todo || story.Status == constants.InReview {
+		if story.Status == constants.Todo || story.Status == constants.InReview || story.Status == constants.MaxLoopIterationReached ||
+			story.Status == constants.InReviewLLMKeyNotFound {
 			err := s.UpdateStoryStatus(storyID, status)
 			if err != nil {
 				s.logger.Error("Error updating story status", zap.Error(err))
@@ -575,7 +589,8 @@ func (s *StoryService) UpdateStoryStatus(storyID int, status string) error {
 	s.logger.Info("New Status", zap.String("status", status))
 	if strings.ToUpper(status) == constants.InProgress {
 		s.logger.Info("Story to be updated to InProgress", zap.Int("storyID", storyID))
-		if story.Status == constants.Todo || story.Status == constants.InReview {
+		if story.Status == constants.Todo || story.Status == constants.InReview || story.Status == constants.MaxLoopIterationReached ||
+			story.Status == constants.InReviewLLMKeyNotFound {
 			s.logger.Info("Story is in Todo", zap.Int("storyID", storyID))
 			s.logger.Info("Executing story", zap.Int("storyID", storyID))
 			// Create payload for CreateJob task
@@ -624,7 +639,7 @@ func (s *StoryService) UpdateStoryStatus(storyID int, status string) error {
 
 func (s *StoryService) GetStoriesByProjectId(projectID int) ([]models.Story, error) {
 	storyType := constants.Backend
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
+	stories, err := s.storyRepo.GetStoriesByProjectIdAndStoryType(projectID, storyType)
 	if err != nil {
 		return nil, err
 	}
@@ -633,7 +648,7 @@ func (s *StoryService) GetStoriesByProjectId(projectID int) ([]models.Story, err
 
 func (s *StoryService) GetDesignStoriesByProjectId(projectID int) ([]models.Story, error) {
 	storyType := constants.Frontend
-	stories, err := s.storyRepo.GetStoriesByProjectId(projectID, storyType)
+	stories, err := s.storyRepo.GetStoriesByProjectIdAndStoryType(projectID, storyType)
 	if err != nil {
 		return nil, err
 	}

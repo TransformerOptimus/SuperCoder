@@ -187,11 +187,11 @@ const ReviewPage: React.FC = (props) => {
                   }
                 >
                   <Image
-                    src={'https://ai-developer-files-120624.s3.amazonaws.com/10/27/twitter_login.jpg'}
+                    src={`/api/stories/${story_id}/fetch_image`}
                     alt={'design_image'}
                     fill
-                    className="object-contain"
-                    loading="lazy"
+                    className={'object-contain'}
+                    loading={'lazy'}
                   />
                 </div>
               </div>

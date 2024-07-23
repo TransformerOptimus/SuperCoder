@@ -11,6 +11,7 @@ import CreateOrEditProjectBody from '@/components/HomeComponents/CreateOrEditPro
 import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
 import { SkeletonTypes } from '@/app/constants/SkeletonConstants';
 import CustomImage from '@/components/ImageComponents/CustomImage';
+import GithubStarModal from '@/components/HomeComponents/GithubStarModal';
 
 export default function Projects() {
   const [openNewProjectModal, setOpenNewProjectModal] = useState<
@@ -39,6 +40,8 @@ export default function Projects() {
         setOpenProjectModal={setOpenNewProjectModal}
         projectsList={projectsList}
       />
+
+      <GithubStarModal />
 
       {projectsList ? (
         <div className={'flex flex-col gap-6'}>

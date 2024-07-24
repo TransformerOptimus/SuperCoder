@@ -3,6 +3,7 @@ package graph
 import (
 	"ai-developer/app/workflow_executors/step_executors/steps"
 	"errors"
+	"fmt"
 )
 
 type StepGraph struct {
@@ -26,7 +27,7 @@ func (g *StepGraph) GetNextStep(stepName steps.StepName, executionState Executio
 func (g *StepGraph) Walk(execute func(name steps.StepName, step steps.WorkflowStep) error) {
 	currentStep := &g.StartingNode
 	iteration := 0
-	for currentStep != nil && iteration < 40 {
+	for currentStep != nil && iteration < 100 {
 		err := execute(*currentStep, g.Nodes[*currentStep].Step)
 		var executionState ExecutionState
 		if err != nil {

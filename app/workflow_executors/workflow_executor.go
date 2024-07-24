@@ -43,10 +43,7 @@ func (we *WorkflowExecutor) Execute(workflowConfig *WorkflowConfig, args *Workfl
 
 	workflowConfig.StepGraph.Walk(func(name steps.StepName, step steps.WorkflowStep) error {
 		executor, ok := we.executors[name]
-		fmt.Println("_____step name_____:", name)
-		fmt.Println("____executor for next step_____:", executor)
 		if !ok {
-			fmt.Println("___Couldn't find executor for step: ____", name)
 			return errors.New("executor not found")
 		}
 

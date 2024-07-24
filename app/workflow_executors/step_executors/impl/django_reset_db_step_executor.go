@@ -5,9 +5,7 @@ import (
 	"ai-developer/app/services"
 	"ai-developer/app/utils"
 	"ai-developer/app/workflow_executors/step_executors/steps"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -54,24 +52,6 @@ func (e ResetDjangoDBStepExecutor) Execute(step steps.ResetDBStep) error {
 		return err
 	}
 
-	// Ensure virtual environment is activated
-	if err := e.setupVirtualEnv(projectDir); err != nil {
-		e.logger.Error("Error activating virtual environment", zap.Error(err))
-		return err
-	}
-
-	// Create new Django migrations
-	if err := e.createDjangoMigrations(projectDir); err != nil {
-		e.logger.Error("Error creating Django migrations", zap.Error(err))
-		return err
-	}
-
-	// Apply Django migrations
-	if err := e.applyDjangoMigrations(projectDir); err != nil {
-		e.logger.Error("Error applying Django migrations", zap.Error(err))
-		return err
-	}
-
 	err = e.activeLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", "Django DB reset successfully!")
 	if err != nil {
 		e.logger.Error("Error creating activity log", zap.Error(err))
@@ -101,54 +81,4 @@ func (e ResetDjangoDBStepExecutor) removeMigrationFiles(folderPath string) error
         
         return nil
     })
-}
-
-func (e ResetDjangoDBStepExecutor) setupVirtualEnv(projectDir string) error {
-	venvPath := filepath.Join(projectDir, ".venv")
-	venvBin := filepath.Join(venvPath, "bin")
-
-	if _, err := os.Stat(venvPath); os.IsNotExist(err) {
-		if err := e.createVirtualEnv(projectDir); err != nil {
-			e.logger.Error("Error creating virtual environment", zap.Error(err))
-			return err
-		}
-	}
-
-	newPath := fmt.Sprintf("PATH=%s:%s", venvBin, os.Getenv("PATH"))
-	if err := os.Setenv("PATH", newPath); err != nil {
-		e.logger.Error("Error setting PATH environment variable", zap.Error(err))
-		return err
-	}
-	return nil
-}
-
-func (e ResetDjangoDBStepExecutor) createVirtualEnv(projectDir string) error {
-	cmd := exec.Command("python3", "-m", "venv", ".venv")
-	cmd.Dir = projectDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error creating virtual environment: %w", err)
-	}
-	return nil
-}
-
-func (e ResetDjangoDBStepExecutor) createDjangoMigrations(projectDir string) error {
-	pythonPath := filepath.Join(projectDir, ".venv", "bin", "python")
-	err := utils.RunCommand(pythonPath, projectDir, "manage.py", "makemigrations")
-	if err != nil {
-		e.logger.Error("Error creating Django migrations", zap.Error(err))
-		return err
-	}
-	return nil
-}
-
-func (e ResetDjangoDBStepExecutor) applyDjangoMigrations(projectDir string) error {
-	pythonPath := filepath.Join(projectDir, ".venv", "bin", "python")
-	err := utils.RunCommand(pythonPath, projectDir, "manage.py", "migrate")
-	if err != nil {
-		e.logger.Error("Error applying Django migrations", zap.Error(err))
-		return err
-	}
-	return nil
 }

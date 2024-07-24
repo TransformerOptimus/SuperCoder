@@ -23,11 +23,6 @@ const SyntaxDisplay: React.FC<SyntaxDisplayProps> = ({ type, msg }) => {
     // If parsing fails, it's not a valid JSON, so we'll use the original msg
   }
 
-  const lightGreenTextStyle = {
-    color: '#32de84'
-  };
-  
-
   return (
     <>
       {type === ActivityLogType.ERROR && (

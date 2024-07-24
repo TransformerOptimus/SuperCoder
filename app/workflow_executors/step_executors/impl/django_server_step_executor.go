@@ -201,7 +201,7 @@ func (e *DjangoServerStartTestExecutor) startDjangoServer(appPath string, workDi
 func RunDjangoServer(appPath string, workDir string, pythonPath string, newPath string, stdOutputBuf *bytes.Buffer, stderrBuf *bytes.Buffer) (*exec.Cmd, error) {
 	commands := []string{
 		fmt.Sprintf("%s %s makemigrations", pythonPath, appPath),
-		fmt.Sprintf("%s %s migrate", pythonPath, appPath),
+		fmt.Sprintf("%s %s migrate --fake-initial", pythonPath, appPath),
 		fmt.Sprintf("%s %s runserver 0.0.0.0:5000", pythonPath, appPath),
 	}
 

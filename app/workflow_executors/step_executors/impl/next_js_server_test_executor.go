@@ -265,11 +265,16 @@ func (e NextJsServerStartTestExecutor) runCommand(codeFolder string, executionId
 		if err := cmd.Run(); err != nil {
 			fmt.Printf("failed to run command %s %v: %v", name, args, err.Error())
 		}
+
+		jsonMsg := fmt.Sprintf(`{
+			"title": "Running command: %s %s",
+			"content": %q
+		}`, name, strings.Join(args, " "), stdout.String()+stderr.String())
 		err := e.activityLogService.CreateActivityLog(
 			executionId,
 			executionStepId,
 			"CODE",
-			fmt.Sprintf(stdout.String()+stderr.String()),
+			jsonMsg,
 		)
 		if err != nil {
 			return stdout.String(), stderr.String(), err

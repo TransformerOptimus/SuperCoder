@@ -5,12 +5,13 @@ import (
 	gitness_git_provider "ai-developer/app/client/git_provider"
 	"ai-developer/app/client/workspace"
 	"ai-developer/app/config"
+	"ai-developer/app/constants"
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
 	"ai-developer/app/services/filestore"
-	"ai-developer/app/services/git_providers"
 	fileStoreImpl "ai-developer/app/services/filestore/impl"
+	"ai-developer/app/services/git_providers"
 	"ai-developer/app/workflow_executors"
 	"ai-developer/app/workflow_executors/step_executors"
 	"ai-developer/app/workflow_executors/step_executors/impl"
@@ -99,7 +100,7 @@ func main() {
 		awsSession *session.Session,
 		logger *zap.Logger,
 	) filestore.FileStore {
-		if storeConfig.GetFileStoreType() == "local" {
+		if storeConfig.GetFileStoreType() == constants.LOCAL {
 			config.Logger.Info("Using local file store")
 			lfs := fileStoreImpl.NewLocalFileStore(localFileStoreConfig, logger)
 			return lfs

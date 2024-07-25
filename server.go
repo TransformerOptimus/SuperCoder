@@ -107,7 +107,7 @@ func main() {
 		awsSession *session.Session,
 		logger *zap.Logger,
 	) filestore.FileStore {
-		if storeConfig.GetFileStoreType() == "local" {
+		if storeConfig.GetFileStoreType() == constants.LOCAL {
 			config.Logger.Info("Using local file store")
 			lfs := impl.NewLocalFileStore(localFileStoreConfig, logger)
 			return lfs

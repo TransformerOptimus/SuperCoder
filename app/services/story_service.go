@@ -39,7 +39,7 @@ type StoryService struct {
 	hashIdGenerator        *utils.HashIDGenerator
 	workspaceServiceClient *workspace.WorkspaceServiceClient
 	projectService         *ProjectService
-	fileStore 			   filestore.FileStore 
+	fileStore 	        filestore.FileStore 
 }
 
 func (s *StoryService) GetStoryById(storyId int64) (*models.Story, error) {
@@ -744,6 +744,6 @@ func NewStoryService(
 		hashIdGenerator:        utils.NewHashIDGenerator(5),
 		workspaceServiceClient: workspaceServiceClient,
 		projectService:         projectService,
-		fileStore: 				fileStore,
+		fileStore: 		fileStore,
 	}
 }

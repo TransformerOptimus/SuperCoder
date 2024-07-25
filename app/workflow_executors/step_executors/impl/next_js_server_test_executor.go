@@ -177,7 +177,7 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 	var jsonResponse map[string]interface{}
 	var response string
 
-	for retryCount := 1; retryCount < 6; retryCount++ {
+	for retryCount := 1; retryCount <= constants.MAX_JSON_RETRIES; retryCount++ {
 		messages, err := e.CreateMessage(buildLogs, directoryPlan, retryCount)
 		if err != nil{
 			fmt.Println("failed to create messages for llm")
@@ -206,7 +206,7 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 				return false, nil, err
 			}
 			fmt.Println("failed to generate code from llm")
-			if retryCount == 4 {
+			if retryCount == constants.MAX_JSON_RETRIES {
 				return false, nil, fmt.Errorf("failed to generate code from llm after 5 attempts: %w", err)
 			}
 			continue

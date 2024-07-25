@@ -545,11 +545,10 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(execut
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instruction map[string]string, storyDir string, executionStep *models.ExecutionStep, apiKey string, step steps.GenerateCodeStep) (string, error) {
-    const maxRetries = 5
     var response string
     var err error
 
-    for attempt := 1; attempt <= maxRetries; attempt++ {
+    for attempt := 1; attempt <= constants.MAX_JSON_RETRIES; attempt++ {
         response, err = openAiCodeGenerator.attemptEditCode(instruction, storyDir, executionStep, apiKey, attempt)
 		if err !=nil {
 			return "", err
@@ -561,7 +560,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instructio
             err = jsonErr
         }
 
-        if attempt <= maxRetries {
+        if attempt <= constants.MAX_JSON_RETRIES {
 			err = openAiCodeGenerator.slackAlert.SendAlert(
 				"error occurred while parsing edit code JSON response",
 				map[string]string{

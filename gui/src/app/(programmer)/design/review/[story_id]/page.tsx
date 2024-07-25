@@ -187,7 +187,7 @@ const ReviewPage: React.FC = (props) => {
                   }
                 >
                   <Image
-                    src={`/api/stories/${story_id}/fetch_image`}
+                    src={`/api/stories/${story_id}/fetch-image`}
                     alt={'design_image'}
                     fill
                     className={'object-contain'}

@@ -85,7 +85,7 @@ const ActiveDesignWorkbench: React.FC<DesignWorkbenchProps> = ({
           >
             {selectedStory && (
               <CustomImage
-                src={`/api/stories/${selectedStoryId}/fetch_image`}
+                src={`/api/stories/${selectedStoryId}/fetch-image`}
                 alt={'input_image'}
                 className={'h-full w-auto'}
               />

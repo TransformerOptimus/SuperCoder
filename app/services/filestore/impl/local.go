@@ -42,7 +42,7 @@ func (lfs LocalFileStore) CreateFileFromContent(path string, content []byte) (er
 	}
 	err = os.WriteFile(filePath, content, 0644)
 	if err!= nil {
-        fmt.Println("Failed to write file", err)
+		lfs.logger.Info("Failed to write file", zap.Error(err))
         return err
     }
 	return nil

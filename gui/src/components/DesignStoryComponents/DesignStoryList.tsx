@@ -61,7 +61,7 @@ const DesignStoryList: React.FC = () => {
               >
                 <div className={'relative h-full w-full'}>
                   <Image
-                    src={`/api/stories/${story.id}/fetch_image`}
+                    src={`/api/stories/${story.id}/fetch-image`}
                     alt={'design_image'}
                     fill
                     className="object-contain"

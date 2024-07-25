@@ -87,6 +87,16 @@ func main() {
 		panic(err)
 	}
 
+	if err = c.Provide(config.NewLocalFileStoreConfig); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewS3FileStoreConfig); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
 	if err = c.Provide(config.NewAwsSession); err != nil {
 		config.Logger.Error("Error providing FileStore config", zap.Error(err))
 		panic(err)
@@ -95,16 +105,18 @@ func main() {
 	if err = c.Provide(func(
 		awsConfig *config.AWSConfig,
 		storeConfig *config.FileStoreConfig,
+		localFileStoreConfig *config.LocalFileStoreConfig,
+		s3fileStoreConfig *config.S3FileStoreConfig,
 		awsSession *session.Session,
 		logger *zap.Logger,
 	) filestore.FileStore {
 		if storeConfig.GetFileStoreType() == "local" {
 			config.Logger.Info("Using local file store")
-			lfs := impl.NewLocalFileStore(storeConfig, logger)
+			lfs := impl.NewLocalFileStore(localFileStoreConfig, logger)
 			return lfs
 		} else {
-			config.Logger.Info("Using S3 file store")
-			s3fs := impl.NewS3FileSystem(awsSession, storeConfig, logger)
+			config.Logger.Info("Using s3 file store")
+			s3fs := impl.NewS3FileSystem(awsSession, s3fileStoreConfig, logger)
 			return s3fs
 		}
 	}); err != nil {

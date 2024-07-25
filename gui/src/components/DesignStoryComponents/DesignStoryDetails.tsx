@@ -221,7 +221,7 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
             >
               <CustomImage
                 className={'size-max'}
-                src={`/api/stories/${selectedStory.id}/fetch_image`}
+                src={`/api/stories/${selectedStory.id}/fetch-image`}
                 alt={'input_image '}
               />
             </div>

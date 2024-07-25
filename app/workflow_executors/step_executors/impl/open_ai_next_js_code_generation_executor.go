@@ -547,7 +547,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(execut
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instruction map[string]string, storyDir string, executionStep *models.ExecutionStep, apiKey string, step steps.GenerateCodeStep) (string, error) {
     var response string
     var err error
-	var jsonErr error
+    var jsonErr error
 
     for attempt := 1; attempt <= constants.MAX_JSON_RETRIES; attempt++ {
         response, err = openAiCodeGenerator.attemptEditCode(instruction, storyDir, executionStep, apiKey, attempt)

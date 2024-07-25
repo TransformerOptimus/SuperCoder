@@ -99,13 +99,13 @@ func (s3fs S3FileStore) DeleteFile(path string) (err error) {
 
 func NewS3FileSystem(
 	awsSession *session.Session,
-	fileStoreConfig *config.FileStoreConfig,
+	s3fileStoreConfig *config.S3FileStoreConfig,
 	logger *zap.Logger,
 ) filestore.FileStore {
 	return S3FileStore{
 		s3Client: s3.New(awsSession),
-		bucket:   fileStoreConfig.GetS3Bucket(),
-		basePath: fileStoreConfig.GetS3Path(),
+		bucket:   s3fileStoreConfig.GetS3Bucket(),
+		basePath: s3fileStoreConfig.GetS3Path(),
 		logger:   logger,
 	}
 }

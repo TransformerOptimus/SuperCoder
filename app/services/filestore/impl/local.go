@@ -97,9 +97,9 @@ func (lfs LocalFileStore) DeleteFile(path string) (err error) {
 	return nil
 }
 
-func NewLocalFileStore(fileStoreConfig *config.FileStoreConfig, logger *zap.Logger) filestore.FileStore {
+func NewLocalFileStore(localFileStoreConfig *config.LocalFileStoreConfig, logger *zap.Logger) filestore.FileStore {
 	return LocalFileStore{
-		baseFolder: fileStoreConfig.GetLocalDir(),
+		baseFolder: localFileStoreConfig.GetLocalDir(),
 		logger:     logger,
 	}
 }

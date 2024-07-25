@@ -212,6 +212,7 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 			continue
 		}
 		if err = json.Unmarshal([]byte(response), &jsonResponse); err != nil {
+			fmt.Println("error decoding build logs response from claude api", err)
 			fmt.Println("failed to unmarshal response from Claude API, retrying...")
 			if retryCount == 5 {
 				err := e.slackAlert.SendAlert(

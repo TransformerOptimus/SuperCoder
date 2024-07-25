@@ -87,6 +87,18 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 
 	if count > step.MaxLoopIterations {
 		fmt.Println("Max retry limit reached for LLM steps")
+		err = openAiCodeGenerator.slackAlert.SendAlert(
+			"Max retry limit reached",
+			map[string]string{
+				"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
+				"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
+				"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
+				"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
+			})
+		if err != nil {
+			fmt.Printf("Error sending slack alert: %s\n", err.Error())
+			return err
+		}
 		//Update story status to MAX_LOOP_ITERATION_REACHED
 		if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.MaxLoopIterationReached); err != nil {
 			fmt.Printf("Error updating story status: %s\n", err.Error())
@@ -176,6 +188,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 					"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
 					"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
 					"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
+					"model_name": 	     constants.CLAUDE_3,
 				})
 			if err != nil {
 				fmt.Printf("Error sending slack alert: %s\n", err.Error())

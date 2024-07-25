@@ -705,12 +705,12 @@ func (s *StoryService) GetImageReaderByStoryId(storyId int) (io.ReadCloser, int6
         return nil, 0, nil, fmt.Errorf("error occurred while getting file path: %w", err)
     }
 
-	reader, contentLength, contentType, err := s.fileStore.ReadFileWithInfo(filePath)
+    reader, contentLength, contentType, err := s.fileStore.ReadFileWithInfo(filePath)
     if err != nil {
         return nil, 0, nil, fmt.Errorf("error reading file: %w", err)
     }
 
-	ext := strings.ToLower(filepath.Ext(filePath))
+    ext := strings.ToLower(filepath.Ext(filePath))
     switch ext {
     case ".jpg", ".jpeg":
         contentTypeStr := "image/jpeg"
@@ -718,7 +718,7 @@ func (s *StoryService) GetImageReaderByStoryId(storyId int) (io.ReadCloser, int6
     case ".png":
 		contentTypeStr := "image/png"
 		contentType = &contentTypeStr
-	}
+    }
 
     return reader, contentLength, contentType, nil
 }

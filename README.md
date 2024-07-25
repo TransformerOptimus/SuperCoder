@@ -111,19 +111,7 @@ If you are using a shell other than bash, replace bash with your specific shell 
 *Note: direnv is one of the suggested ways other ways to setup environment variables are also possible*
 ## Setup
 
-### 1.Environment Configuration
-The basic environment variables are included in the Docker setup, making initial configuration quick and easy. However, for using Amazon S3 to store images for the Design Section, you need to configure the following environment variables manually:
-```bash
-
-export AI_DEVELOPER_FILESTORE_TYPE="local"
-```
-
-To allow direnv to load these settings, run:
-
-```bash
-direnv allow .
-```
-### 2. Build and Run the Go Server, Asynq worker, and Postgres
+### Build and Run the Go Server, Asynq worker, and Postgres
 
 To build and run the Go server, Asynq worker, and Postgres, execute the following command:
 

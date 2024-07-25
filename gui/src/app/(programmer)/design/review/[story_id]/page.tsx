@@ -187,11 +187,11 @@ const ReviewPage: React.FC = (props) => {
                   }
                 >
                   <Image
-                    src={story.input_file_url}
+                    src={`/api/stories/${story_id}/fetch-image`}
                     alt={'design_image'}
                     fill
-                    className="object-contain"
-                    loading="lazy"
+                    className={'object-contain'}
+                    loading={'lazy'}
                   />
                 </div>
               </div>

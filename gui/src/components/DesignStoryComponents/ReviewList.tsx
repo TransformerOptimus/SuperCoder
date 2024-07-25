@@ -49,11 +49,11 @@ const ReviewList: React.FC = () => {
                     className={`${styles.review_image_container} relative flex h-[60px] w-[60px] items-center justify-center overflow-hidden rounded-lg`}
                   >
                     <Image
-                      src={story.input_file_url}
+                      src={`/api/stories/${story.id}/fetch-image`}
                       alt={'design_image'}
                       fill
-                      className="object-contain"
-                      loading="lazy"
+                      className={'object-contain'}
+                      loading={'lazy'}
                     />
                   </div>
                   <div

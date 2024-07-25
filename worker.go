@@ -9,14 +9,16 @@ import (
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
+	"ai-developer/app/services/filestore"
+	"ai-developer/app/services/filestore/impl"
 	"ai-developer/app/services/git_providers"
-	"ai-developer/app/services/s3_providers"
 	"ai-developer/app/tasks"
 	"context"
 	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/hibiken/asynq"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/dig"
@@ -67,6 +69,58 @@ func main() {
 		return config.InitDB()
 	})
 	if err != nil {
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewWorkspaceServiceConfig); err != nil {
+		config.Logger.Error("Error providing workspace service config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewAWSConfig); err != nil {
+		config.Logger.Error("Error providing AWS config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewFileStoreConfig); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewLocalFileStoreConfig); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewS3FileStoreConfig); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(config.NewAwsSession); err != nil {
+		config.Logger.Error("Error providing FileStore config", zap.Error(err))
+		panic(err)
+	}
+
+	if err = c.Provide(func(
+		awsConfig *config.AWSConfig,
+		storeConfig *config.FileStoreConfig,
+		localFileStoreConfig *config.LocalFileStoreConfig,
+		s3fileStoreConfig *config.S3FileStoreConfig,
+		awsSession *session.Session,
+		logger *zap.Logger,
+	) filestore.FileStore {
+		if storeConfig.GetFileStoreType() == constants.LOCAL {
+			config.Logger.Info("Using local file store")
+			lfs := impl.NewLocalFileStore(localFileStoreConfig, logger)
+			return lfs
+		} else {
+			config.Logger.Info("Using s3 file store")
+			s3fs := impl.NewS3FileSystem(awsSession, s3fileStoreConfig, logger)
+			return s3fs
+		}
+	}); err != nil {
+		config.Logger.Error("Error providing FileStore", zap.Error(err))
 		panic(err)
 	}
 
@@ -155,12 +209,6 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("Worker - Providing workspace service client...")
-	err = c.Provide(config.NewWorkspaceServiceConfig)
-	if err != nil {
-		log.Println("Error providing workspace service config:", err)
-		panic(err)
-	}
 	fmt.Printf("Worker - Providing workspace service client...")
 	err = c.Provide(workspace.NewWorkspaceServiceClient)
 	if err != nil {
@@ -213,11 +261,6 @@ func main() {
 		return gitness_git_provider.NewGitnessClient(config.GitnessURL(), config.GitnessToken(), client.NewHttpClient(), logger, slackAlert)
 	})
 	if err != nil {
-		panic(err)
-	}
-	err = c.Provide(s3_providers.NewS3Service)
-	if err != nil {
-		fmt.Println("Error providing S3 service:", err)
 		panic(err)
 	}
 	// Provide GitnessService

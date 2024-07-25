@@ -214,19 +214,21 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 		if err = json.Unmarshal([]byte(response), &jsonResponse); err != nil {
 			fmt.Println("error decoding build logs response from claude api", err)
 			fmt.Println("failed to unmarshal response from Claude API, retrying...")
+			err := e.slackAlert.SendAlert(
+				"error occurred while parsing build logs JSON response",
+				map[string]string{
+					"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
+					"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
+					"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
+					"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
+					"error":             err.Error(),
+					"attempt":          fmt.Sprintf("%d", int64(retryCount)),
+				})
+			if err != nil {
+				fmt.Printf("Error sending slack alert: %s\n", err.Error())
+				return false, nil, err
+			}
 			if retryCount == 5 {
-				err := e.slackAlert.SendAlert(
-					"Max retry limit reached while parsing JSON, error occurred while parsing build logs response",
-					map[string]string{
-						"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
-						"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
-						"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
-						"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
-					})
-				if err != nil {
-					fmt.Printf("Error sending slack alert: %s\n", err.Error())
-					return false, nil, err
-				}
 				return false, nil, fmt.Errorf("failed to unmarshal response from Claude API after 5 attempts: %w", err)
 			}
 			continue

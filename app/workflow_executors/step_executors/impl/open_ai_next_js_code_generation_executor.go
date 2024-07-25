@@ -177,7 +177,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API KEY_________", apiKey)
 
-	code, err := openAiCodeGenerator.GenerateCode(step, finalInstructionForGeneration, storyDir, apiKey)
+	code, err := openAiCodeGenerator.GenerateCode(step, finalInstructionForGeneration, storyDir, apiKey, step)
 	if err != nil {
 		fmt.Println("____ERROR OCCURRED WHILE GENERATING CODE: ______", err)
 		if err == types.ErrJsonParsingRetriesExceeded {
@@ -448,9 +448,9 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecut
 	}, nil
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCode(step steps.GenerateCodeStep, instruction map[string]string, storyDir string, apiKey string) (string, error) {
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCode(step steps.GenerateCodeStep, instruction map[string]string, storyDir string, apiKey string, step steps.GenerateCodeStep) (string, error) {
 	if step.Retry {
-		response, err := openAiCodeGenerator.GenerateCodeOnRetry(step.ExecutionStep, instruction, storyDir, apiKey)
+		response, err := openAiCodeGenerator.GenerateCodeOnRetry(step.ExecutionStep, instruction, storyDir, apiKey, step)
 		if err != nil {
 			fmt.Println("Error generating code on retry")
 			return "", fmt.Errorf("failed to generate retry code from Claude API: %w", err)
@@ -493,7 +493,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) ProcessMessageResponse(mes
 
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(executionStep *models.ExecutionStep, instruction map[string]string, storyDir string, apiKey string) (string, error) {
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(executionStep *models.ExecutionStep, instruction map[string]string, storyDir string, apiKey string, step steps.GenerateCodeStep) (string, error) {
 	switch instruction["actionType"] {
 	case "create":
 		filePath := storyDir + instruction["fileName"]
@@ -521,7 +521,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(execut
 		}
 		return "", nil
 	case "edit":
-		response, err := openAiCodeGenerator.EditCodeOnRetry(instruction, storyDir, executionStep, apiKey)
+		response, err := openAiCodeGenerator.EditCodeOnRetry(instruction, storyDir, executionStep, apiKey, step)
 		if err != nil {
 			return "", err
 		}
@@ -532,14 +532,16 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(execut
 	}
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instruction map[string]string, storyDir string, executionStep *models.ExecutionStep, apiKey string) (string, error) {
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instruction map[string]string, storyDir string, executionStep *models.ExecutionStep, apiKey string, step steps.GenerateCodeStep) (string, error) {
     const maxRetries = 5
     var response string
     var err error
 
     for attempt := 1; attempt <= maxRetries; attempt++ {
         response, err = openAiCodeGenerator.attemptEditCode(instruction, storyDir, executionStep, apiKey, attempt)
-        if err == nil {
+		if err !=nil {
+			return "", err
+		} else if err == nil {
             jsonErr := openAiCodeGenerator.checkJsonValidity(response)
             if jsonErr == nil {
                 return response, nil
@@ -548,6 +550,20 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instructio
         }
 
         if attempt <= maxRetries {
+			err = openAiCodeGenerator.slackAlert.SendAlert(
+				"error occurred while parsing edit code JSON response",
+				map[string]string{
+					"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
+					"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
+					"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
+					"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
+					"error":             err.Error(),
+					"attempt":          fmt.Sprintf("%d", int64(attempt)),
+				})
+			if err != nil {
+				fmt.Printf("Error sending slack alert: %s\n", err.Error())
+				return "", err
+			}
             fmt.Printf("Attempt %d failed: %v. Retrying...\n", attempt, err)
             time.Sleep(time.Second * time.Duration(attempt))
         }

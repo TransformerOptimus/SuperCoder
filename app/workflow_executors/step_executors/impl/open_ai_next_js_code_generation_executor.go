@@ -27,8 +27,8 @@ type OpenAiNextJsCodeGenerator struct {
 	activityLogService   *services.ActivityLogService
 	designReviewService  *services.DesignStoryReviewService
 	llmAPIKeyService     *services.LLMAPIKeyService
-	logger         		 *zap.Logger
-	fileStore 			  filestore.FileStore 
+	logger               *zap.Logger
+	fileStore 	      filestore.FileStore 
 }
 
 func NewOpenAINextJsCodeGenerationExecutor(

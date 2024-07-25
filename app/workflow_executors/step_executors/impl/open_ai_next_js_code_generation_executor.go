@@ -547,18 +547,17 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(execut
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instruction map[string]string, storyDir string, executionStep *models.ExecutionStep, apiKey string, step steps.GenerateCodeStep) (string, error) {
     var response string
     var err error
+	var jsonErr error
 
     for attempt := 1; attempt <= constants.MAX_JSON_RETRIES; attempt++ {
         response, err = openAiCodeGenerator.attemptEditCode(instruction, storyDir, executionStep, apiKey, attempt)
 		if err !=nil {
 			return "", err
-		} else if err == nil {
-            jsonErr := openAiCodeGenerator.checkJsonValidity(response)
-            if jsonErr == nil {
-                return response, nil
-            }
-            err = jsonErr
-        }
+		}
+		jsonErr = openAiCodeGenerator.checkJsonValidity(response)
+		if jsonErr == nil {
+			return response, nil
+		}
 
         if attempt <= constants.MAX_JSON_RETRIES {
 			err = openAiCodeGenerator.slackAlert.SendAlert(
@@ -568,14 +567,14 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instructio
 					"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
 					"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
 					"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
-					"error":             err.Error(),
+					"error":             jsonErr.Error(),
 					"attempt":          fmt.Sprintf("%d", int64(attempt)),
 				})
 			if err != nil {
 				fmt.Printf("Error sending slack alert: %s\n", err.Error())
 				return "", err
 			}
-            fmt.Printf("Attempt %d failed: %v. Retrying...\n", attempt, err)
+            fmt.Printf("Attempt %d failed: %v. Retrying...\n", attempt, jsonErr)
             time.Sleep(time.Second * time.Duration(attempt))
         }
     }

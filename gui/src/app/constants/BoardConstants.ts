@@ -7,6 +7,11 @@ export const storyStatus = {
   LLM_KEY_NOT_FOUND: 'IN_REVIEW_LLM_KEY_NOT_FOUND',
 };
 
+export const showStoryDetailsDropdown = [
+  storyStatus.TODO,
+  storyStatus.IN_REVIEW,
+];
+
 export const storyActions = {
   REBUILD: 'Re-Build',
   GET_HELP: 'GET_HELP',

@@ -19,7 +19,9 @@ export default function WorkBench() {
     return (
       storiesList &&
       (storiesList.IN_PROGRESS || storiesList.DONE || storiesList.IN_REVIEW) &&
-      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0 || storiesList.IN_REVIEW.length > 0)
+      (storiesList.IN_PROGRESS.length > 0 ||
+        storiesList.DONE.length > 0 ||
+        storiesList.IN_REVIEW.length > 0)
     );
   };
 

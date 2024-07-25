@@ -465,7 +465,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCode(step steps.Ge
 		response, err := openAiCodeGenerator.GenerateCodeOnRetry(step.ExecutionStep, instruction, storyDir, apiKey, step)
 		if err != nil {
 			fmt.Println("Error generating code on retry")
-			return "", fmt.Errorf("failed to generate retry code from Claude API: %w", err)
+			return "", err
 		}
 		return response, nil
 	} else {

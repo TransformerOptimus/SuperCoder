@@ -49,7 +49,7 @@ const ReviewList: React.FC = () => {
                     className={`${styles.review_image_container} relative flex h-[60px] w-[60px] items-center justify-center overflow-hidden rounded-lg`}
                   >
                     <Image
-                      src={`/api/stories/${story.id}/fetch_image`}
+                      src={`/api/stories/${story.id}/fetch-image`}
                       alt={'design_image'}
                       fill
                       className={'object-contain'}

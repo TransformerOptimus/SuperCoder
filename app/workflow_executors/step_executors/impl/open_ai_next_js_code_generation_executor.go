@@ -177,7 +177,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API KEY_________", apiKey)
 
-	code, err := openAiCodeGenerator.GenerateCode(step, finalInstructionForGeneration, storyDir, apiKey, step)
+	code, err := openAiCodeGenerator.GenerateCode(step, finalInstructionForGeneration, storyDir, apiKey)
 	if err != nil {
 		fmt.Println("____ERROR OCCURRED WHILE GENERATING CODE: ______", err)
 		if err == types.ErrJsonParsingRetriesExceeded {
@@ -448,7 +448,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecut
 	}, nil
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCode(step steps.GenerateCodeStep, instruction map[string]string, storyDir string, apiKey string, step steps.GenerateCodeStep) (string, error) {
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCode(step steps.GenerateCodeStep, instruction map[string]string, storyDir string, apiKey string) (string, error) {
 	if step.Retry {
 		response, err := openAiCodeGenerator.GenerateCodeOnRetry(step.ExecutionStep, instruction, storyDir, apiKey, step)
 		if err != nil {

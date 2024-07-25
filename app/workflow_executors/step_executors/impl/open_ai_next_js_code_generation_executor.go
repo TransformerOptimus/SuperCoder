@@ -51,7 +51,7 @@ func NewOpenAINextJsCodeGenerationExecutor(
 		designReviewService:  designReviewService,
 		llmAPIKeyService:     llmAPIKeyService,
 		logger:               logger,
-		fileStore: 			  fileStore,
+		fileStore: 	      fileStore,
 	}
 }
 

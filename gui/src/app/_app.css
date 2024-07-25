@@ -279,3 +279,7 @@ body {
   background: var(--white-opacity-12);
   border-radius: 8px 0 0;
 }
+
+.green-text {
+  color: #32de84;
+}

@@ -126,7 +126,7 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
         };
         reader.readAsDataURL(file);
       } else {
-        toast.error('Please upload only JPEG or PNG images.');
+        toast.error('Please upload only JPG or PNG images.');
         event.target.value = '';
       }
     }

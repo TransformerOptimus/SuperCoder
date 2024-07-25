@@ -2,6 +2,7 @@ package impl
 
 import (
 	"ai-developer/app/config"
+	"ai-developer/app/constants"
 	"ai-developer/app/llms"
 	"ai-developer/app/services"
 	"ai-developer/app/utils"
@@ -184,6 +185,26 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 		}
 		response, err = claudeClient.ChatCompletion(messages)
 		if err != nil {
+		settingsUrl := config.Get("app.url").(string) + "/settings"
+		err = e.activityLogService.CreateActivityLog(
+			step.Execution.ID,
+			step.ExecutionStep.ID,
+			"INFO",
+			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
+		)
+		if err != nil {
+			fmt.Printf("Error creating activity log: %s\n", err.Error())
+			return false, nil, err
+		}
+		//Update Execution Status and Story Status
+		if err = e.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
+			fmt.Printf("Error updating story status: %s\n", err.Error())
+			return false, nil, err
+		}
+		if err = e.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
+			fmt.Printf("Error updating execution step: %s\n", err.Error())
+			return false, nil, err
+		}
 			fmt.Println("failed to generate code from llm")
 			if retryCount == 4 {
 				return false, nil, fmt.Errorf("failed to generate code from llm after 5 attempts: %w", err)
@@ -281,11 +302,16 @@ func (e NextJsServerStartTestExecutor) runCommand(codeFolder string, executionId
 		if err := cmd.Run(); err != nil {
 			fmt.Printf("failed to run command %s %v: %v", name, args, err.Error())
 		}
+
+		jsonMsg := fmt.Sprintf(`{
+			"title": "Running command: %s %s",
+			"content": %q
+		}`, name, strings.Join(args, " "), stdout.String()+stderr.String())
 		err := e.activityLogService.CreateActivityLog(
 			executionId,
 			executionStepId,
 			"CODE",
-			fmt.Sprintf(stdout.String()+stderr.String()),
+			jsonMsg,
 		)
 		if err != nil {
 			return stdout.String(), stderr.String(), err

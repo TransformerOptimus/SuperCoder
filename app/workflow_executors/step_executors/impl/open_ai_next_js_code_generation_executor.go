@@ -6,7 +6,7 @@ import (
 	"ai-developer/app/llms"
 	"ai-developer/app/models"
 	"ai-developer/app/services"
-	"ai-developer/app/services/s3_providers"
+	"ai-developer/app/services/filestore"
 	"ai-developer/app/utils"
 	"ai-developer/app/workflow_executors/step_executors/steps"
 	"errors"
@@ -26,9 +26,9 @@ type OpenAiNextJsCodeGenerator struct {
 	storyService         *services.StoryService
 	activityLogService   *services.ActivityLogService
 	designReviewService  *services.DesignStoryReviewService
-	s3Service            *s3_providers.S3Service
 	llmAPIKeyService     *services.LLMAPIKeyService
 	logger               *zap.Logger
+	fileStore 	      filestore.FileStore 
 }
 
 func NewOpenAINextJsCodeGenerationExecutor(
@@ -38,9 +38,9 @@ func NewOpenAINextJsCodeGenerationExecutor(
 	storyService *services.StoryService,
 	activityLogService *services.ActivityLogService,
 	designReviewService *services.DesignStoryReviewService,
-	s3Service *s3_providers.S3Service,
 	llmAPIKeyService *services.LLMAPIKeyService,
 	logger *zap.Logger,
+	fileStore filestore.FileStore,
 ) *OpenAiNextJsCodeGenerator {
 	return &OpenAiNextJsCodeGenerator{
 		projectService:       projectService,
@@ -49,9 +49,9 @@ func NewOpenAINextJsCodeGenerationExecutor(
 		storyService:         storyService,
 		activityLogService:   activityLogService,
 		designReviewService:  designReviewService,
-		s3Service:            s3Service,
 		llmAPIKeyService:     llmAPIKeyService,
 		logger:               logger,
+		fileStore: 	      fileStore,
 	}
 }
 
@@ -255,10 +255,16 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 	if err != nil {
 		return nil, err
 	}
-	base64Image, imageType, err := openAiCodeGenerator.s3Service.GetBase64FromS3Url(storyFile.FilePath)
-	if err != nil {
-		return nil, err
-	}
+	filePathCloser, err := openAiCodeGenerator.fileStore.ReadFile(storyFile.FilePath)
+	if err!= nil {
+		openAiCodeGenerator.logger.Error("Error reading file______", zap.Error(err))
+        return nil, err
+    }
+	base64Image, imageType, err := utils.EncodeToBase64(filePathCloser)
+	if err!= nil {
+        openAiCodeGenerator.logger.Error("Error encoding to base64____", zap.Error(err))
+        return nil, err
+    }
 
 	filePath := filepath.Join(storyDir, "app", step.File)
 	code, err := os.ReadFile(filePath)
@@ -379,10 +385,16 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecut
 	if err != nil {
 		return nil, err
 	}
-	base64Image, imageType, err := openAiCodeGenerator.s3Service.GetBase64FromS3Url(storyFile.FilePath)
-	if err != nil {
-		return nil, err
-	}
+	filePathCloser, err := openAiCodeGenerator.fileStore.ReadFile(storyFile.FilePath)
+	if err!= nil {
+		openAiCodeGenerator.logger.Error("Error reading file______", zap.Error(err))
+        return nil, err
+    }
+	base64Image, imageType, err := utils.EncodeToBase64(filePathCloser)
+	if err!= nil {
+        openAiCodeGenerator.logger.Error("Error encoding to base64____", zap.Error(err))
+        return nil, err
+    }
 
 	return map[string]string{
 		"existingCode": string(code),

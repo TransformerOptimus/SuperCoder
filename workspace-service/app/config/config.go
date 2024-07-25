@@ -32,6 +32,10 @@ func LoadConfig() (config *koanf.Koanf, err error) {
 					"source": "supercoder_workspaces",
 					"target": "/workspaces",
 				},
+				"filestore": map[string]interface{}{
+					"source": "supercoder_filestore",
+					"target": "/filestore",
+				},
 			},
 		},
 	}, "."), nil)

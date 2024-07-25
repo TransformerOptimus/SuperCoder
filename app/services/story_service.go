@@ -8,23 +8,25 @@ import (
 	"ai-developer/app/models/dtos/asynq_task"
 	"ai-developer/app/models/types"
 	"ai-developer/app/repositories"
-	"ai-developer/app/services/s3_providers"
+	"io"
+	"ai-developer/app/services/filestore"
 	"ai-developer/app/types/request"
 	"ai-developer/app/types/response"
 	"ai-developer/app/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
 	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type StoryService struct {
@@ -33,11 +35,11 @@ type StoryService struct {
 	storyInstructionRepo   *repositories.StoryInstructionRepository
 	asynqClient            *asynq.Client
 	logger                 *zap.Logger
-	s3Service              *s3_providers.S3Service
 	storyFileRepo          *repositories.StoryFileRepository
 	hashIdGenerator        *utils.HashIDGenerator
 	workspaceServiceClient *workspace.WorkspaceServiceClient
 	projectService         *ProjectService
+	fileStore 	        filestore.FileStore 
 }
 
 func (s *StoryService) GetStoryById(storyId int64) (*models.Story, error) {
@@ -133,9 +135,9 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 		return 0, err
 	}
 
-	s3Url, err := s.UploadFileBytesToS3(file, fileName, projectID, int(createdStory.ID))
+	fileUrl, err := s.UploadFileBytes(file, fileName ,projectID, int(createdStory.ID))
 	if err != nil {
-		fmt.Println("Error uploading file to S3", err.Error())
+		fmt.Println("Error uploading file", err.Error())
 		err := s.DeleteStoryByID(int(createdStory.ID))
 		if err != nil {
 			fmt.Println("Error deleting story")
@@ -147,7 +149,7 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 	storyFile := &models.StoryFile{
 		StoryID:  createdStory.ID,
 		Name:     fileName,
-		FilePath: s3Url,
+		FilePath: fileUrl,
 	}
 
 	err = s.storyFileRepo.CreateStoryFile(storyFile)
@@ -160,6 +162,10 @@ func (s *StoryService) CreateDesignStoryForProject(file multipart.File, fileName
 
 func (s *StoryService) UpdateDesignStory(file multipart.File, fileName, title string, storyID int) error {
 	story, err := s.storyRepo.GetStoryById(storyID)
+	if err!= nil {
+        fmt.Println("Error getting story by id", err.Error())
+        return err
+    }
 	if err != nil {
 		fmt.Println("Error getting story by id", err.Error())
 		return err
@@ -180,17 +186,18 @@ func (s *StoryService) UpdateDesignStory(file multipart.File, fileName, title st
 		fmt.Println("Error getting story file", err.Error())
 		return err
 	}
-	err = s.s3Service.DeleteS3Object(storyFile.FilePath)
+	err = s.fileStore.DeleteFile(storyFile.FilePath)
+	if err!= nil {
+        fmt.Println("Error deleting story file", err.Error())
+        return err
+    }
+	
+	fileUrl, err := s.UploadFileBytes(file, fileName, int(story.ProjectID), storyID)
 	if err != nil {
-		fmt.Println("Error deleting story file", err.Error())
+		fmt.Println("Error uploading file", err.Error())
 		return err
 	}
-	s3Url, err := s.UploadFileBytesToS3(file, fileName, int(story.ProjectID), storyID)
-	if err != nil {
-		fmt.Println("Error uploading file to S3", err.Error())
-		return err
-	}
-	err = s.storyFileRepo.UpdateStoryFileUrl(storyFile, s3Url)
+	err = s.storyFileRepo.UpdateStoryFileUrl(storyFile, fileUrl)
 	if err != nil {
 		fmt.Println("Error updating story file", err.Error())
 		return err
@@ -198,19 +205,22 @@ func (s *StoryService) UpdateDesignStory(file multipart.File, fileName, title st
 	return nil
 }
 
-func (s *StoryService) UploadFileBytesToS3(file multipart.File, fileName string, projectID, storyID int) (string, error) {
+func (s *StoryService) UploadFileBytes(file multipart.File, fileName string, projectID, storyID int) (string, error) {
 	//read file to bytes
 	fileBytes, err := utils.ReadFileToBytes(file)
 	if err != nil {
 		fmt.Println("Error reading file", err.Error())
 		return "", err
 	}
-	//upload image to s3
-	s3Url, err := s.s3Service.UploadFileToS3(fileBytes, fileName, projectID, storyID)
+	filePath := fmt.Sprintf("%d/%d/%s", projectID, storyID, fileName)
+	err = s.fileStore.CreateFileFromContent(filePath, fileBytes)
 	if err != nil {
 		return "", err
 	}
-	return s3Url, err
+	if err != nil {
+		return "", err
+	}
+	return filePath, err
 }
 func (s *StoryService) UpdateStoryForProject(requestData request.UpdateStoryRequest) error {
 	story, err := s.storyRepo.GetStoryById(requestData.StoryID)
@@ -689,16 +699,40 @@ func (s *StoryService) UpdateStoryStatusWithTx(tx *gorm.DB, storyId int, progres
 	return s.storyRepo.UpdateStoryStatusWithTx(tx, storyId, progress)
 }
 
+func (s *StoryService) GetImageReaderByStoryId(storyId int) (io.ReadCloser, int64, *string, error) {
+    filePath, err := s.storyFileRepo.GetFilePathByStoryID(storyId)
+    if err != nil {
+        return nil, 0, nil, fmt.Errorf("error occurred while getting file path: %w", err)
+    }
+
+    reader, contentLength, contentType, err := s.fileStore.ReadFileWithInfo(filePath)
+    if err != nil {
+        return nil, 0, nil, fmt.Errorf("error reading file: %w", err)
+    }
+
+    ext := strings.ToLower(filepath.Ext(filePath))
+    switch ext {
+    case ".jpg", ".jpeg":
+        contentTypeStr := "image/jpeg"
+		contentType = &contentTypeStr
+    case ".png":
+		contentTypeStr := "image/png"
+		contentType = &contentTypeStr
+    }
+
+    return reader, contentLength, contentType, nil
+}
+
 func NewStoryService(
 	storyRepo *repositories.StoryRepository,
 	storyTestCaseRepo *repositories.StoryTestCaseRepository,
 	storyInstructionRepo *repositories.StoryInstructionRepository,
 	asynqClient *asynq.Client,
 	logger *zap.Logger,
-	s3Service *s3_providers.S3Service,
 	storyFileRepo *repositories.StoryFileRepository,
 	workspaceServiceClient *workspace.WorkspaceServiceClient,
 	projectService *ProjectService,
+	fileStore filestore.FileStore,
 ) *StoryService {
 	return &StoryService{
 		storyRepo:              storyRepo,
@@ -706,10 +740,10 @@ func NewStoryService(
 		storyInstructionRepo:   storyInstructionRepo,
 		asynqClient:            asynqClient,
 		logger:                 logger.Named("StoryService"),
-		s3Service:              s3Service,
 		storyFileRepo:          storyFileRepo,
 		hashIdGenerator:        utils.NewHashIDGenerator(5),
 		workspaceServiceClient: workspaceServiceClient,
 		projectService:         projectService,
+		fileStore: 		fileStore,
 	}
 }

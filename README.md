@@ -87,46 +87,10 @@ SuperCoder 2.0 supports a variety of languages and frameworks for diverse develo
 ## Prerequisites
 Before you proceed, ensure that you have the following installed on your system:
 - [Docker and Docker Compose](https://docs.docker.com/get-docker/)
-- `direnv`
 
-### Installing Direnv
-To handle environment variables more efficiently, install `direnv`:
-```bash
-# For macOS
-brew install direnv
-
-# For Ubuntu
-sudo apt-get install direnv
-```
-
-After installation, hook direnv into your shell:
-
-```bash 
-echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-If you are using a shell other than bash, replace bash with your specific shell (e.g., zsh or fish).
-
-*Note: direnv is one of the suggested ways other ways to setup environment variables are also possible*
 ## Setup
 
-### 1.Environment Configuration
-The basic environment variables are included in the Docker setup, making initial configuration quick and easy. However, for using Amazon S3 to store images for the Design Section, you need to configure the following environment variables manually:
-```bash
-
-export AI_DEVELOPER_AWS_ACCESS_KEY_ID=
-export AI_DEVELOPER_AWS_SECRET_ACCESS_KEY=
-export AI_DEVELOPER_AWS_BUCKET_NAME=
-export AI_DEVELOPER_AWS_REGION=
-```
-
-Ensure you fill in the appropriate values for your AWS credentials and S3 bucket details. To allow direnv to load these settings, run:
-
-```bash
-direnv allow .
-```
-### 2. Build and Run the Go Server, Asynq worker, and Postgres
+### Build and Run the Go Server, Asynq worker, and Postgres
 
 To build and run the Go server, Asynq worker, and Postgres, execute the following command:
 

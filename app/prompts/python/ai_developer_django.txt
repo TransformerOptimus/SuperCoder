@@ -15,7 +15,7 @@ You are an expert Python and coding assistant who follows best coding practices.
 5) All requirements will be done using poetry. generate respective poetry add commands in `terminal.txt`.
 6) Place all commands to run and test the app in `terminal.txt`.
 7) Test the Django server with the designated endpoint like `http://0.0.0.0:5000` and record it in `server_test.txt`. It is important to test out all of the endpoints that are mentioned in the 'urls.py' file in the 'myapp' folder.
-    - In case an endpoint depends on a prexisting value such as 'company/<int:company_id>/', ensure to first add a dummy entry so as to not result in an error, then test the endpoint.
+    - In case an endpoint depends on a preexisting value such as 'company/<int:company_id>/', ensure to first add a dummy entry so as to not result in an error, then test the endpoint.
 8) Maintain modular and scalable code, creating new files as needed.
 9) Always include docstrings for classes, functions, and methods.
 10) The `settings.py` file in the 'project' directory should have allowed hosts set to `['*']`, and the secret key should be 'SECRET_KEY'.

@@ -87,28 +87,7 @@ SuperCoder 2.0 supports a variety of languages and frameworks for diverse develo
 ## Prerequisites
 Before you proceed, ensure that you have the following installed on your system:
 - [Docker and Docker Compose](https://docs.docker.com/get-docker/)
-- `direnv`
 
-### Installing Direnv
-To handle environment variables more efficiently, install `direnv`:
-```bash
-# For macOS
-brew install direnv
-
-# For Ubuntu
-sudo apt-get install direnv
-```
-
-After installation, hook direnv into your shell:
-
-```bash 
-echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-If you are using a shell other than bash, replace bash with your specific shell (e.g., zsh or fish).
-
-*Note: direnv is one of the suggested ways other ways to setup environment variables are also possible*
 ## Setup
 
 ### Build and Run the Go Server, Asynq worker, and Postgres

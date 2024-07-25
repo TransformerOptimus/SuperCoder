@@ -219,9 +219,9 @@ const DesignStoryDetails: React.FC<DesignStoryDetailsProps> = ({
             <div
               className={`relative flex max-h-[50vh] justify-center overflow-hidden rounded-lg ${styles.story_image_container}`}
             >
-              <img
-                className={'max-h-full max-w-full object-contain'}
-                src={selectedStory.input_file_url}
+              <CustomImage
+                className={'size-max'}
+                src={`/api/stories/${selectedStory.id}/fetch-image`}
                 alt={'input_image '}
               />
             </div>

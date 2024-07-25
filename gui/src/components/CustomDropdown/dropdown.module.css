@@ -31,11 +31,14 @@
     opacity: 1;
     transform: translateY(0);
   }
-
   to {
     opacity: 0;
     transform: translateY(-10px);
   }
+}
+
+.fade_out {
+  animation: fade_out 0.3s forwards;
 }
 
 .dropdown_item {
@@ -70,7 +73,7 @@
 
 .dropdown_section_title {
   color: var(--white-opacity-60);
-  font-family: "Proxima Nova", sans-serif;
+  font-family: 'Proxima Nova', sans-serif;
   font-size: 11px;
   font-style: normal;
   font-weight: 600;

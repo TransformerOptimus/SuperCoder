@@ -59,8 +59,8 @@ func (js DockerJobService) CreateJob(request dto.CreateJobRequest) (res *dto.Cre
 				},
 				{
 					Type:   mount.TypeVolume,
-					Source: "supercoder_filestore",
-					Target: "/filestore",
+					Source: js.config.FilestoreSource(),
+					Target: js.config.FilestoreTarget(),
 				},
 			},
 		},

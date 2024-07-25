@@ -62,27 +62,28 @@ func (lfs LocalFileStore) ReadFile(path string) (content io.ReadCloser, err erro
 	return content, nil
 }
 
-func (lfs LocalFileStore) ReadFileWithInfo(path string) (content io.ReadCloser, contentLength int64, contentType string, err error) {
+func (lfs LocalFileStore) ReadFileWithInfo(path string) (content io.ReadCloser, contentLength int64, contentType *string, err error) {
     filePath, err := lfs.getFilePath(path)
     if err != nil {
-        return nil, 0, "", fmt.Errorf("failed to get file path: %w", err)
+        return nil, 0, nil, fmt.Errorf("failed to get file path: %w", err)
     }
 
     file, err := os.Open(filePath)
     if err != nil {
-        return nil, 0, "", fmt.Errorf("failed to open file: %w", err)
+        return nil, 0, nil, fmt.Errorf("failed to open file: %w", err)
     }
 
     fileInfo, err := file.Stat()
     if err != nil {
         file.Close()
-        return nil, 0, "", fmt.Errorf("failed to get file info: %w", err)
+        return nil, 0, nil, fmt.Errorf("failed to get file info: %w", err)
     }
 
-    contentType = mime.TypeByExtension(filepath.Ext(filePath))
-    if contentType == "" {
-        contentType = "application/octet-stream"
+    contentTypeStr := mime.TypeByExtension(filepath.Ext(filePath))
+    if contentTypeStr == "" {
+        contentTypeStr = "application/octet-stream"
     }
+    contentType = &contentTypeStr
 
     return file, fileInfo.Size(), contentType, nil
 }

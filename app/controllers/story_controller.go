@@ -295,8 +295,12 @@ func (controller *StoryController) GetImageByStoryId(context *gin.Context) {
     }
     defer reader.Close()
 	
-	context.Header("Content-Type", contentType)
-    context.DataFromReader(http.StatusOK, contentLength, contentType, reader, nil)
+	if contentType == nil {
+        context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Content type is nil"})
+        return
+    }
+	context.Header("Content-Type", *contentType)
+    context.DataFromReader(http.StatusOK, contentLength, *contentType, reader, nil)
 }
 
 func NewStoryController(storyService *services.StoryService, executionService *services.ExecutionService) *StoryController {

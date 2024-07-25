@@ -30,6 +30,14 @@ func (c *WorkspaceJobs) VolumeTarget() string {
 	return c.config.String("jobs.local.volume.target")
 }
 
+func (c *WorkspaceJobs) FilestoreSource() string {
+	return c.config.String("jobs.local.filestore.source")
+}
+
+func (c *WorkspaceJobs) FilestoreTarget() string {
+	return c.config.String("jobs.local.filestore.target")
+}
+
 func NewWorkspaceJobs(config *koanf.Koanf) *WorkspaceJobs {
 	return &WorkspaceJobs{config: config}
 }

@@ -699,23 +699,25 @@ func (s *StoryService) UpdateStoryStatusWithTx(tx *gorm.DB, storyId int, progres
 	return s.storyRepo.UpdateStoryStatusWithTx(tx, storyId, progress)
 }
 
-func (s *StoryService) GetImageReaderByStoryId(storyId int) (io.ReadCloser, int64, string, error) {
+func (s *StoryService) GetImageReaderByStoryId(storyId int) (io.ReadCloser, int64, *string, error) {
     filePath, err := s.storyFileRepo.GetFilePathByStoryID(storyId)
     if err != nil {
-        return nil, 0, "", fmt.Errorf("error occurred while getting file path: %w", err)
+        return nil, 0, nil, fmt.Errorf("error occurred while getting file path: %w", err)
     }
 
 	reader, contentLength, contentType, err := s.fileStore.ReadFileWithInfo(filePath)
     if err != nil {
-        return nil, 0, "", fmt.Errorf("error reading file: %w", err)
+        return nil, 0, nil, fmt.Errorf("error reading file: %w", err)
     }
 
 	ext := strings.ToLower(filepath.Ext(filePath))
     switch ext {
     case ".jpg", ".jpeg":
-        contentType = "image/jpeg"
+        contentTypeStr := "image/jpeg"
+		contentType = &contentTypeStr
     case ".png":
-        contentType = "image/png"
+		contentTypeStr := "image/png"
+		contentType = &contentTypeStr
 	}
 
     return reader, contentLength, contentType, nil

@@ -63,10 +63,10 @@ func (s3fs S3FileStore) ReadFile(path string) (content io.ReadCloser, err error)
 	return content, nil
 }
 
-func (s3fs S3FileStore) ReadFileWithInfo(path string) (content io.ReadCloser, contentLength int64, contentType string, err error) {
+func (s3fs S3FileStore) ReadFileWithInfo(path string) (content io.ReadCloser, contentLength int64, contentType *string, err error) {
     filePath, err := s3fs.getFilePath(path)
     if err != nil {
-        return nil, 0, "", err
+        return nil, 0, nil, err
     }
 
     output, err := s3fs.s3Client.GetObject(&s3.GetObjectInput{
@@ -75,10 +75,10 @@ func (s3fs S3FileStore) ReadFileWithInfo(path string) (content io.ReadCloser, co
     })
     if err != nil {
         s3fs.logger.Error("Failed to get object", zap.Error(err))
-        return nil, 0, "", err
+        return nil, 0, nil, err
     }
 
-    return output.Body, *output.ContentLength, *output.ContentType, nil
+    return output.Body, *output.ContentLength, output.ContentType, nil
 }
 
 func (s3fs S3FileStore) DeleteFile(path string) (err error) {

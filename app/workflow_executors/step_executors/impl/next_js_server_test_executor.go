@@ -180,7 +180,7 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 	for retryCount := 1; retryCount <= constants.MAX_JSON_RETRIES; retryCount++ {
 		messages, err := e.CreateMessage(buildLogs, directoryPlan, retryCount)
 		if err != nil{
-			fmt.Println("failed to create messages for llm")
+			e.logger.Error("failed to create messages for llm")
             return false, nil, err
 		}
 		response, err = claudeClient.ChatCompletion(messages)
@@ -193,7 +193,7 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 				fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
 			)
 			if err != nil {
-				fmt.Printf("Error creating activity log: %s\n", err.Error())
+				e.logger.Error("failed to create activity log for llm", zap.Error(err))
 				return false, nil, err
 			}
 			//Update Execution Status and Story Status
@@ -225,7 +225,7 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 					"attempt":          fmt.Sprintf("%d", int64(retryCount)),
 				})
 			if err != nil {
-				fmt.Printf("Error sending slack alert: %s\n", err.Error())
+				e.logger.Error("error sending slack alert", zap.Error(err))
 				return false, nil, err
 			}
 			if retryCount == 5 {
@@ -262,12 +262,12 @@ func (e NextJsServerStartTestExecutor) CreateMessage(buildLogs string, directory
 	var content []byte
 	var err error
 	if attempts > 1 {
-		content, err = os.ReadFile("/go/prompts/nextjs/next_js_build_checker_retry.txt")
+		content, err = os.ReadFile("app/prompts/nextjs/next_js_build_checker_retry.txt")
 		if err!= nil {
             return nil, fmt.Errorf("failed to load system prompt: %w", err)
         }
 	} else {
-		content, err = os.ReadFile("/go/prompts/nextjs/next_js_build_checker.txt")
+		content, err = os.ReadFile("app/prompts/nextjs/next_js_build_checker.txt")
 		if err!= nil {
             return nil, fmt.Errorf("failed to load system prompt: %w", err)
         }

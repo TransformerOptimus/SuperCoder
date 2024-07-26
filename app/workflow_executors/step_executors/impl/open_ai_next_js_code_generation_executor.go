@@ -698,12 +698,12 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetRetrySystemPrompt(instr
 	var content []byte
 	var err error
 	if attempts > 1 {
-		content, err = os.ReadFile("/go/prompts/nextjs/ai_frontend_developer_edit_code_retry.txt")
+		content, err = os.ReadFile("app/prompts/nextjs/ai_frontend_developer_edit_code_retry.txt")
 		if err != nil {
 			panic(fmt.Sprintf("failed to read system prompt: %v", err))
 		}
 	} else {
-		content, err = os.ReadFile("/go/prompts/nextjs/ai_frontend_developer_edit_code.txt")
+		content, err = os.ReadFile("app/prompts/nextjs/ai_frontend_developer_edit_code.txt")
 		if err != nil {
 			panic(fmt.Sprintf("failed to read system prompt: %v", err))
 		}

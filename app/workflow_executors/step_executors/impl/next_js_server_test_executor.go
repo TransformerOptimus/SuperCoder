@@ -202,18 +202,18 @@ func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan
 				return false, nil, err
 			}
 			if err = e.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
-				fmt.Printf("Error updating execution step: %s\n", err.Error())
+				e.logger.Error("Error updating execution status", zap.Error(err))
 				return false, nil, err
 			}
-			fmt.Println("failed to generate code from llm")
+			e.logger.Error("failed to generate code from llm")
 			if retryCount == constants.MAX_JSON_RETRIES {
 				return false, nil, fmt.Errorf("failed to generate code from llm after 5 attempts: %w", err)
 			}
 			continue
 		}
 		if err = json.Unmarshal([]byte(response), &jsonResponse); err != nil {
-			fmt.Println("error decoding build logs response from claude api", err)
-			fmt.Println("failed to unmarshal response from Claude API, retrying...")
+			e.logger.Error("error decoding build logs response from Claude API", zap.Error(err))
+			e.logger.Error("failed to unmarshal response from Claude API, retrying...")
 			err := e.slackAlert.SendAlert(
 				"error occurred while parsing build logs JSON response",
 				map[string]string{

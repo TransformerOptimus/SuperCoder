@@ -262,12 +262,12 @@ func (e NextJsServerStartTestExecutor) CreateMessage(buildLogs string, directory
 	var content []byte
 	var err error
 	if attempts > 1 {
-		content, err = os.ReadFile("app/prompts/nextjs/next_js_build_checker_retry.txt")
+		content, err = os.ReadFile("/go/prompts/nextjs/next_js_build_checker_retry.txt")
 		if err!= nil {
             return nil, fmt.Errorf("failed to load system prompt: %w", err)
         }
 	} else {
-		content, err = os.ReadFile("app/prompts/nextjs/next_js_build_checker.txt")
+		content, err = os.ReadFile("/go/prompts/nextjs/next_js_build_checker.txt")
 		if err!= nil {
             return nil, fmt.Errorf("failed to load system prompt: %w", err)
         }

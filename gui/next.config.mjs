@@ -1,9 +1,9 @@
 const localurl = process.env.NEXT_PUBLIC_DOCKER
   ? 'http://server:8080/api/:path*'
   : 'http://0.0.0.0:8080/api/:path*';
-// const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
-//   ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/:path*`
-//   : 'http://default-backend-url/api/:path*';
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
+  ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/:path*`
+  : 'http://default-backend-url/api/:path*';
 
 
 console.log("NEXT_PUBLIC_DOCKER", process.env.NEXT_PUBLIC_DOCKER)

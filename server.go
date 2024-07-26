@@ -405,6 +405,12 @@ func main() {
 		panic(err)
 	}
 
+	err = c.Provide(services.NewProjectNotificationService)
+	if err != nil {
+		config.Logger.Error("Error providing ProjectNotificationService", zap.Error(err))
+		panic(err)
+	}
+
 	//Websocket
 	err = c.Provide(gateways.NewSocketIOServer)
 	if err != nil {
@@ -446,6 +452,7 @@ func main() {
 		nrApp *newrelic.Application,
 		designStoryCtrl *controllers.DesignStoryReviewController,
 		logger *zap.Logger,
+		projectNotificationService *services.ProjectNotificationService,
 	) error {
 
 		defer func() {
@@ -570,6 +577,25 @@ func main() {
 			}
 		}()
 		defer ioServer.Close()
+
+		// Redis Pub/Sub listener in a separate goroutine
+		go func() {
+			// PSubscribe to a pattern to match multiple channels
+			channelFormat := "*_*"
+			pubsub, err := projectNotificationService.ReceiveNotification(channelFormat)
+			if err != nil {
+				log.Printf("Failed to subscribe to Redis Pub/Sub: %v\n", err)
+                return
+			}
+			defer pubsub.Close()
+	
+			ch := pubsub.Channel()
+	
+			for msg := range ch {
+				channel := msg.Channel
+				ioServer.BroadcastToRoom(channel, "message", msg.Payload)
+			}
+		}()
 
 		fmt.Println("Starting Gin server on port 8080...")
 		return r.Run()

@@ -115,5 +115,6 @@ Join our [Discord community](https://discord.gg/pmFVyCDDyH) for support and disc
 If you have questions or encounter issues, please don't hesitate to [create a new issue](https://github.com/TransformerOptimus/SuperCoder/issues/new/choose) to get support or reach out to support@superagi.com.
 
 
+
 ### ⚠️ Under Development!
 This project is under active development and may still have issues. We appreciate your understanding and patience. If you encounter any problems, please check the open issues first. If your issue is not listed, kindly create a new issue detailing the error or problem you experienced. Thank you for your support!

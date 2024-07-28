@@ -27,16 +27,16 @@ type AuthController struct {
 func (controller *AuthController) GithubSignIn(c *gin.Context) {
 	var env = config.Get("app.env")
 	fmt.Println("ENV : ", env)
-	if env == "development" {
-		fmt.Println("Handling Skip Authentication Token.....")
-		redirectURL, err := controller.authService.HandleDefaultAuth()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to get default user token"})
-			return
-		}
-		c.Redirect(http.StatusTemporaryRedirect, redirectURL)
-
-	}
+	//if env == "development" {
+	//	fmt.Println("Handling Skip Authentication Token.....")
+	//	redirectURL, err := controller.authService.HandleDefaultAuth()
+	//	if err != nil {
+	//		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to get default user token"})
+	//		return
+	//	}
+	//	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
+	//
+	//}
 	var githubOauthConfig = &oauth2.Config{
 		RedirectURL:  controller.redirectURL,
 		ClientID:     controller.clientID,

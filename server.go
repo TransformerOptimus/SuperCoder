@@ -13,12 +13,14 @@ import (
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
+	"ai-developer/app/services/auth"
 	"ai-developer/app/services/filestore"
 	"ai-developer/app/services/filestore/impl"
 	"ai-developer/app/services/git_providers"
 	"context"
 	"errors"
 	"fmt"
+	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"log"
 	"net/http"
@@ -121,9 +123,45 @@ func main() {
 		panic(err)
 	}
 
+	err = c.Provide(config.NewJWTConfig)
+	if err != nil {
+		config.Logger.Error("Error providing JWT config", zap.Error(err))
+		panic(err)
+	}
+
+	err = c.Provide(config.NewEnvConfig)
+	if err != nil {
+		config.Logger.Error("Error providing env config", zap.Error(err))
+		panic(err)
+	}
+
+	err = c.Provide(config.NewGithubOAuthConfig)
+	if err != nil {
+		config.Logger.Error("Error providing github oauth config", zap.Error(err))
+		panic(err)
+	}
+
+	err = c.Provide(auth.NewAuthenticator)
+	if err != nil {
+		config.Logger.Error("Error providing authenticator", zap.Error(err))
+		panic(err)
+	}
+
+	err = c.Provide(auth.NewEmailAuthProvider)
+	if err != nil {
+		config.Logger.Error("Error providing email auth provider", zap.Error(err))
+		panic(err)
+	}
+
+	err = c.Provide(auth.NewGithubAuthProvider)
+	if err != nil {
+		config.Logger.Error("Error providing github auth provider", zap.Error(err))
+		panic(err)
+	}
+
 	err = c.Provide(workspace.NewWorkspaceServiceClient)
 	if err != nil {
-		log.Println("Error providing workspace service:", err)
+		config.Logger.Error("Error providing workspace service client", zap.Error(err))
 		panic(err)
 	}
 
@@ -445,6 +483,7 @@ func main() {
 		ioServer *socketio.Server,
 		nrApp *newrelic.Application,
 		designStoryCtrl *controllers.DesignStoryReviewController,
+		authenticator *auth.Authenticator,
 		logger *zap.Logger,
 	) error {
 
@@ -482,9 +521,16 @@ func main() {
 		api := r.Group("/api")
 		api.GET("/health", health.Health)
 
+		authMiddleware, err := jwt.New(authenticator.Middleware())
+		err = authMiddleware.MiddlewareInit()
+		if err != nil {
+			logger.Error("failed to init middleware", zap.Error(err))
+			panic(err)
+		}
+
 		githubAuth := api.Group("/github")
 		githubAuth.GET("/signin", auth.GithubSignIn)
-		githubAuth.GET("/callback", auth.GithubCallback)
+		githubAuth.GET("/callback", authenticator.GithubAuthMiddleware(), authMiddleware.LoginHandler)
 
 		projects := api.Group("/projects", middleware.AuthenticateJWT())
 
@@ -556,7 +602,7 @@ func main() {
 
 		authentication := api.Group("/auth")
 		authentication.GET("/check_user", auth.CheckUser)
-		authentication.POST("/sign_in", auth.SignIn)
+		authentication.POST("/sign_in", authenticator.EmailAuthMiddleware(), authMiddleware.LoginHandler)
 		authentication.POST("/sign_up", auth.SignUp)
 
 		// Wrap the socket.io server as Gin handlers for specific routes

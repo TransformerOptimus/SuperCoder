@@ -17,18 +17,19 @@ import TestCases from '@/components/StoryComponents/TestCases';
 import IssueContainer from '@/components/StoryComponents/InReviewIssue';
 import {
   handleInProgressStoryStatus,
-  handleStoryStatus,
   handleStoryInReviewIssue,
+  handleStoryStatus,
 } from '@/app/utils';
 import { useRouter } from 'next/navigation';
-import { StoryDetailsProps } from '../../../types/storyTypes';
+import {
+  StoryDetailsProps,
+  StoryInReviewIssue,
+} from '../../../types/storyTypes';
 import {
   showStoryDetailsDropdown,
   storyStatus,
-    storyActions,
 } from '@/app/constants/BoardConstants';
 import { useBoardContext } from '@/context/Boards';
-import toast from 'react-hot-toast';
 
 export default function StoryDetails({
   id,

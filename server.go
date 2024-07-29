@@ -453,6 +453,7 @@ func main() {
 		designStoryCtrl *controllers.DesignStoryReviewController,
 		logger *zap.Logger,
 		projectNotificationService *services.ProjectNotificationService,
+		workspaceGateway *gateways.WorkspaceGateway,
 	) error {
 
 		defer func() {
@@ -576,7 +577,6 @@ func main() {
 				log.Fatalf("socket.io listen error: %s\n", err)
 			}
 		}()
-		defer ioServer.Close()
 
 		// Redis Pub/Sub listener in a separate goroutine
 		go func() {
@@ -593,9 +593,14 @@ func main() {
 	
 			for msg := range ch {
 				channel := msg.Channel
-				ioServer.BroadcastToRoom(channel, "message", msg.Payload)
+				fmt.Println("____received message: ______", channel, "----", msg.Payload)
+				messageSent := workspaceGateway.BroadcastMessage(channel, "broadcast", msg.Payload)
+        		if !messageSent {
+					fmt.Println("message not sent")
+				}
 			}
 		}()
+		defer ioServer.Close()
 
 		fmt.Println("Starting Gin server on port 8080...")
 		return r.Run()

@@ -13,6 +13,7 @@ type WorkspaceGateway struct {
 	projectService *services.ProjectService
 	jwtAuth        *middleware.JWTClaims
 	logger         *zap.Logger
+	server         *socketio.Server
 }
 
 func (w *WorkspaceGateway) OnConnect(s socketio.Conn) error {
@@ -95,6 +96,15 @@ func (wg *WorkspaceGateway) OnWorkspaceDeleteEvent(s socketio.Conn, data map[str
 		return
 	}
 	s.Emit("workspace-closed", fmt.Sprintf("Workspace closed for project: %v", projectID))
+}
+
+func (wg *WorkspaceGateway) BroadcastMessage(room string, event string, message interface{}) bool {
+    messageSent := wg.server.BroadcastToRoom("/", room, event, message)
+    if !messageSent {
+        wg.logger.Error("Failed to broadcast message", zap.String("room", room), zap.String("event", event))
+    }
+	fmt.Println("message broadcasted")
+    return messageSent
 }
 
 func NewWorkspaceGateway(

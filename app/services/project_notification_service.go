@@ -28,6 +28,7 @@ func (s *ProjectNotificationService) SendNotification(projectID uint, storyID ui
         fmt.Println("Error publishing message to Redis: ", err.Error())
         return err
     }
+	fmt.Println("____sent message_____", channel, "-----", message)
 	return nil
 }
 

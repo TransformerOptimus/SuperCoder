@@ -42,6 +42,7 @@ func LoadConfig() (*koanf.Koanf, error) {
 		"aws": map[string]interface{}{
 			"region": "us-west-2",
 		},
+		"terminal.allowed.host": "localhost",
 	}, "."), nil)
 	if err != nil {
 		return nil, err

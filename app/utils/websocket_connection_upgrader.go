@@ -19,7 +19,7 @@ func GetConnectionUpgrader(
 				requesterHostname = strings.Split(requesterHostname, ":")[0]
 			}
 			for _, allowedHostname := range allowedHostnames {
-				if requesterHostname == allowedHostname {
+				if strings.HasSuffix(requesterHostname, allowedHostname) {
 					return true
 				}
 			}

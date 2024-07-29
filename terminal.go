@@ -75,7 +75,7 @@ func main() {
 	}
 
 	err = c.Provide(func() (*controllers.TerminalController, error) {
-		return controllers.NewTerminalController(config.Logger, "bash", []string{}, []string{"localhost"})
+		return controllers.NewTerminalController(config.Logger, "bash", []string{}, []string{config.GetAllowedHost()})
 	})
 	if err != nil {
 		fmt.Printf("Error providing TerminalController: %v\n", err)

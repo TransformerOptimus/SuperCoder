@@ -119,6 +119,10 @@ RUN git config --global user.name "SuperCoder"
 ENV TERM xterm
 ENV HOME /home/coder
 
+# to make the terminal look nice
+RUN echo "PS1='\[\033[01;32m\]\u:\[\033[01;34m\]\w\[\033[00m\]\$ '" >> /home/coder/.bashrc
+
+
 COPY --from=terminal-base /go/terminal /go/terminal
 COPY ./app/prompts /go/prompts
 

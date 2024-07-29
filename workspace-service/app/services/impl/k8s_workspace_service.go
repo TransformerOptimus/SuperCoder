@@ -28,11 +28,11 @@ import (
 
 type K8sWorkspaceService struct {
 	services.WorkspaceService
-	clientset                   *kubernetes.Clientset
-	workspaceServiceConfig      *workspaceconfig.WorkspaceServiceConfig
+	clientset               *kubernetes.Clientset
+	workspaceServiceConfig  *workspaceconfig.WorkspaceServiceConfig
 	frontendWorkspaceConfig *workspaceconfig.FrontendWorkspaceConfig
-	k8sControllerClient          client.Client
-	logger                      *zap.Logger
+	k8sControllerClient     client.Client
+	logger                  *zap.Logger
 }
 
 func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplate string, frontendTemplate *string, remoteURL string, gitnessUser string, gitnessToken string) (*dto.WorkspaceDetails, error) {
@@ -115,6 +115,13 @@ func (ws K8sWorkspaceService) CreateWorkspace(workspaceId string, backendTemplat
 		return nil, err
 	}
 
+	// create terminal for workspace
+	err = ws.CreateWorkspaceTerminal(workspaceId)
+	if err != nil {
+		ws.logger.Error("Failed to create workspace terminal", zap.Error(err))
+		return nil, err
+	}
+
 	return response, nil
 }
 
@@ -144,6 +151,59 @@ func (ws K8sWorkspaceService) CreateFrontendWorkspace(storyHashId, workspaceId s
 	}
 
 	return response, nil
+}
+
+func (ws K8sWorkspaceService) CreateWorkspaceTerminal(workspaceId string) error {
+
+	terminalId := workspaceId + "-terminal"
+
+	u := &unstructured.Unstructured{}
+	u.Object = map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"name":      terminalId,
+			"namespace": "argocd",
+			"finalizers": []string{
+				"resources-finalizer.argocd.argoproj.io",
+			},
+		},
+		"spec": map[string]interface{}{
+			"project": ws.workspaceServiceConfig.WorkspaceProject(),
+			"source": map[string]interface{}{
+				"repoURL":        ws.workspaceServiceConfig.ArgoRepoUrl(),
+				"targetRevision": "HEAD",
+				"path":           "supercoder/terminal",
+				"helm": map[string]interface{}{
+					"valueFiles": []string{
+						ws.workspaceServiceConfig.WorkspaceValuesFileName(),
+					},
+				},
+			},
+			"destination": map[string]interface{}{
+				"server":    "https://kubernetes.default.svc",
+				"namespace": ws.workspaceServiceConfig.WorkspaceNamespace(),
+			},
+			"syncPolicy": map[string]interface{}{
+				"syncOptions": []string{"PruneLast=true"},
+				"automated": map[string]interface{}{
+					"prune":      true,
+					"selfHeal":   true,
+					"allowEmpty": true,
+				},
+			},
+		},
+	}
+	u.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "argoproj.io",
+		Kind:    "Application",
+		Version: "v1alpha1",
+	})
+	err := ws.k8sControllerClient.Create(context.Background(), u)
+	if err != nil {
+		_ = ws.k8sControllerClient.Delete(context.Background(), u, &client.DeleteOptions{})
+		ws.logger.Error("Failed to create workspace", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 func (ws K8sWorkspaceService) checkAndCreateWorkspacePVC(workspaceId string) (err error) {

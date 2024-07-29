@@ -15,17 +15,20 @@ import (
 type NextJsUpdateCodeFileExecutor struct {
 	executionStepService *services.ExecutionStepService
 	activityLogService   *services.ActivityLogService
+	projectNotificationService *services.ProjectNotificationService
 	logger               *zap.Logger
 }
 
 func NewNextJsUpdateCodeFileExecutor(
 	executionStepService *services.ExecutionStepService,
 	activeLogService *services.ActivityLogService,
+	projectNotificationService *services.ProjectNotificationService,
 	logger *zap.Logger,
 ) *NextJsUpdateCodeFileExecutor {
 	return &NextJsUpdateCodeFileExecutor{
 		executionStepService: executionStepService,
 		activityLogService:   activeLogService,
+		projectNotificationService: projectNotificationService,
 		logger: 			  logger,
 	}
 }
@@ -82,7 +85,13 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 			return err
 		}
 	}
+	err = e.activityLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", fmt.Sprintf("Updated file %s", fileName))
+	if err != nil {
+		fmt.Println("Error creating activity log" + err.Error())
+		return err
+	}
 	fmt.Println("File Updated Successfully")
+	updatedCode, err := e.GetFileCode(fileName)
 	return nil
 }
 
@@ -227,7 +236,7 @@ func (e *NextJsUpdateCodeFileExecutor) InsertCode(filePath string, lineNumber in
 	return nil
 }
 
-func (e NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName string, step steps.UpdateCodeFileStep) error {
+func (e *NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName string, step steps.UpdateCodeFileStep) error {
 	e.logger.Info("_____Updating file_____ %s", zap.String("fileName", fileName))
 	if strings.HasPrefix(llmResponse, "```") {
 		llmResponse = llmResponse[3:] // Remove the first 3 characters (```)
@@ -243,11 +252,9 @@ func (e NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName strin
 			return err
 		}
 	}
-
-	err := e.activityLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", fmt.Sprintf("Updated file %s", fileName))
-	if err != nil {
-		fmt.Println("Error creating activity log" + err.Error())
-		return err
-	}
 	return nil
+}
+
+func (e NextJsUpdateCodeFileExecutor) GetFileCode(fileName string) ([]byte, error) {
+	return nil, nil
 }

@@ -11,6 +11,7 @@ import (
 
 type WorkspaceGateway struct {
 	projectService *services.ProjectService
+	projectNotificationService *services.ProjectNotificationService
 	jwtAuth        *middleware.JWTClaims
 	logger         *zap.Logger
 	server         *socketio.Server
@@ -71,7 +72,18 @@ func (wg *WorkspaceGateway) OnWorkspaceStartEvent(s socketio.Conn, data map[stri
 	ctx := s.Context().(map[string]interface{})
 	ctx["project_id"] = projectIDStr
 	s.Emit("workspace-started", fmt.Sprintf("Workspace started for project: %v", projectID))
+	
+	// send project notifications to frontend
+	channel := fmt.Sprintf("project-notifications-%d", projectID)
+	wg.projectNotificationService.ReceiveNotification(func(msg string) {
+		fmt.Println("_____MESSAGE_____", msg)
+		s.Emit("projectNotification", msg)
+		fmt.Println("_____message sent____")
+	}, projectIDStr, channel)
+
+	fmt.Println("_____func running____")
 }
+
 
 func (wg *WorkspaceGateway) OnWorkspaceDeleteEvent(s socketio.Conn, data map[string]interface{}) {
 	wg.logger.Info("Received data for workspace-close", zap.Any("data", data))
@@ -98,22 +110,24 @@ func (wg *WorkspaceGateway) OnWorkspaceDeleteEvent(s socketio.Conn, data map[str
 	s.Emit("workspace-closed", fmt.Sprintf("Workspace closed for project: %v", projectID))
 }
 
-func (wg *WorkspaceGateway) BroadcastMessage(room string, event string, message interface{}) bool {
-    messageSent := wg.server.BroadcastToRoom("/", room, event, message)
-    if !messageSent {
-        wg.logger.Error("Failed to broadcast message", zap.String("room", room), zap.String("event", event))
-    }
-	fmt.Println("message broadcasted")
-    return messageSent
-}
+// func (wg *WorkspaceGateway) BroadcastMessage(room string, event string, message interface{}) bool {
+//     messageSent := wg.server.BroadcastToRoom("/", room, event, message)
+//     if !messageSent {
+//         wg.logger.Error("Failed to broadcast message", zap.String("room", room), zap.String("event", event))
+//     }
+// 	fmt.Println("_____message broadcasted____ to ", room, "__event___ ", event, " ___message status___ ", messageSent)
+//     return messageSent
+// }
 
 func NewWorkspaceGateway(
 	projectService *services.ProjectService,
+	projectNotificationService *services.ProjectNotificationService,
 	jwtAuth *middleware.JWTClaims,
 	logger *zap.Logger,
 ) *WorkspaceGateway {
 	return &WorkspaceGateway{
 		projectService: projectService,
+		projectNotificationService: projectNotificationService,
 		jwtAuth:        jwtAuth,
 		logger:         logger.Named("WebsocketGateway"),
 	}

@@ -22,22 +22,33 @@ func NewProjectNotificationService(client *redis.Client, ctx context.Context, lo
 }
 
 func (s *ProjectNotificationService) SendNotification(projectID uint, storyID uint, message string) error {
-	channel := fmt.Sprintf("%d_%d", projectID, storyID)
+	channel := fmt.Sprintf("project-notifications-%d", projectID)
     err := s.client.Publish(s.ctx, channel, message).Err()
     if err != nil {
         fmt.Println("Error publishing message to Redis: ", err.Error())
         return err
     }
-	fmt.Println("____sent message_____", channel, "-----", message)
+	fmt.Println("____sent message_____to ", channel, " ----- ", message)
 	return nil
 }
 
-func (s *ProjectNotificationService) ReceiveNotification(channelNameFormat string) (*redis.PubSub, error) {
-	pubsub := s.client.PSubscribe(s.ctx, channelNameFormat)
+func (s *ProjectNotificationService) ReceiveNotification(sendFunction func(msg string), projectID string, channel string) (*redis.PubSub, error) {
+	pubsub := s.client.Subscribe(s.ctx, channel)
 	_, err := pubsub.Receive(s.ctx)
 	if err != nil {
 		s.logger.Error("Error subscribing to channel", zap.Error(err))
 		return nil, err
 	}
+
+	ch := pubsub.Channel()
+
+	func() {
+		for msg := range ch {
+			channel := msg.Channel
+			fmt.Println("____received message on channel--", channel, "___payload____", msg.Payload)
+			sendFunction(msg.Payload) // Send to frontend
+		}
+	}()
+
 	return pubsub, nil
 }

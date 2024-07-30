@@ -1,6 +1,7 @@
 package config
 
 import (
+	"ai-developer/app/constants"
 	"github.com/knadh/koanf/v2"
 	"go.uber.org/zap"
 )
@@ -11,7 +12,7 @@ type EnvConfig struct {
 }
 
 func (e EnvConfig) IsDevelopment() bool {
-	return e.config.String("app.env") == "development"
+	return e.config.String("app.env") == constants.Development
 }
 
 func (e EnvConfig) Domain() string {

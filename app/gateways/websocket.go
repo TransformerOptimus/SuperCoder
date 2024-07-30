@@ -6,22 +6,18 @@ import (
 )
 
 func NewSocketIOServer(
-    workspaceGateway *WorkspaceGateway,
-    logger *zap.Logger,
+	workspaceGateway *WorkspaceGateway,
+	logger *zap.Logger,
 ) *socketio.Server {
-    server := socketio.NewServer(nil)
-    logger = logger.Named("SocketIO")
-    
-    workspaceGateway.server = server
-    
-    server.OnConnect("/", workspaceGateway.OnConnect)
-    server.OnEvent("/", "workspace-start", workspaceGateway.OnWorkspaceStartEvent)
-    server.OnEvent("/", "workspace-close", workspaceGateway.OnWorkspaceDeleteEvent)
-    server.OnDisconnect("/", workspaceGateway.OnDisconnect)
-    
-    server.OnError("/", func(s socketio.Conn, e error) {
-        logger.Error("Error in websocket connection", zap.Error(e))
-    })
-    
-    return server
+	server := socketio.NewServer(nil)
+	logger.Named("SocketIO")
+	server.OnConnect("/", workspaceGateway.OnConnect)
+	server.OnEvent("/", "workspace-start", workspaceGateway.OnWorkspaceStartEvent)
+	server.OnEvent("/", "workspace-close", workspaceGateway.OnWorkspaceDeleteEvent)
+	server.OnDisconnect("/", workspaceGateway.OnDisconnect)
+	server.OnError("/", func(s socketio.Conn, e error) {
+		logger.Error("Error in websocket connection", zap.Error(e))
+	})
+
+	return server
 }

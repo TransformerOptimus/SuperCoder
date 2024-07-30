@@ -25,10 +25,10 @@ func (s *ProjectNotificationService) SendNotification(projectID uint, message st
 	channel := fmt.Sprintf("project-notifications-%d", projectID)
     err := s.client.Publish(s.ctx, channel, message).Err()
     if err != nil {
-        fmt.Println("Error publishing message to Redis: ", err.Error())
+		s.logger.Error("Error publishing message to Redis", zap.Error(err))
         return err
     }
-	fmt.Println("____sent message_____to ", channel, " ----- ", message)
+	s.logger.Info("_____sent message_____to ", zap.Any("",channel), zap.Any("message",message))
 	return nil
 }
 
@@ -45,8 +45,8 @@ func (s *ProjectNotificationService) ReceiveNotification(sendFunction func(msg s
 	go func() {
 		for msg := range ch {
 			channel := msg.Channel
-			fmt.Println("____received message on channel--", channel, "___payload____", msg.Payload)
-			sendFunction(msg.Payload) // Send to frontend
+			s.logger.Info("____received message on channel--", zap.Any("",channel), zap.Any("___payload____",msg.Payload))
+			sendFunction(msg.Payload)
 		}
 	}()
 

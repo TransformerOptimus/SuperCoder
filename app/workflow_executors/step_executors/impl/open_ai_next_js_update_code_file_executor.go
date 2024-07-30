@@ -41,7 +41,7 @@ type Response struct {
 type FileUpdate struct {
 	ProjectID uint   `json:"project_id"`
 	StoryID   uint   `json:"story_id"`
-    FileName  string `json:"file_name"`
+	FileName  string `json:"file_name"`
 }
 
 func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) error {

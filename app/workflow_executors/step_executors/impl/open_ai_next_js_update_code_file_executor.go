@@ -93,6 +93,7 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 		}
 	}
 
+	fileName = strings.TrimPrefix(fileName, "app/")
 	err = e.activityLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", fmt.Sprintf("Updated file %s", fileName))
 	if err != nil {
 		fmt.Println("Error creating activity log" + err.Error())

@@ -21,7 +21,7 @@ func NewProjectNotificationService(client *redis.Client, ctx context.Context, lo
 	}
 }
 
-func (s *ProjectNotificationService) SendNotification(projectID uint, storyID uint, message string) error {
+func (s *ProjectNotificationService) SendNotification(projectID uint, message string) error {
 	channel := fmt.Sprintf("project-notifications-%d", projectID)
     err := s.client.Publish(s.ctx, channel, message).Err()
     if err != nil {

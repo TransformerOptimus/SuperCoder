@@ -38,6 +38,13 @@ type Response struct {
 	FileName    string `json:"file_name"`
 }
 
+type FileUpdate struct {
+	ProjectID uint   `json:"project_id"`
+	StoryID   uint   `json:"story_id"`
+    FileName  string `json:"file_name"`
+    Code      string `json:"code"`
+}
+
 func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) error {
 	fmt.Println("Updating code file for next js: ")
 	generateCodeSteps, err := e.executionStepService.FetchExecutionSteps(
@@ -85,13 +92,36 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 			return err
 		}
 	}
+
 	err = e.activityLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", fmt.Sprintf("Updated file %s", fileName))
 	if err != nil {
 		fmt.Println("Error creating activity log" + err.Error())
 		return err
 	}
 	fmt.Println("File Updated Successfully")
-	updatedCode, err := e.GetFileCode(fileName)
+
+	updatedCode, err := e.GetFileCode(step, fileName)
+	if err!= nil {
+		e.logger.Error("Error getting file code", zap.Any("error", err))
+        return err
+    }
+    fileUpdate := FileUpdate{
+		ProjectID: step.Project.ID,
+		StoryID:   step.Story.ID,
+        FileName:  fileName,
+        Code:      string(updatedCode),
+    }
+    jsonData, err := json.Marshal(fileUpdate)
+    if err != nil {
+        e.logger.Error("Error marshalling JSON", zap.Any("error", err))
+        return err
+    }
+	err = e.projectNotificationService.SendNotification(step.Project.ID, string(jsonData))
+	if err!= nil {
+        e.logger.Error("Error sending notification", zap.Any("error", err))
+        return err
+    }
+
 	return nil
 }
 
@@ -255,6 +285,19 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName stri
 	return nil
 }
 
-func (e NextJsUpdateCodeFileExecutor) GetFileCode(fileName string) ([]byte, error) {
-	return nil, nil
+func (e *NextJsUpdateCodeFileExecutor) GetFileCode(step steps.UpdateCodeFileStep, fileName string) ([]byte, error) {
+	var filePath string
+	if fileName == "package.json" {
+		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/" + fileName
+	} else if strings.Contains(fileName, "app/") {
+		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/" + fileName
+	} else {
+		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/app/" + fileName
+	}
+	content, err := os.ReadFile(filePath)
+    if err != nil {
+		e.logger.Error("Failed to read file", zap.Any("error", err))
+        return nil, err
+    }
+    return content, nil
 }

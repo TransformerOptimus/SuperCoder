@@ -76,12 +76,10 @@ func (wg *WorkspaceGateway) OnWorkspaceStartEvent(s socketio.Conn, data map[stri
 	// send project notifications to frontend
 	channel := fmt.Sprintf("project-notifications-%d", projectID)
 	wg.projectNotificationService.ReceiveNotification(func(msg string) {
-		fmt.Println("_____MESSAGE_____", msg)
+		// fmt.Println("_____MESSAGE_____", msg)
 		s.Emit("projectNotification", msg)
-		fmt.Println("_____message sent____")
+		fmt.Println("_____message sent to frontend____", msg)
 	}, projectIDStr, channel)
-
-	fmt.Println("_____func running____")
 }
 
 
@@ -109,15 +107,6 @@ func (wg *WorkspaceGateway) OnWorkspaceDeleteEvent(s socketio.Conn, data map[str
 	}
 	s.Emit("workspace-closed", fmt.Sprintf("Workspace closed for project: %v", projectID))
 }
-
-// func (wg *WorkspaceGateway) BroadcastMessage(room string, event string, message interface{}) bool {
-//     messageSent := wg.server.BroadcastToRoom("/", room, event, message)
-//     if !messageSent {
-//         wg.logger.Error("Failed to broadcast message", zap.String("room", room), zap.String("event", event))
-//     }
-// 	fmt.Println("_____message broadcasted____ to ", room, "__event___ ", event, " ___message status___ ", messageSent)
-//     return messageSent
-// }
 
 func NewWorkspaceGateway(
 	projectService *services.ProjectService,

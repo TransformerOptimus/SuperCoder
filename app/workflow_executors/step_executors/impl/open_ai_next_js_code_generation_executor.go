@@ -68,12 +68,12 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	openAiCodeGenerator.logger.Info("Is retry", zap.Any("retry", step.Retry))
 	openAiCodeGenerator.logger.Info("File name", zap.Any("fileName", step.File))
 
-	message := fmt.Sprintf("TEST MESSAGE FOR PROJECT ID: %d", step.Project.ID)
-	err := openAiCodeGenerator.projectNotificationService.SendNotification(step.Project.ID, step.Story.ID, message)
-	if err != nil {
-		fmt.Printf("Error sending notification: %s\n", err.Error())
-        return err
-	}
+	// message := fmt.Sprintf("TEST MESSAGE FOR PROJECT ID: %d", step.Project.ID)
+	// err := openAiCodeGenerator.projectNotificationService.SendNotification(step.Project.ID, message)
+	// if err != nil {
+	// 	fmt.Printf("Error sending notification: %s\n", err.Error())
+    //     return err
+	// }
 	
 	storyDir := config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID)
 

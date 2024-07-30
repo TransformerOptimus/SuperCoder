@@ -75,10 +75,10 @@ func (wg *WorkspaceGateway) OnWorkspaceStartEvent(s socketio.Conn, data map[stri
 	
 	// send project notifications to frontend
 	channel := fmt.Sprintf("project-notifications-%d", projectID)
-	wg.projectNotificationService.ReceiveNotification(func(msg string) {
+	go wg.projectNotificationService.ReceiveNotification(func(msg string) {
 		// fmt.Println("_____MESSAGE_____", msg)
 		s.Emit("projectNotification", msg)
-		fmt.Println("_____message sent to frontend____", msg)
+		fmt.Println("_____message sent to frontend with connection id____",s.ID()," ---- message ----- ", msg)
 	}, projectIDStr, channel)
 }
 

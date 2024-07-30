@@ -42,7 +42,7 @@ func (s *ProjectNotificationService) ReceiveNotification(sendFunction func(msg s
 
 	ch := pubsub.Channel()
 
-	func() {
+	go func() {
 		for msg := range ch {
 			channel := msg.Channel
 			fmt.Println("____received message on channel--", channel, "___payload____", msg.Payload)

@@ -33,6 +33,15 @@ func LoadConfig() (*koanf.Koanf, error) {
 				"dir": "/workspaces",
 			},
 		},
+		"filestore": map[string]interface{}{
+			"type": "local",
+			"local": map[string]interface{}{
+				"dir": "/filestore",
+			},
+		},
+		"aws": map[string]interface{}{
+			"region": "us-west-2",
+		},
 	}, "."), nil)
 	if err != nil {
 		return nil, err

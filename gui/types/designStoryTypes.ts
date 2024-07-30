@@ -1,6 +1,7 @@
 export interface DesignStoryItem {
   id: number;
   status: string;
+  reason: string;
   title: string;
   input_file_url: string;
   created_on: string;
@@ -35,4 +36,10 @@ export interface EditDesignStoryPayload {
   title: string;
   file: Blob;
   imageName: string;
+}
+
+export interface DesignStoryInReviewIssue {
+  title: string | null;
+  description: string | null;
+  actions: { label: string; link: string }[];
 }

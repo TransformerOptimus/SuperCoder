@@ -38,8 +38,7 @@ export default function Models() {
 
   async function toGetLLMAPIKeys() {
     try {
-      const organisation_id = localStorage.getItem('organisationId');
-      const response = await getLLMAPIKeys(organisation_id);
+      const response = await getLLMAPIKeys();
       if (response) {
         const data = response.data.map((model: ModelsList) => ({
           ...model,

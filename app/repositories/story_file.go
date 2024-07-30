@@ -35,6 +35,15 @@ func (storyFile *StoryFileRepository) GetFileByStoryID(storyID uint) (*models.St
 	return &file, err
 }
 
+func (storyFile *StoryFileRepository) GetFilePathByStoryID(storyID int) (string, error) {
+	var file models.StoryFile
+	err := storyFile.db.Select("file_path").Where("story_id = ?", storyID).First(&file).Error
+	if err != nil {
+		return "", err
+	}
+	return file.FilePath, nil
+}
+
 func (repository *StoryFileRepository) UpdateStoryFileUrl(storyFile *models.StoryFile, s3Url string) error {
 	storyFile.FilePath = s3Url
 	err := repository.db.Save(storyFile).Error

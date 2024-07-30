@@ -9,6 +9,7 @@ interface CustomDropdownProps {
   position?: 'start' | 'end' | 'center';
   children: ReactNode;
   key?: string;
+  show?: boolean;
 }
 
 interface CustomDropdownItemProps {
@@ -26,7 +27,15 @@ interface CustomDropdownSectionProps {
 const CustomDropdown: React.FC<CustomDropdownProps> & {
   Item: React.FC<CustomDropdownItemProps>;
   Section: React.FC<CustomDropdownSectionProps>;
-} = ({ trigger, onHover = false, maxHeight, gap, position, children }) => {
+} = ({
+  trigger,
+  onHover = false,
+  maxHeight,
+  gap,
+  position,
+  children,
+  show = true,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -87,7 +96,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> & {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div onClick={handleTrigger}>{trigger}</div>
+      {show && <div onClick={handleTrigger}>{trigger}</div>}
       {isOpen && (
         <div
           ref={dropdownRef}

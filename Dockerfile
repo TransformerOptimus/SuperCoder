@@ -7,6 +7,9 @@ RUN useradd -u 1000 -g coder coder
 RUN usermod -aG sudo coder
 RUN echo 'coder ALL=NOPASSWD: ALL' >> /etc/sudoers
 
+RUN mkdir -p /filestore
+RUN chown -R coder:coder /filestore 
+
 USER coder
 WORKDIR /home/coder
 
@@ -69,6 +72,9 @@ ENTRYPOINT ["go", "run", "worker.go"]
 
 FROM superagidev/supercoder-python-ide:latest AS python-executor
 
+RUN sudo mkdir -p /filestore
+RUN sudo chown -R coder:coder /filestore 
+
 WORKDIR /home/coder
 
 RUN git config --global --add safe.directory /workspaces
@@ -85,6 +91,9 @@ COPY ./app/prompts /go/prompts
 ENTRYPOINT ["bash", "-c", "/entrypoint.d/initialise.sh && /go/executor"]
 
 FROM superagidev/supercoder-node-ide:latest AS node-executor
+
+RUN sudo mkdir -p /filestore
+RUN sudo chown -R coder:coder /filestore 
 
 USER coder
 

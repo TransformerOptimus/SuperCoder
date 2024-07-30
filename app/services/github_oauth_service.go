@@ -3,6 +3,8 @@ package services
 import (
 	"ai-developer/app/models"
 	"context"
+	"errors"
+	"fmt"
 	goGithub "github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 	oauthGithub "golang.org/x/oauth2/github"
@@ -63,11 +65,16 @@ func (s *GithubOauthService) HandleGithubCallback(code string) (string, string, 
 				Name: s.organisationService.CreateOrganisationName(),
 			}
 			_, err = s.organisationService.CreateOrganisation(organisation)
+			hashedPassword, err := s.userService.HashUserPassword(s.userService.CreatePassword())
+			if err != nil {
+				fmt.Println("Error while hashing password: ", err.Error())
+				return "", "", "", "", 0, errors.New("error while creating user")
+			}
 			user = &models.User{
 				Name:           name,
 				Email:          primaryEmail,
 				OrganisationID: organisation.ID,
-				Password:       s.userService.CreatePassword(),
+				Password:       hashedPassword,
 			}
 			_, err = s.userService.CreateUser(user)
 			if err != nil {

@@ -10,7 +10,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strconv"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -135,6 +134,7 @@ func (controller *StoryController) UpdateStoryStatus(context *gin.Context) {
 	if errors.Is(err, types.ErrInvalidStatus) ||
 		errors.Is(err, types.ErrStoryDeleted) ||
 		errors.Is(err, types.ErrInvalidStory) ||
+		errors.Is(err, types.ErrAnotherStoryAlreadyInProgress) ||
 		errors.Is(err, types.ErrInvalidStoryStatusTransition) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -278,6 +278,29 @@ func (controller *StoryController) UpdateStoryIsReviewed(context *gin.Context) {
 		return
 	}
 	context.JSON(http.StatusOK, gin.H{"status": "OK"})
+}
+
+func (controller *StoryController) GetImageByStoryId(context *gin.Context) {
+    storyIdStr := context.Param("story_id")
+    storyID, err := strconv.Atoi(storyIdStr)
+    if err != nil {
+        context.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid story ID"})
+        return
+    }
+
+    reader, contentLength, contentType, err := controller.storyService.GetImageReaderByStoryId(storyID)
+    if err != nil {
+        context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    defer reader.Close()
+	
+	if contentType == nil {
+        context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Content type is nil"})
+        return
+    }
+	context.Header("Content-Type", *contentType)
+    context.DataFromReader(http.StatusOK, contentLength, *contentType, reader, nil)
 }
 
 func NewStoryController(storyService *services.StoryService, executionService *services.ExecutionService) *StoryController {

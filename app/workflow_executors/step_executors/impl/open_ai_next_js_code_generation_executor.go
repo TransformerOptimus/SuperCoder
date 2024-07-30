@@ -6,14 +6,16 @@ import (
 	"ai-developer/app/llms"
 	"ai-developer/app/models"
 	"ai-developer/app/services"
-	"ai-developer/app/services/s3_providers"
+	"ai-developer/app/services/filestore"
 	"ai-developer/app/utils"
 	"ai-developer/app/workflow_executors/step_executors/steps"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
 	"go.uber.org/zap"
 )
 
@@ -24,9 +26,9 @@ type OpenAiNextJsCodeGenerator struct {
 	storyService         *services.StoryService
 	activityLogService   *services.ActivityLogService
 	designReviewService  *services.DesignStoryReviewService
-	s3Service            *s3_providers.S3Service
 	llmAPIKeyService     *services.LLMAPIKeyService
-	logger         		 *zap.Logger
+	logger               *zap.Logger
+	fileStore 	      filestore.FileStore 
 }
 
 func NewOpenAINextJsCodeGenerationExecutor(
@@ -36,9 +38,9 @@ func NewOpenAINextJsCodeGenerationExecutor(
 	storyService *services.StoryService,
 	activityLogService *services.ActivityLogService,
 	designReviewService *services.DesignStoryReviewService,
-	s3Service *s3_providers.S3Service,
 	llmAPIKeyService *services.LLMAPIKeyService,
 	logger *zap.Logger,
+	fileStore filestore.FileStore,
 ) *OpenAiNextJsCodeGenerator {
 	return &OpenAiNextJsCodeGenerator{
 		projectService:       projectService,
@@ -47,14 +49,14 @@ func NewOpenAINextJsCodeGenerationExecutor(
 		storyService:         storyService,
 		activityLogService:   activityLogService,
 		designReviewService:  designReviewService,
-		s3Service:            s3Service,
 		llmAPIKeyService:     llmAPIKeyService,
 		logger:               logger,
+		fileStore: 	      fileStore,
 	}
 }
 
 func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.GenerateCodeStep) error {
-	openAiCodeGenerator.logger.Info("Executing GenerateCodeStep: %s\n", zap.String("step name",step.StepName()))
+	openAiCodeGenerator.logger.Info("Executing GenerateCodeStep: %s\n", zap.String("step name", step.StepName()))
 	openAiCodeGenerator.logger.Info("Working on project details", zap.Any("project", step.Project))
 	openAiCodeGenerator.logger.Info("Working on story details", zap.Any("story", step.Story))
 	openAiCodeGenerator.logger.Info("Max loop iterations", zap.Any("maxLoopIterations", step.MaxLoopIterations))
@@ -68,7 +70,6 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	openAiCodeGenerator.logger.Info("Checking for Max Retry")
 	openAiCodeGenerator.logger.Info("Running command")
 
-	
 	fmt.Printf("\n-----------------------\n")
 	count, err := openAiCodeGenerator.executionStepService.CountExecutionStepsOfName(step.Execution.ID, steps.CODE_GENERATE_STEP.String())
 	if err != nil {
@@ -124,9 +125,35 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	if openAiCodeGenerator.llmAPIKeyService == nil {
 		fmt.Println("_____NULL_____")
 	}
-	llmAPIKey, err := openAiCodeGenerator.llmAPIKeyService.GetLLMAPIKeyByModelName("claude-3", organisationId)
+	llmAPIKey, err := openAiCodeGenerator.llmAPIKeyService.GetLLMAPIKeyByModelName(constants.CLAUDE_3, organisationId)
 	if err != nil {
 		fmt.Println("Error getting claude api key: ", err)
+	}
+	if llmAPIKey == nil || llmAPIKey.LLMAPIKey == "" {
+		openAiCodeGenerator.logger.Info("_____claude API Key not found_____")
+		settingsUrl := config.Get("app.url").(string) + "/settings"
+		err := openAiCodeGenerator.activityLogService.CreateActivityLog(
+			step.Execution.ID,
+			step.ExecutionStep.ID,
+			"INFO",
+			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
+		)
+		if err != nil {
+			fmt.Printf("Error creating activity log: %s\n", err.Error())
+			return err
+		}
+		//Update Execution Status and Story Status
+		if err := openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
+			fmt.Printf("Error updating story status: %s\n", err.Error())
+			return err
+		}
+		//Update execution status to IN REVIEW
+		if err := openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
+			fmt.Printf("Error updating execution step: %s\n", err.Error())
+			return err
+		}
+		errorString := fmt.Sprintf("LLM API Key for model %s not found in database", constants.CLAUDE_3)
+		return errors.New(errorString)
 	}
 	apiKey := llmAPIKey.LLMAPIKey
 	fmt.Println("_________API KEY_________", apiKey)
@@ -139,24 +166,23 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 			step.Execution.ID,
 			step.ExecutionStep.ID,
 			"INFO",
-			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key is correct. <a href='%s' style='color:%s; text-decoration:%s'>Settings</a>", settingsUrl, "blue", "underline"),
+			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
 		)
 		if err != nil {
 			fmt.Printf("Error creating activity log: %s\n", err.Error())
 			return err
 		}
 		//Update Execution Status and Story Status
-		if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReview); err != nil {
+		if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
 			fmt.Printf("Error updating story status: %s\n", err.Error())
 			return err
 		}
-		if err = openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReview); err != nil {
+		if err = openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
 			fmt.Printf("Error updating execution step: %s\n", err.Error())
 			return err
 		}
 		return err
 	}
-	fmt.Printf("_________Generated Code__________: %s\n", code)
 
 	if err = openAiCodeGenerator.executionStepService.UpdateExecutionStepResponse(
 		step.ExecutionStep,
@@ -186,28 +212,30 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildFinalInstructionForGeneration(
 	step steps.GenerateCodeStep, storyDir string) (map[string]string, error) {
 	// Initialize the final instruction string
-	finalInstruction, err := openAiCodeGenerator.buildInstructionForFirstExecution(step, storyDir)
-	if err != nil {
-		fmt.Printf("Error building instruction for first execution: %s\n", err.Error())
-		return nil, err
-	}
+	var finalInstruction map[string]string
 	if step.Retry {
 		fmt.Println("Building instruction on retry limit reached for LLM steps")
+		var err error
 		finalInstruction, err = openAiCodeGenerator.buildInstructionOnRetry(step, storyDir)
 		if err != nil {
 			fmt.Printf("Error building instruction on retry: %s\n", err.Error())
 			return nil, err
 		}
 	} else if step.Execution.ReExecution {
+		var err error
 		finalInstruction, err = openAiCodeGenerator.buildInstructionOnReExecutionWithComments(step, storyDir)
 		if err != nil {
 			fmt.Printf("Error building instruction on re-execution: %s\n", err.Error())
 			return nil, err
 		}
+	} else {
+		var err error
+		finalInstruction, err = openAiCodeGenerator.buildInstructionForFirstExecution(step, storyDir)
+		if err != nil {
+			fmt.Printf("Error building instruction for first execution: %s\n", err.Error())
+			return nil, err
+		}
 	}
-
-	// Print the final instruction
-	fmt.Println("___Final Instruction:___", finalInstruction["existingCode"])
 	return finalInstruction, nil
 }
 
@@ -224,17 +252,22 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 	}
 	fmt.Printf("Building instruction for first execution\n")
 	storyFile, err := openAiCodeGenerator.storyService.GetStoryFileByStoryId(step.Story.ID)
-	//filePath := filepath.Join(storyDir, step.File)
-	//code, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
-	base64Image, imageType, err := openAiCodeGenerator.s3Service.GetBase64FromS3Url(storyFile.FilePath)
-	if err != nil {
-		return nil, err
-	}
+	filePathCloser, err := openAiCodeGenerator.fileStore.ReadFile(storyFile.FilePath)
+	if err!= nil {
+		openAiCodeGenerator.logger.Error("Error reading file______", zap.Error(err))
+        return nil, err
+    }
+	base64Image, imageType, err := utils.EncodeToBase64(filePathCloser)
+	if err!= nil {
+        openAiCodeGenerator.logger.Error("Error encoding to base64____", zap.Error(err))
+        return nil, err
+    }
 
-	code, err := openAiCodeGenerator.getFilesContent(storyDir)
+	filePath := filepath.Join(storyDir, "app", step.File)
+	code, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -249,8 +282,8 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionForFirstEx
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getFilesContent(folderPath string) (string, error) {
-	fmt.Println("____folder____",folderPath)
-	folderPath = folderPath+"/app"
+	fmt.Println("____folder____", folderPath)
+	folderPath = folderPath + "/app"
 	files, err := os.ReadDir(folderPath)
 	if err != nil {
 		fmt.Printf("Error reading directory %s\n", folderPath)
@@ -322,6 +355,16 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnRetry(st
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecutionWithComments(step steps.GenerateCodeStep, storyDir string) (map[string]string, error) {
+	err := openAiCodeGenerator.activityLogService.CreateActivityLog(
+		step.Execution.ID,
+		step.ExecutionStep.ID,
+		"INFO",
+		fmt.Sprintf("Code generation has started for file: %s", step.File),
+	)
+	if err != nil {
+		fmt.Printf("Error creating activity log: %s\n", err.Error())
+		return nil, err
+	}
 	fmt.Printf("Building instruction on re-execution with comments for step: %s\n", step.StepName())
 	comments, err := openAiCodeGenerator.designReviewService.GetAllDesignReviewsByStoryId(step.Story.ID)
 	if err != nil {
@@ -333,8 +376,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecut
 		feedback = comments[len(comments)-1].Comment
 	}
 	fmt.Println("Feedback:", feedback)
-	filePath := filepath.Join(storyDir, "app", step.File)
-	code, err := os.ReadFile(filePath)
+	code, err := openAiCodeGenerator.getFilesContent(storyDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %v", err)
 	}
@@ -343,10 +385,16 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecut
 	if err != nil {
 		return nil, err
 	}
-	base64Image, imageType, err := openAiCodeGenerator.s3Service.GetBase64FromS3Url(storyFile.FilePath)
-	if err != nil {
-		return nil, err
-	}
+	filePathCloser, err := openAiCodeGenerator.fileStore.ReadFile(storyFile.FilePath)
+	if err!= nil {
+		openAiCodeGenerator.logger.Error("Error reading file______", zap.Error(err))
+        return nil, err
+    }
+	base64Image, imageType, err := utils.EncodeToBase64(filePathCloser)
+	if err!= nil {
+        openAiCodeGenerator.logger.Error("Error encoding to base64____", zap.Error(err))
+        return nil, err
+    }
 
 	return map[string]string{
 		"existingCode": string(code),
@@ -362,7 +410,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCode(step steps.Ge
 		response, err := openAiCodeGenerator.GenerateCodeOnRetry(step.ExecutionStep, instruction, storyDir, apiKey)
 		if err != nil {
 			fmt.Println("Error generating code on retry")
-			return "", err
+			return "", fmt.Errorf("failed to generate retry code from Claude API: %w", err)
 		}
 		return response, nil
 	} else {
@@ -462,7 +510,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instructio
 	claudeClient := llms.NewClaudeClient(apiKey)
 	response, err := claudeClient.ChatCompletion(messages)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate code from OpenAI API: %w", err)
+		return "", fmt.Errorf("failed to generate code from llm: %w", err)
 	}
 	return response, nil
 }
@@ -506,14 +554,6 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetMessages(systemPrompt s
 				{
 					Type: "text",
 					Text: fmt.Sprintf("User Feedback: %s", instruction["feedback"]),
-				},
-				{
-					Type: "text",
-					Text: fmt.Sprintf("Existing Code:\n%s for the file: %s\n", instruction["existingCode"], instruction["fileName"]),
-				},
-				{
-					Type: "text",
-					Text: fmt.Sprintf("Code written in files to incorporate the feedback: %s\n", instruction["feedback"]),
 				},
 			},
 		},

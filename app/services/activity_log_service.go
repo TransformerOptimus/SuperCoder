@@ -3,8 +3,9 @@ package services
 import (
 	"ai-developer/app/models"
 	"ai-developer/app/repositories"
-	"gorm.io/gorm"
 	"sort"
+	"gorm.io/gorm"
+	"ai-developer/app/constants"
 )
 
 type ActivityLogService struct {
@@ -35,6 +36,11 @@ func (s *ActivityLogService) GetActivityLogsByStoryID(storyID uint) (models.Acti
 
 	latestExecution := executions[0]
 	status := latestExecution.Status
+
+	storyStatusSet := map[string]struct{}{constants.Todo: {}, constants.InProgress: {}, constants.Done: {}}
+    if _, found := storyStatusSet[status]; !found {
+        status = constants.InReview
+    }
 
 	var executionIDs []uint
 	for _, execution := range executions {

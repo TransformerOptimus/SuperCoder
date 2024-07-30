@@ -4,10 +4,26 @@ import {
   getLLMAPIKeys,
   getProjectPullRequests,
 } from '@/api/DashboardService';
-import { removeCookie } from '@/utils/CookieUtils';
+import { removeCookie, setCookie } from '@/utils/CookieUtils';
 import { ProjectTypes } from '../../types/projectsTypes';
 import toast from 'react-hot-toast';
-import { storyStatus } from '@/app/constants/BoardConstants';
+import { storyStatus, storyActions } from '@/app/constants/BoardConstants';
+import { Servers } from '@/app/constants/UtilsConstants';
+import { StoryInReviewIssue } from '../../types/storyTypes';
+import { DesignStoryInReviewIssue } from '../../types/designStoryTypes';
+import { useRouter } from 'next/navigation';
+import { userData } from '../../types/authTypes';
+
+export const setUserData = (data: userData) => {
+  if (typeof window !== 'undefined') {
+    setCookie('accessToken', data.accessToken);
+    localStorage.setItem('userName', data.userName);
+    localStorage.setItem('userEmail', data.userEmail);
+    if (window.clarity) {
+      window.clarity('set', 'User Email', data.userEmail);
+    }
+  }
+};
 
 export const logout = () => {
   if (typeof window !== 'undefined') {
@@ -22,7 +38,6 @@ export const logout = () => {
     localStorage.removeItem('projectURLBackend');
     localStorage.removeItem('projectName');
     localStorage.removeItem('storyId');
-    localStorage.removeItem('organisationId');
     localStorage.removeItem('projectFrontendFramework');
   }
 
@@ -58,9 +73,10 @@ export async function handleInProgressStoryStatus(
   setOpenSetupModelModal,
   numberOfStoriesInProgress: number,
   toUpdateStoryStatus,
+  id: string = Servers.BACKEND,
 ) {
   try {
-    const modelNotAdded = await checkModelNotAdded();
+    const modelNotAdded = await checkModelNotAdded(id);
     if (modelNotAdded) {
       setOpenSetupModelModal(true);
       return false;
@@ -68,9 +84,6 @@ export async function handleInProgressStoryStatus(
     if (numberOfStoriesInProgress >= 1) {
       toast.error('Cannot have two stories simultaneously In Progress', {
         style: {
-          border: '1px solid #713200',
-          padding: '16px',
-          color: '#713200',
           maxWidth: 'none',
           whiteSpace: 'nowrap',
         },
@@ -83,7 +96,7 @@ export async function handleInProgressStoryStatus(
       return true;
     }
   } catch (error) {
-    console.error(error);
+    console.error('Error while changing status: ' + error);
     return false;
   }
 }
@@ -91,7 +104,7 @@ export async function handleInProgressStoryStatus(
 export async function toGetAllStoriesOfProjectUtils(
   setter,
   search = '',
-  type = 'backend',
+  type = Servers.BACKEND,
 ) {
   try {
     const project_id = localStorage.getItem('projectId');
@@ -154,19 +167,62 @@ export function setProjectDetails(project: ProjectTypes) {
   localStorage.setItem('projectName', project.project_name);
 }
 
-export async function checkModelNotAdded() {
+export async function checkModelNotAdded(id: string) {
   try {
-    const organisation_id = localStorage.getItem('organisationId');
-    const response = await getLLMAPIKeys(organisation_id);
+    const response = await getLLMAPIKeys();
     if (response) {
       const data = response.data;
       if (Array.isArray(data)) {
-        return data.every((model) => model.api_key === '');
+        if (id === Servers.FRONTEND)
+          return data.some((model) => model.api_key === '');
+        else return data.every((model) => model.api_key === '');
       }
-      return true;
     }
   } catch (error) {
     console.error('Error while fetching LLM API Keys: ', error);
     return true;
   }
+}
+
+export function validateEmail(email: string) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+export function handleStoryInReviewIssue(data: {
+  story: { reason: any };
+}): StoryInReviewIssue {
+  let issueTitle = '';
+  let issueDescription = '';
+  const actions = [];
+
+  switch (data.story.reason) {
+    case storyStatus.MAX_LOOP_ITERATIONS:
+      issueTitle = 'Action Needed: Maximum number of iterations reached';
+      issueDescription =
+        'The story execution in the workbench has exceeded the maximum allowed iterations. You can update the story details and re-build it.';
+      actions.push(
+        { label: 'Re-Build', link: storyActions.REBUILD },
+        {
+          label: 'Get Help',
+          link: 'https://discord.com/invite/dXbRe5BHJC',
+        },
+      );
+      break;
+    case storyStatus.LLM_KEY_NOT_FOUND:
+      issueTitle = 'Action Needed: LLM API Key Configuration Error';
+      issueDescription =
+        'There is an issue with the LLM API Key configuration, which may involve an invalid or expired API key. Please verify the API Key settings and update them to continue.';
+      actions.push(
+        { label: 'Re-Build', link: storyActions.REBUILD },
+        { label: 'Go to Settings', link: '/settings' },
+      );
+      break;
+  }
+
+  return {
+    title: issueTitle,
+    description: issueDescription,
+    actions,
+  };
 }

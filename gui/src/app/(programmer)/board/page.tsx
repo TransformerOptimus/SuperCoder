@@ -1,19 +1,19 @@
 'use client';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import imagePath from '@/app/imagePath';
-import CustomImage from '@/components/ImageComponents/CustomImage';
 import { Button } from '@nextui-org/react';
 import CreateEditStory from '@/components/StoryComponents/CreateEditStory';
-import CustomDrawer from '@/components/CustomDrawer/CustomDrawer';
 import StoryDetails from '@/components/StoryComponents/StoryDetails';
 import { storyStatus } from '@/app/constants/BoardConstants';
 import { useBoardContext } from '@/context/Boards';
 import { toGetAllStoriesOfProjectUtils } from '@/app/utils';
 import styles from './board.module.css';
 import SetupModelModal from '@/components/StoryComponents/SetupModelModal';
-import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
 import { SkeletonTypes } from '@/app/constants/SkeletonConstants';
 import CustomInput from '@/components/CustomInput/CustomInput';
+import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
+import CustomDrawer from '@/components/CustomDrawer/CustomDrawer';
+import CustomImage from '@/components/ImageComponents/CustomImage';
 
 const TaskItem = ({ task, handleStoryClick }) => (
   <div

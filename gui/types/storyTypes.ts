@@ -72,3 +72,22 @@ export interface SetupModelModalProps {
   openModal: boolean;
   setOpenModel: React.Dispatch<React.SetStateAction<boolean>>;
 }
+
+export interface StoryInReviewIssue {
+  title: string | null;
+  description: string | null;
+  actions: { label: string; link: string }[];
+}
+
+export interface IssueAction {
+  label: string;
+  link: string;
+}
+
+export interface IssueContainerProps {
+  title: string | null;
+  description: string | null;
+  actions: IssueAction[];
+  image?: string;
+  handleMoveToInProgressClick: () => Promise<void>;
+}

@@ -1,7 +1,7 @@
 'use client';
 import imagePath from '@/app/imagePath';
 import React, { useEffect, useRef, useState } from 'react';
-import { handleStoryStatus } from '@/app/utils';
+import { handleStoryStatus, toGetAllStoriesOfProjectUtils } from '@/app/utils';
 import CustomTag from '@/components/CustomTag/CustomTag';
 import { getActivityLogs } from '@/api/DashboardService';
 import {
@@ -15,6 +15,7 @@ import CustomLoaders from '@/components/CustomLoaders/CustomLoaders';
 import { storyTypes } from '@/app/constants/ProjectConstants';
 import BackendWorkbench from '@/components/WorkBenchComponents/BackendWorkbench';
 import DesignWorkbench from '@/components/WorkBenchComponents/DesignWorkbench';
+import { useWorkbenchContext } from '@/context/Workbench';
 
 const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
   storiesList,
@@ -29,6 +30,7 @@ const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
   const [selectedStory, setSelectedStory] = useState<StoryListItems | null>(
     null,
   );
+  const { setStoriesList } = useWorkbenchContext();
 
   const getStatus = (storyId: number) => {
     for (const [status, storyList] of Object.entries(storiesList)) {
@@ -43,6 +45,7 @@ const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
     const completeStoriesList = [
       ...storiesList.IN_PROGRESS,
       ...storiesList.DONE,
+      ...storiesList.IN_REVIEW,
     ];
 
     const story = completeStoriesList.find(
@@ -84,6 +87,12 @@ const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
     return storiesList && storiesList.DONE && storiesList.DONE.length > 0;
   };
 
+  const handleInReviewCheck = () => {
+    return (
+      storiesList && storiesList.IN_REVIEW && storiesList.IN_REVIEW.length > 0
+    );
+  };
+
   useEffect(() => {
     let id = null;
     if (typeof window !== 'undefined') {
@@ -107,7 +116,9 @@ const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
   useEffect(() => {
     if (
       storiesList &&
-      (storiesList.IN_PROGRESS.length > 0 || storiesList.DONE.length > 0)
+      (storiesList.IN_PROGRESS.length > 0 ||
+        storiesList.DONE.length > 0 ||
+        storiesList.IN_REVIEW.length > 0)
     )
       handleSelectedStory();
   }, [storiesList, selectedStoryId]);
@@ -126,7 +137,10 @@ const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
 
         if (data.Status === storyStatus.IN_PROGRESS || data.Status === '')
           setExecutionInProcess(true);
-        else setExecutionInProcess(false);
+        else {
+          toGetAllStoriesOfProjectUtils(setStoriesList).then().catch();
+          setExecutionInProcess(false);
+        }
       }
     } catch (error) {
       console.error('Error while fetching activity logs:: ', error);
@@ -161,6 +175,21 @@ const ActiveWorkbench: React.FC<ActiveWorkbenchProps> = ({
                   showDivider
                 >
                   {storiesList.IN_PROGRESS.map((story) => (
+                    <CustomDropdown.Item
+                      key={story.story_id.toString()}
+                      onClick={() =>
+                        handleItemSelect(story.story_id.toString())
+                      }
+                    >
+                      <span>{story.story_name}</span>
+                    </CustomDropdown.Item>
+                  ))}
+                </CustomDropdown.Section>
+              )}
+
+              {handleInReviewCheck() && (
+                <CustomDropdown.Section title={'IN REVIEW STORIES'} showDivider>
+                  {storiesList.IN_REVIEW.map((story) => (
                     <CustomDropdown.Item
                       key={story.story_id.toString()}
                       onClick={() =>

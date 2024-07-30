@@ -45,6 +45,11 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
   }, [openCreateStoryModal]);
 
   const handleSubmit = () => {
+    if (!titleRef.current?.value) {
+      toast.error('Title cannot be empty');
+      return;
+    }
+
     setIsLoading(true);
     if (editTrue) {
       const data = {
@@ -121,7 +126,7 @@ const CreateEditDesignStory: React.FC<CreateEditDesignStoryProps> = ({
         };
         reader.readAsDataURL(file);
       } else {
-        toast.error('Please upload only JPEG or PNG images.');
+        toast.error('Please upload only JPG or PNG images.');
         event.target.value = '';
       }
     }

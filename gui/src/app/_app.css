@@ -280,6 +280,16 @@ body {
   border-radius: 8px 0 0;
 }
 
+.terminal {
+  height: 100%;
+  width: 100%;
+  border: 1px solid var(--white-opacity-8);
+  background: var(--layout-bg-color);
+  color: #FFF;
+  padding: 10px;
+  border-radius: 8px;
+}
+
 .green-text {
   color: #32de84;
 }

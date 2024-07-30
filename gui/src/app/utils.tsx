@@ -226,3 +226,16 @@ export function handleStoryInReviewIssue(data: {
     actions,
   };
 }
+
+export function insertBeforePhrase(originalString, wordToInsert, phraseToFind) {
+  let index = originalString.indexOf(phraseToFind);
+
+  if (index !== -1) {
+    let beforePhrase = originalString.substring(0, index);
+    let afterPhrase = originalString.substring(index);
+
+    return beforePhrase + wordToInsert + afterPhrase;
+  } else {
+    return originalString;
+  }
+}

@@ -59,6 +59,12 @@ WORKDIR $GOPATH/src/packages/ai-developer/
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/executor executor.go
 
+FROM build-base AS terminal-base
+
+WORKDIR $GOPATH/src/packages/ai-developer/
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/terminal terminal.go
+
 
 FROM build-base AS worker-development
 
@@ -104,6 +110,23 @@ COPY --from=executor-base /go/executor /go/executor
 COPY ./app/prompts /go/prompts
 
 ENTRYPOINT ["bash", "-c", "/go/executor"]
+
+FROM superagidev/supercoder-python-ide:latest AS terminal
+
+RUN git config --global user.email "supercoder@superagi.com"
+RUN git config --global user.name "SuperCoder"
+
+ENV TERM xterm
+ENV HOME /home/coder
+
+# to make the terminal look nice
+RUN echo "PS1='\[\033[01;32m\]\u:\[\033[01;34m\]\w\[\033[00m\]\$ '" >> /home/coder/.bashrc
+
+
+COPY --from=terminal-base /go/terminal /go/terminal
+COPY ./app/prompts /go/prompts
+
+ENTRYPOINT ["bash", "-c", "/go/terminal"]
 
 FROM public.ecr.aws/docker/library/debian:bookworm-slim as production
 

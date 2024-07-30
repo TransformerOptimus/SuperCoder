@@ -118,6 +118,18 @@ services:
       dockerfile: Dockerfile
       target: node-executor
 
+  terminal:
+    restart: no
+    hostname: terminal
+    container_name: terminal
+    image: terminal:latest
+    ports:
+      - 8084:8080
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: terminal
+
   ws:
     hostname: ws
     restart: always

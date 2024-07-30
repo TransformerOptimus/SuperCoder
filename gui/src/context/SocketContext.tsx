@@ -22,8 +22,6 @@ const SocketContext = createContext<SocketContextProps>({
   disconnectSocket: () => {},
 });
 
-export const useSocket = () => useContext(SocketContext);
-
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -42,7 +40,10 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
         ? 'wss://developer.superagi.com'
         : 'ws://localhost:8080';
 
-    const socketInstance = io(socketUrl, { transports: ['websocket'], path:'/api/socket.io' });
+    const socketInstance = io(socketUrl, {
+      transports: ['websocket'],
+      path: '/api/socket.io',
+    });
 
     socketInstance.on('connect', () => {
       console.log('Connected to websocket server');

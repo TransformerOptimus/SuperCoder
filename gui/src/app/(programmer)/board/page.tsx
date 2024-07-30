@@ -88,10 +88,6 @@ export default function Board() {
     setOpenCreateStoryModal(true);
   };
 
-  const handleSearchChange = (search: string) => {
-    toGetAllStoriesOfProject();
-  };
-
   useEffect(() => {
     toGetAllStoriesOfProject();
   }, [searchValue]);

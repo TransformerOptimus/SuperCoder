@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"ai-developer/app/models"
 	"ai-developer/app/services"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -21,7 +22,13 @@ func NewPullRequestAuthorizationMiddleware(pullRequestService *services.PullRequ
 
 func (m *PullRequestAuthorizationMiddleware) Authorize() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := c.Get("user_id")
+		userInterface, exists := c.Get("user")
+		if !exists {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		user, exists := userInterface.(*models.User)
 		if !exists {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
@@ -37,18 +44,6 @@ func (m *PullRequestAuthorizationMiddleware) Authorize() gin.HandlerFunc {
 		project, err := m.pullRequestService.GetPullRequestWithDetails(uint(pullRequestID))
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch pull request details"})
-			return
-		}
-
-		userIDInt, ok := userID.(int)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
-			return
-		}
-
-		user, err := m.userService.GetUserByID(uint(userIDInt))
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
 			return
 		}
 

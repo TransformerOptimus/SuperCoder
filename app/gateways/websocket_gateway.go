@@ -1,7 +1,6 @@
 package gateways
 
 import (
-	"ai-developer/app/middleware"
 	"ai-developer/app/services"
 	"fmt"
 	socketio "github.com/googollee/go-socket.io"
@@ -11,7 +10,6 @@ import (
 
 type WorkspaceGateway struct {
 	projectService *services.ProjectService
-	jwtAuth        *middleware.JWTClaims
 	logger         *zap.Logger
 }
 
@@ -99,12 +97,10 @@ func (wg *WorkspaceGateway) OnWorkspaceDeleteEvent(s socketio.Conn, data map[str
 
 func NewWorkspaceGateway(
 	projectService *services.ProjectService,
-	jwtAuth *middleware.JWTClaims,
 	logger *zap.Logger,
 ) *WorkspaceGateway {
 	return &WorkspaceGateway{
 		projectService: projectService,
-		jwtAuth:        jwtAuth,
 		logger:         logger.Named("WebsocketGateway"),
 	}
 }

@@ -15,7 +15,6 @@ import (
 type Authenticator struct {
 	jwtConfig          *config.JWTConfig
 	userService        *services.UserService
-	authService        *services.AuthService
 	envConfig          *config.EnvConfig
 	githubAuthProvider *GithubAuthProvider
 	emailAuthProvider  *EmailAuthProvider
@@ -31,7 +30,7 @@ const (
 func (a *Authenticator) payloadFunc() func(data interface{}) jwt.MapClaims {
 	return func(data interface{}) jwt.MapClaims {
 		if v, ok := data.(*models.User); ok {
-			a.logger.Info("Creating payload", zap.Any("user", v))
+			a.logger.Debug("Creating payload", zap.Any("user", v))
 			return jwt.MapClaims{
 				jwt.IdentityKey: v.ID,
 				"user_id":       v.ID,
@@ -45,7 +44,7 @@ func (a *Authenticator) payloadFunc() func(data interface{}) jwt.MapClaims {
 func (a *Authenticator) identityHandler() func(c *gin.Context) interface{} {
 	return func(c *gin.Context) interface{} {
 		claims := jwt.ExtractClaims(c)
-		a.logger.Info("Extracting claims", zap.Any("claims", claims))
+		a.logger.Debug("Extracting claims", zap.Any("claims", claims))
 		user, err := a.userService.GetUserByID(uint(claims[jwt.IdentityKey].(float64)))
 		if err != nil {
 			c.JSON(500, gin.H{
@@ -53,7 +52,10 @@ func (a *Authenticator) identityHandler() func(c *gin.Context) interface{} {
 			})
 			return nil
 		}
-		a.logger.Info("User found", zap.Any("user", user))
+		c.Set("user_id", user.ID)
+		c.Set("email", user.Email)
+		c.Set("user", user)
+
 		return user
 	}
 }
@@ -137,7 +139,6 @@ func (a *Authenticator) Middleware() *jwt.GinJWTMiddleware {
 
 func NewAuthenticator(
 	jwtConfig *config.JWTConfig,
-	authService *services.AuthService,
 	userService *services.UserService,
 	githubAuthProvider *GithubAuthProvider,
 	emailAuthProvider *EmailAuthProvider,
@@ -147,7 +148,6 @@ func NewAuthenticator(
 	return &Authenticator{
 		jwtConfig:          jwtConfig,
 		userService:        userService,
-		authService:        authService,
 		envConfig:          envConfig,
 		githubAuthProvider: githubAuthProvider,
 		emailAuthProvider:  emailAuthProvider,

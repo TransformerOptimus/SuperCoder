@@ -2,18 +2,6 @@ package config
 
 import "github.com/knadh/koanf/v2"
 
-// Deprecated
-func GithubClientId() string { return config.String("github.client.id") }
-
-// Deprecated
-func GithubClientSecret() string { return config.String("github.client.secret") }
-
-// Deprecated
-func GithubRedirectURL() string { return config.String("github.redirect.url") }
-
-// Deprecated
-func GithubFrontendURL() string { return config.String("github.frontend.url") }
-
 type GithubOAuthConfig struct {
 	config *koanf.Koanf
 }

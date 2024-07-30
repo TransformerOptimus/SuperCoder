@@ -6,6 +6,7 @@ import { WebLinksAddon } from 'xterm-addon-web-links';
 import { Unicode11Addon } from 'xterm-addon-unicode11';
 import { SerializeAddon } from 'xterm-addon-serialize';
 import 'xterm/css/xterm.css';
+import { insertBeforePhrase } from '@/app/utils';
 
 export const useTerminal = () => {
   const terminalRef = useRef<HTMLDivElement | null>(null);
@@ -23,9 +24,15 @@ export const useTerminal = () => {
       });
 
       const fitAddon = new FitAddon();
-      const socket = new WebSocket(
-        'ws://localhost:8084/api/terminal?EIO=4&transport=websocket',
-      );
+      const url =
+        process.env.NODE_ENV === 'production'
+          ? insertBeforePhrase(
+              localStorage.getItem('projectURL'),
+              '-terminal',
+              '.workspace',
+            )
+          : 'ws://localhost:8084/api/terminal?EIO=4&transport=websocket';
+      const socket = new WebSocket(url);
       const attachAddon = new AttachAddon(socket);
       const webLinksAddon = new WebLinksAddon();
       const unicode11Addon = new Unicode11Addon();

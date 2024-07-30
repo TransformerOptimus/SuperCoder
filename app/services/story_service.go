@@ -472,6 +472,26 @@ func (s *StoryService) GetCodeForDesignStory(storyId int) ([]*response.GetCodeFo
 	return fileData, nil
 }
 
+func (s *StoryService) RetrieveCodeForFile (projectID uint, storyID uint, fileName string) ([]byte, error){
+	story, err := s.storyRepo.GetStoryById(int(storyID))
+	if err != nil {
+		s.logger.Error("Error fetching story", zap.Error(err))
+		return nil, err
+	}
+	project, err := s.projectService.GetProjectById(projectID)
+	if err != nil {
+		s.logger.Error("Error fetching project", zap.Error(err))
+		return nil, err
+	}
+	filePath := config.FrontendWorkspacePath(project.HashID, story.HashID) + "/app/" + fileName
+	content, err := os.ReadFile(filePath)
+    if err != nil {
+		s.logger.Error("Error reading file", zap.Error(err))
+        return nil, err
+    }
+	return content, nil
+}
+
 func (s *StoryService) GetDesignStoryDetails(storyId int) (*response.GetDesignStoriesOfProjectId, error) {
 	story, err := s.storyRepo.GetStoryById(storyId)
 	if err != nil {

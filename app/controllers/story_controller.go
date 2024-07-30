@@ -250,6 +250,21 @@ func (controller *StoryController) GetCodeForDesignStory(context *gin.Context) {
 	context.JSON(http.StatusOK, gin.H{"code_files": story})
 }
 
+func (controller *StoryController) RetrieveCodeForFile(context *gin.Context) {
+	var retrieveCodeRequest request.RetrieveCodeRequest
+	if err := context.ShouldBindJSON(&retrieveCodeRequest); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	code, err := controller.storyService.RetrieveCodeForFile(retrieveCodeRequest.ProjectID, retrieveCodeRequest.StoryID, retrieveCodeRequest.FileName)
+	if err != nil {
+		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return 
+	}
+	context.JSON(http.StatusOK, gin.H{"code": string(code)})
+}
+
 func (controller *StoryController) GetDesignStoryByID(context *gin.Context) {
 	storyIdStr := context.Param("story_id")
 	storyID, err := strconv.Atoi(storyIdStr)

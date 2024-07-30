@@ -519,6 +519,7 @@ func main() {
 
 		stories.POST("", storiesController.CreateStory)
 		stories.POST("/", storiesController.CreateStory)
+		stories.POST("/retrieve-code", storiesController.RetrieveCodeForFile)
 
 		designStory := stories.Group("/design", middleware.AuthenticateJWT())
 

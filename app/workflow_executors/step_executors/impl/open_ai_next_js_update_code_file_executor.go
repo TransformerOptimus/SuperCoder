@@ -42,7 +42,6 @@ type FileUpdate struct {
 	ProjectID uint   `json:"project_id"`
 	StoryID   uint   `json:"story_id"`
     FileName  string `json:"file_name"`
-    Code      string `json:"code"`
 }
 
 func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) error {
@@ -101,16 +100,10 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 	}
 	fmt.Println("File Updated Successfully")
 
-	updatedCode, err := e.GetFileCode(step, fileName)
-	if err!= nil {
-		e.logger.Error("Error getting file code", zap.Any("error", err))
-        return err
-    }
     fileUpdate := FileUpdate{
 		ProjectID: step.Project.ID,
 		StoryID:   step.Story.ID,
         FileName:  fileName,
-        Code:      string(updatedCode),
     }
     jsonData, err := json.Marshal(fileUpdate)
     if err != nil {

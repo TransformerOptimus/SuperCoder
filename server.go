@@ -452,8 +452,6 @@ func main() {
 		nrApp *newrelic.Application,
 		designStoryCtrl *controllers.DesignStoryReviewController,
 		logger *zap.Logger,
-		projectNotificationService *services.ProjectNotificationService,
-		workspaceGateway *gateways.WorkspaceGateway,
 	) error {
 
 		defer func() {

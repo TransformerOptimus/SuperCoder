@@ -41,7 +41,6 @@ func NewOpenAINextJsCodeGenerationExecutor(
 	llmAPIKeyService *services.LLMAPIKeyService,
 	logger *zap.Logger,
 	fileStore filestore.FileStore,
-
 ) *OpenAiNextJsCodeGenerator {
 	return &OpenAiNextJsCodeGenerator{
 		projectService:       projectService,
@@ -64,7 +63,7 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	openAiCodeGenerator.logger.Info("Is re-execution", zap.Any("reExecution", step.Execution.ReExecution))
 	openAiCodeGenerator.logger.Info("Is retry", zap.Any("retry", step.Retry))
 	openAiCodeGenerator.logger.Info("File name", zap.Any("fileName", step.File))
-	
+
 	storyDir := config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID)
 
 	openAiCodeGenerator.logger.Info("____Project Directory____", zap.Any("storyDir", storyDir))

@@ -278,20 +278,3 @@ func (e *NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName stri
 	}
 	return nil
 }
-
-func (e *NextJsUpdateCodeFileExecutor) GetFileCode(step steps.UpdateCodeFileStep, fileName string) ([]byte, error) {
-	var filePath string
-	if fileName == "package.json" {
-		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/" + fileName
-	} else if strings.Contains(fileName, "app/") {
-		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/" + fileName
-	} else {
-		filePath = config.FrontendWorkspacePath(step.Project.HashID, step.Story.HashID) + "/app/" + fileName
-	}
-	content, err := os.ReadFile(filePath)
-    if err != nil {
-		e.logger.Error("Failed to read file", zap.Any("error", err))
-        return nil, err
-    }
-    return content, nil
-}

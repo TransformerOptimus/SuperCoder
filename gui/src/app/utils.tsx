@@ -3,35 +3,17 @@ import {
   getAllStoriesOfProject,
   getLLMAPIKeys,
   getProjectPullRequests,
+  logoutUser,
 } from '@/api/DashboardService';
-import { removeCookie, setCookie } from '@/utils/CookieUtils';
 import { ProjectTypes } from '../../types/projectsTypes';
 import toast from 'react-hot-toast';
-import { storyStatus, storyActions } from '@/app/constants/BoardConstants';
+import { storyActions, storyStatus } from '@/app/constants/BoardConstants';
 import { Servers } from '@/app/constants/UtilsConstants';
 import { StoryInReviewIssue } from '../../types/storyTypes';
-import { DesignStoryInReviewIssue } from '../../types/designStoryTypes';
-import { useRouter } from 'next/navigation';
-import { userData } from '../../types/authTypes';
 
-export const setUserData = (data: userData) => {
+export const logout = async () => {
+  await logoutUser();
   if (typeof window !== 'undefined') {
-    setCookie('accessToken', data.accessToken);
-    localStorage.setItem('userName', data.userName);
-    localStorage.setItem('userEmail', data.userEmail);
-    if (window.clarity) {
-      window.clarity('set', 'User Email', data.userEmail);
-    }
-  }
-};
-
-export const logout = () => {
-  if (typeof window !== 'undefined') {
-    removeCookie('accessToken');
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userEmail');
     localStorage.removeItem('projectId');
     localStorage.removeItem('projectURL');
     localStorage.removeItem('projectURLFrontend');
@@ -40,8 +22,16 @@ export const logout = () => {
     localStorage.removeItem('storyId');
     localStorage.removeItem('projectFrontendFramework');
   }
-
   window.location.replace('/');
+};
+
+export const getUsernameInitials = (username: string): string => {
+  const nameParts = username.split(' ');
+  const initials =
+    nameParts?.length >= 2
+      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
+      : username[0];
+  return initials.toUpperCase();
 };
 
 export const handleStoryStatus = (status: string) => {

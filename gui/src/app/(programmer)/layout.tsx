@@ -1,22 +1,28 @@
 'use client';
 import '../_app.css';
-import React, { useEffect } from 'react';
+import React, { useContext, useEffect } from 'react';
 import SideBar from '@/components/LayoutComponents/SideBar';
 import NavBar from '@/components/LayoutComponents/NavBar';
 import Code from '@/app/(programmer)/code/Code';
 import { Toaster } from 'react-hot-toast';
 import { SocketProvider } from '@/context/SocketContext';
+import { UserContext } from '@/context/UserContext';
 
 export default function ProgrammerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const userContext = useContext(UserContext);
+  if (!userContext) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.clarity) {
-      window.clarity('set', 'User Email', localStorage.getItem('userEmail'));
+    if (typeof window !== 'undefined' && window.clarity && userContext) {
+      window.clarity('set', 'User Email', userContext.name);
     }
-  }, []);
+  }, [userContext]);
 
   return (
     <div className={'layout'}>

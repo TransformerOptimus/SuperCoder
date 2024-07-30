@@ -9,14 +9,20 @@ import {
   signUp,
 } from '@/api/DashboardService';
 import { Button } from '@nextui-org/react';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { API_BASE_URL } from '@/api/apiConfig';
 import CustomInput from '@/components/CustomInput/CustomInput';
-import { authPayload, userData } from '../../../types/authTypes';
+import { authPayload } from '../../../types/authTypes';
 import { useRouter } from 'next/navigation';
-import { setUserData, validateEmail } from '@/app/utils';
+import { validateEmail } from '@/app/utils';
+import { UserContext } from '@/context/UserContext';
 
 export default function LandingPage() {
+  const userContext = useContext(UserContext);
+  if (!userContext) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -85,15 +91,6 @@ export default function LandingPage() {
     setPasswordErrorMsg('');
   };
 
-  const toSetUserData = (user, access_token: string) => {
-    const userData: userData = {
-      userEmail: user.email,
-      userName: user.name,
-      accessToken: access_token,
-    };
-    setUserData(userData);
-  };
-
   async function toCheckUserEmail() {
     try {
       if (!validateEmail(email)) {
@@ -128,7 +125,7 @@ export default function LandingPage() {
       if (response) {
         const data = response.data;
         if (data.success) {
-          toSetUserData(data.user, data.access_token);
+          userContext.fetchUserDetails();
           router.push('/projects');
         } else {
           setPasswordErrorMsg('Password entered is incorrect.');
@@ -156,7 +153,7 @@ export default function LandingPage() {
       if (response) {
         const data = response.data;
         if (data.success) {
-          toSetUserData(data.user, data.access_token);
+          await userContext.fetchUserDetails();
           router.push('/projects');
         }
       }

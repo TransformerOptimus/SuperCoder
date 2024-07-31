@@ -3,8 +3,9 @@ export interface authPayload {
   password: string;
 }
 
-export interface userData {
-  userEmail: string;
-  userName: string;
-  accessToken: string;
+export interface UserData {
+  id: number;
+  email: string;
+  name: string;
+  organisation_id: number;
 }

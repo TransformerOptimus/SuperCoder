@@ -1,6 +1,6 @@
 'use client';
 import './style.css';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import imagePath from '@/app/imagePath';
 import { navbarOptions } from '@/app/constants/NavbarConstants';
@@ -8,11 +8,14 @@ import { useRouter } from 'next/navigation';
 import useProjectDropdown from '@/hooks/useProjectDropdown';
 import CustomImage from '@/components/ImageComponents/CustomImage';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
-import { logout } from '@/app/utils';
+import { getUsernameInitials, logout } from '@/app/utils';
 import CreateOrEditProjectBody from '@/components/HomeComponents/CreateOrEditProjectBody';
+import { useUserContext } from '@/context/UserContext';
 
 export default function NavBar() {
-  const [username, setUsername] = useState<string | null>('Major Pandey Singh');
+  const userContext = useUserContext();
+
+  const [username, setUsername] = useState<string | undefined>(undefined);
   const [projectName, setProjectName] = useState(null);
   const [openEditProjectModal, setOpenEditProjectModal] = useState<
     boolean | null
@@ -74,19 +77,16 @@ export default function NavBar() {
     },
   ];
 
-  const handleUsernameInitials = () => {
-    const nameParts = username.split(' ');
-    return nameParts.length >= 2
-      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
-      : username[0];
-  };
+  const usernameInitials = username ? getUsernameInitials(username) : '';
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setUsername(localStorage.getItem('userName'));
+      if (userContext && userContext.name) {
+        setUsername(userContext.name);
+      }
       setProjectName(localStorage.getItem('projectName'));
     }
-  }, []);
+  }, [userContext]);
 
   return (
     <nav id={'navbar_section'} className={'navbar proxima_nova'}>
@@ -187,7 +187,7 @@ export default function NavBar() {
               }
             >
               <span className={'text-sm font-normal opacity-60'}>
-                {handleUsernameInitials().toUpperCase()}
+                {usernameInitials}
               </span>
             </div>
             <CustomDropdown

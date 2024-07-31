@@ -26,7 +26,7 @@ func (g *StepGraph) GetNextStep(stepName steps.StepName, executionState Executio
 func (g *StepGraph) Walk(execute func(name steps.StepName, step steps.WorkflowStep) error) {
 	currentStep := &g.StartingNode
 	iteration := 0
-	for currentStep != nil && iteration < 100 {
+	for currentStep != nil && iteration < 60 {
 		err := execute(*currentStep, g.Nodes[*currentStep].Step)
 		var executionState ExecutionState
 		if err != nil {

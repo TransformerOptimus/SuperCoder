@@ -9,19 +9,16 @@ import {
   signUp,
 } from '@/api/DashboardService';
 import { Button } from '@nextui-org/react';
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '@/api/apiConfig';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import { authPayload } from '../../../types/authTypes';
 import { useRouter } from 'next/navigation';
 import { validateEmail } from '@/app/utils';
-import { UserContext } from '@/context/UserContext';
+import { useUserContext } from '@/context/UserContext';
 
 export default function LandingPage() {
-  const userContext = useContext(UserContext);
-  if (!userContext) {
-    throw new Error('useUser must be used within a UserProvider');
-  }
+  const userContext = useUserContext();
 
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');

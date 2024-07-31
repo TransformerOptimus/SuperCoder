@@ -1,6 +1,6 @@
 'use client';
 import './style.css';
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import imagePath from '@/app/imagePath';
 import { navbarOptions } from '@/app/constants/NavbarConstants';
@@ -10,13 +10,10 @@ import CustomImage from '@/components/ImageComponents/CustomImage';
 import CustomDropdown from '@/components/CustomDropdown/CustomDropdown';
 import { getUsernameInitials, logout } from '@/app/utils';
 import CreateOrEditProjectBody from '@/components/HomeComponents/CreateOrEditProjectBody';
-import { UserContext } from '@/context/UserContext';
+import { useUserContext } from '@/context/UserContext';
 
 export default function NavBar() {
-  const userContext = useContext(UserContext);
-  if (!userContext) {
-    throw new Error('useUser must be used within a UserProvider');
-  }
+  const userContext = useUserContext();
 
   const [username, setUsername] = useState<string | undefined>(undefined);
   const [projectName, setProjectName] = useState(null);

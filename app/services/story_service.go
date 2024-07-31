@@ -483,7 +483,12 @@ func (s *StoryService) RetrieveCodeForFile (projectID uint, storyID uint, fileNa
 		s.logger.Error("Error fetching project", zap.Error(err))
 		return nil, err
 	}
-	filePath := config.FrontendWorkspacePath(project.HashID, story.HashID) + "/app/" + fileName
+	filePath := ""
+	if fileName == "package.json" {
+		filePath = config.FrontendWorkspacePath(project.HashID, story.HashID) + fileName
+	} else {
+		filePath = config.FrontendWorkspacePath(project.HashID, story.HashID) + "/app/" + fileName
+	}
 	content, err := os.ReadFile(filePath)
     if err != nil {
 		s.logger.Error("Error reading file", zap.Error(err))

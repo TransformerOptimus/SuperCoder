@@ -39,9 +39,8 @@ func (s *ProjectNotificationService) ReceiveNotification(sendFunction func(msg s
 		s.logger.Error("Error subscribing to channel", zap.Error(err))
 		return nil, err
 	}
-	
+
 	go func() {
-		defer pubsub.Close()
 		ch := pubsub.Channel()
 		for msg := range ch {
 			channel := msg.Channel

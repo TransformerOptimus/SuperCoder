@@ -4,9 +4,11 @@ import (
 	"ai-developer/app/middleware"
 	"ai-developer/app/services"
 	"fmt"
-	socketio "github.com/googollee/go-socket.io"
-	"go.uber.org/zap"
 	"strconv"
+
+	socketio "github.com/googollee/go-socket.io"
+	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
 type WorkspaceGateway struct {
@@ -26,6 +28,7 @@ func (w *WorkspaceGateway) OnDisconnect(s socketio.Conn, reason string) {
 	w.logger.Info("Disconnected websocket connection", zap.String("connection_id", s.ID()), zap.String("reason", reason))
 	ctx := s.Context().(map[string]interface{})
 	w.logger.Info("Connection Context", zap.Any("context", ctx))
+
 	if projectIDStr, ok := ctx["project_id"]; ok {
 		w.logger.Info("Project ID found in context", zap.Any("project_id", projectIDStr))
 		projectID, err := strconv.Atoi(fmt.Sprintf("%v", projectIDStr))
@@ -43,6 +46,16 @@ func (w *WorkspaceGateway) OnDisconnect(s socketio.Conn, reason string) {
 	} else {
 		w.logger.Info("Project ID not found or invalid type")
 	}
+
+    if pubsub, ok := ctx["pubsub"].(*redis.PubSub); ok {
+        err := pubsub.Close()
+        if err != nil {
+            w.logger.Error("Error closing PubSub", zap.Error(err))
+        } else {
+            w.logger.Info("PubSub closed successfully")
+        }
+        delete(ctx, "pubsub")
+    }
 }
 
 func (wg *WorkspaceGateway) OnWorkspaceStartEvent(s socketio.Conn, data map[string]interface{}) {
@@ -73,11 +86,16 @@ func (wg *WorkspaceGateway) OnWorkspaceStartEvent(s socketio.Conn, data map[stri
 	s.Emit("workspace-started", fmt.Sprintf("Workspace started for project: %v", projectID))
 	
 	channel := fmt.Sprintf("project-notifications-%d", projectID)
-	wg.projectNotificationService.ReceiveNotification(func(msg string) {
+	pubsub, err := wg.projectNotificationService.ReceiveNotification(func(msg string) {
 		s.Emit("projectNotification", msg)
 		wg.logger.Info("_____message sent to frontend ",zap.Any("with connection id____ ", s.ID()))
 		wg.logger.Info("_____message sent to frontend____",zap.Any("", msg))
 	}, projectIDStr, channel)
+	if err != nil {
+        wg.logger.Error("Error setting up project notification", zap.Error(err))
+        return
+    }
+	ctx["pubsub"] = pubsub
 }
 
 

@@ -37,19 +37,18 @@ var WebsocketMessageType = map[int]string{
 }
 
 type TerminalController struct {
-	DefaultConnectionErrorLimit int
-	MaxBufferSizeBytes          int
-	KeepalivePingTimeout        time.Duration
-	ConnectionErrorLimit        int
-	cmd                         *exec.Cmd
-	Command                     string
-	Arguments                   []string
-	AllowedHostnames            []string
-	logger                      *zap.Logger
-	tty                         *os.File
-	cancelFunc                  context.CancelFunc
-	writeMutex                  sync.Mutex
-	historyBuffer               bytes.Buffer
+	MaxBufferSizeBytes   int
+	KeepalivePingTimeout time.Duration
+	ConnectionErrorLimit int
+	cmd                  *exec.Cmd
+	Command              string
+	Arguments            []string
+	AllowedHostnames     []string
+	logger               *zap.Logger
+	tty                  *os.File
+	cancelFunc           context.CancelFunc
+	writeMutex           sync.Mutex
+	historyBuffer        bytes.Buffer
 }
 
 func NewTerminalController(logger *zap.Logger, command string, arguments []string, allowedHostnames []string) (*TerminalController, error) {
@@ -61,16 +60,15 @@ func NewTerminalController(logger *zap.Logger, command string, arguments []strin
 	}
 	ttyBuffer := bytes.Buffer{}
 	return &TerminalController{
-		DefaultConnectionErrorLimit: 10,
-		MaxBufferSizeBytes:          1024,
-		KeepalivePingTimeout:        20 * time.Second,
-		ConnectionErrorLimit:        10,
-		tty:                         tty,
-		cmd:                         cmd,
-		Arguments:                   arguments,
-		AllowedHostnames:            allowedHostnames,
-		logger:                      logger,
-		historyBuffer:               ttyBuffer,
+		MaxBufferSizeBytes:   1024,
+		KeepalivePingTimeout: 20 * time.Second,
+		ConnectionErrorLimit: 10,
+		tty:                  tty,
+		cmd:                  cmd,
+		Arguments:            arguments,
+		AllowedHostnames:     allowedHostnames,
+		logger:               logger,
+		historyBuffer:        ttyBuffer,
 	}, nil
 }
 

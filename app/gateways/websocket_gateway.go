@@ -124,12 +124,12 @@ func (wg *WorkspaceGateway) OnWorkspaceDeleteEvent(s socketio.Conn, data map[str
 
 func NewWorkspaceGateway(
 	projectService *services.ProjectService,
-	projectNotificationService *services.ProjectNotificationService
+	projectNotificationService *services.ProjectNotificationService,
 	logger *zap.Logger,
 ) *WorkspaceGateway {
 	return &WorkspaceGateway{
 		projectService: projectService,
-		projectNotificationService *services.ProjectNotificationService
+		projectNotificationService: projectNotificationService,
 		logger:         logger.Named("WebsocketGateway"),
 	}
 }

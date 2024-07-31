@@ -4,6 +4,7 @@ import (
 	"ai-developer/app/config"
 	"ai-developer/app/models"
 	"ai-developer/app/services"
+	"ai-developer/app/types/request"
 	"errors"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
@@ -13,12 +14,10 @@ import (
 )
 
 type Authenticator struct {
-	jwtConfig          *config.JWTConfig
-	userService        *services.UserService
-	envConfig          *config.EnvConfig
-	githubAuthProvider *GithubAuthProvider
-	emailAuthProvider  *EmailAuthProvider
-	logger             *zap.Logger
+	jwtConfig   *config.JWTConfig
+	userService *services.UserService
+	envConfig   *config.EnvConfig
+	logger      *zap.Logger
 }
 
 const (
@@ -60,35 +59,29 @@ func (a *Authenticator) identityHandler() func(c *gin.Context) interface{} {
 	}
 }
 
-func (a *Authenticator) getAuthProvider(authType string) (provider AuthProvider, err error) {
-	switch authType {
-	case Github:
-		provider = a.githubAuthProvider
-		return
-	case Email:
-		provider = a.emailAuthProvider
-		return
-	}
-	return nil, errors.New("invalid auth type")
-}
-
 func (a *Authenticator) authenticator() func(c *gin.Context) (interface{}, error) {
 	return func(c *gin.Context) (interface{}, error) {
-		authType, exists := c.Get(AuthType)
-		if !exists {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": "Auth type not found",
-			})
-			return nil, nil
-		}
-		authProvider, err := a.getAuthProvider(authType.(string))
+		var userSignInRequest request.UserSignInRequest
+		err := c.ShouldBindJSON(&userSignInRequest)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": "Invalid auth type",
-			})
-			return nil, nil
+			return nil, err
 		}
-		return authProvider.Authenticate(c)
+
+		existingUser, err := a.userService.GetUserByEmail(userSignInRequest.Email)
+		if err != nil {
+			return nil, err
+		}
+
+		if existingUser == nil {
+			return nil, errors.New("user not found")
+		}
+
+		validated := a.userService.VerifyUserPassword(userSignInRequest.Password, existingUser.Password)
+		if !validated {
+			return nil, errors.New("invalid credentials")
+		}
+
+		return existingUser, nil
 	}
 }
 
@@ -140,17 +133,13 @@ func (a *Authenticator) Middleware() *jwt.GinJWTMiddleware {
 func NewAuthenticator(
 	jwtConfig *config.JWTConfig,
 	userService *services.UserService,
-	githubAuthProvider *GithubAuthProvider,
-	emailAuthProvider *EmailAuthProvider,
 	envConfig *config.EnvConfig,
 	logger *zap.Logger,
 ) *Authenticator {
 	return &Authenticator{
-		jwtConfig:          jwtConfig,
-		userService:        userService,
-		envConfig:          envConfig,
-		githubAuthProvider: githubAuthProvider,
-		emailAuthProvider:  emailAuthProvider,
-		logger:             logger.Named("Authenticator"),
+		jwtConfig:   jwtConfig,
+		userService: userService,
+		envConfig:   envConfig,
+		logger:      logger.Named("Authenticator"),
 	}
 }

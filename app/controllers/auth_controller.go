@@ -9,18 +9,17 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"golang.org/x/oauth2"
-	oauthGithub "golang.org/x/oauth2/github"
 	"gorm.io/gorm"
 	"net/http"
 )
 
 type AuthController struct {
-	logger         *zap.Logger
-	userService    *services.UserService
-	authMiddleware *auth.JWTAuthenticationMiddleware
-	envConfig      *config.EnvConfig
-	authConfig     *config.GithubOAuthConfig
+	logger            *zap.Logger
+	userService       *services.UserService
+	authMiddleware    *auth.JWTAuthenticationMiddleware
+	envConfig         *config.EnvConfig
+	githubOAuthConfig *config.GithubOAuthConfig
+	githubAuthService *auth.GithubAuthService
 }
 
 func (controller *AuthController) GithubSignIn(c *gin.Context) {
@@ -29,15 +28,19 @@ func (controller *AuthController) GithubSignIn(c *gin.Context) {
 		return
 	}
 
-	var githubOauthConfig = &oauth2.Config{
-		RedirectURL:  controller.authConfig.RedirectURL(),
-		ClientID:     controller.authConfig.ClientId(),
-		ClientSecret: controller.authConfig.ClientSecret(),
-		Scopes:       []string{"user:email"},
-		Endpoint:     oauthGithub.Endpoint,
+	redirectUrl := controller.githubAuthService.GetRedirectUrl("state")
+	c.Redirect(http.StatusTemporaryRedirect, redirectUrl)
+}
+
+func (controller *AuthController) GithubCallback(c *gin.Context) {
+	c.Redirect(http.StatusFound, controller.githubOAuthConfig.FrontendURL())
+	state := c.Query("state")
+	code := c.Query("code")
+	user, err := controller.githubAuthService.HandleGithubCallback(code, state)
+	if err != nil {
+		return
 	}
-	callback := githubOauthConfig.AuthCodeURL("state", oauth2.AccessTypeOnline)
-	c.Redirect(http.StatusTemporaryRedirect, callback)
+	_ = controller.authMiddleware.SetAuth(c, user)
 }
 
 func (controller *AuthController) HandleDefaultUser(c *gin.Context) {
@@ -54,7 +57,7 @@ func (controller *AuthController) HandleDefaultUser(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, controller.authConfig.FrontendURL())
+	c.Redirect(http.StatusFound, controller.githubOAuthConfig.FrontendURL())
 }
 
 func (controller *AuthController) SignUp(c *gin.Context) {
@@ -84,6 +87,7 @@ func (controller *AuthController) SignUp(c *gin.Context) {
 			return
 		}
 	}
+
 	err = controller.authMiddleware.SetAuth(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to set auth"})
@@ -116,15 +120,17 @@ func (controller *AuthController) CheckUser(c *gin.Context) {
 func NewAuthController(
 	logger *zap.Logger,
 	authMiddleware *auth.JWTAuthenticationMiddleware,
+	githubAuthService *auth.GithubAuthService,
 	userService *services.UserService,
 	envConfig *config.EnvConfig,
-	authConfig *config.GithubOAuthConfig,
+	githubOAuthConfig *config.GithubOAuthConfig,
 ) *AuthController {
 	return &AuthController{
-		logger:         logger.Named("AuthController"),
-		authMiddleware: authMiddleware,
-		userService:    userService,
-		envConfig:      envConfig,
-		authConfig:     authConfig,
+		logger:            logger.Named("AuthController"),
+		authMiddleware:    authMiddleware,
+		userService:       userService,
+		envConfig:         envConfig,
+		githubOAuthConfig: githubOAuthConfig,
+		githubAuthService: githubAuthService,
 	}
 }

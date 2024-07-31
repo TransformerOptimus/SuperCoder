@@ -146,15 +146,9 @@ func main() {
 		panic(err)
 	}
 
-	err = c.Provide(auth.NewEmailAuthProvider)
+	err = c.Provide(auth.NewGithubAuthService)
 	if err != nil {
-		config.Logger.Error("Error providing email auth provider", zap.Error(err))
-		panic(err)
-	}
-
-	err = c.Provide(auth.NewGithubAuthProvider)
-	if err != nil {
-		config.Logger.Error("Error providing github auth provider", zap.Error(err))
+		config.Logger.Error("Error providing github auth service", zap.Error(err))
 		panic(err)
 	}
 
@@ -314,12 +308,6 @@ func main() {
 	err = c.Provide(services.NewPullRequestCommentsService)
 	if err != nil {
 		fmt.Printf("Error providing PullRequestCommentsService: %v\n", err)
-		panic(err)
-	}
-	err = c.Provide(func() *services.JWTService {
-		return services.NewJwtService(config.JWTSecret(), config.JWTExpiryHours())
-	})
-	if err != nil {
 		panic(err)
 	}
 
@@ -503,7 +491,7 @@ func main() {
 
 		githubAuth := api.Group("/github")
 		githubAuth.GET("/signin", auth.GithubSignIn)
-		githubAuth.GET("/callback", authenticator.GithubAuthMiddleware(), authMiddleware.LoginHandler)
+		githubAuth.GET("/callback", auth.GithubCallback)
 
 		users := api.Group("/users", authMiddleware.MiddlewareFunc())
 		users.GET("/details", userController.GetUserDetails)
@@ -578,7 +566,7 @@ func main() {
 
 		authentication := api.Group("/auth")
 		authentication.GET("/check_user", auth.CheckUser)
-		authentication.POST("/sign_in", authenticator.EmailAuthMiddleware(), authMiddleware.LoginHandler)
+		authentication.POST("/sign_in", authMiddleware.LoginHandler)
 		authentication.POST("/sign_up", auth.SignUp)
 		authentication.POST("/logout", authMiddleware.LogoutHandler)
 

@@ -5,8 +5,8 @@ import {
 } from '../../types/projectsTypes';
 import { FormStoryPayload } from '../../types/storyTypes';
 import {
-  CommentReBuildPayload,
   CommentReBuildDesignStoryPayload,
+  CommentReBuildPayload,
   CreatePullRequestPayload,
 } from '../../types/pullRequestsTypes';
 import { CreateOrUpdateLLMAPIKeyPayload } from '../../types/modelsTypes';
@@ -14,7 +14,7 @@ import {
   CreateDesignStoryPayload,
   EditDesignStoryPayload,
 } from '../../types/designStoryTypes';
-import { authPayload } from '../../types/authTypes';
+import { authPayload, UserData } from '../../types/authTypes';
 
 export const checkHealth = () => {
   return api.get(`/health`);
@@ -179,4 +179,13 @@ export const rebuildDesignStory = (
 
 export const updateReviewViewedStatus = (story_id: number) => {
   return api.put(`/stories/design/review_viewed/${story_id}`, {});
+};
+
+export const getUserDetails = async (): Promise<UserData> => {
+  const response = await api.get(`/users/details`);
+  return response.data;
+};
+
+export const logoutUser = async () => {
+  return api.post(`/auth/logout`);
 };

@@ -11,17 +11,28 @@ interface SyntaxDisplayProps {
 
 const SyntaxDisplay: React.FC<SyntaxDisplayProps> = ({ type, msg }) => {
   let title = '';
-  let content = msg;
+  let content = '';
+
+  const parseMessage = (message: string) => {
+    const titleMatch = message.match(/"title":\s*"(.*?)"/);
+    const contentMatch = message.match(/"content":\s*"([\s\S]*?)"/);
+
+    return {
+      title: titleMatch ? titleMatch[1] : '',
+      content: contentMatch ? contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : ''
+    };
+  };
 
   try {
-    const parsedMsg = JSON.parse(msg || '');
-    if (parsedMsg.title && parsedMsg.content) {
-      title = parsedMsg.title;
-      content = parsedMsg.content;
-    }
+    const parsedMsg = parseMessage(msg || '');
+    title = parsedMsg.title;
+    content = parsedMsg.content;
   } catch (e) {
-    // If parsing fails, it's not a valid JSON, so we'll use the original msg
+    console.error('Failed to parse activity log message:', e);
+    content = msg || '';
   }
+
+  const command = title.replace('Running command: ', '');
 
   return (
     <>
@@ -32,7 +43,7 @@ const SyntaxDisplay: React.FC<SyntaxDisplayProps> = ({ type, msg }) => {
       )}
       {type === ActivityLogType.CODE && title && (
         <span className={'text-sm font-normal'}>
-          Running command: <span className="green-text">{title.replace('Running command: ', '')}</span>
+          Running command: <span className="green-text">{command}</span>
         </span>
       )}
 

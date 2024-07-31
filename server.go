@@ -13,6 +13,7 @@ import (
 	"ai-developer/app/monitoring"
 	"ai-developer/app/repositories"
 	"ai-developer/app/services"
+	"ai-developer/app/services/auth"
 	"ai-developer/app/services/filestore"
 	"ai-developer/app/services/filestore/impl"
 	"ai-developer/app/services/git_providers"
@@ -121,9 +122,45 @@ func main() {
 		panic(err)
 	}
 
+	err = c.Provide(config.NewJWTConfig)
+	if err != nil {
+		config.Logger.Error("Error providing JWT config", zap.Error(err))
+		panic(err)
+	}
+
+	err = c.Provide(config.NewEnvConfig)
+	if err != nil {
+		config.Logger.Error("Error providing env config", zap.Error(err))
+		panic(err)
+	}
+
+	err = c.Provide(config.NewGithubOAuthConfig)
+	if err != nil {
+		config.Logger.Error("Error providing github oauth config", zap.Error(err))
+		panic(err)
+	}
+
+	err = c.Provide(auth.NewAuthenticator)
+	if err != nil {
+		config.Logger.Error("Error providing authenticator", zap.Error(err))
+		panic(err)
+	}
+
+	err = c.Provide(auth.NewEmailAuthProvider)
+	if err != nil {
+		config.Logger.Error("Error providing email auth provider", zap.Error(err))
+		panic(err)
+	}
+
+	err = c.Provide(auth.NewGithubAuthProvider)
+	if err != nil {
+		config.Logger.Error("Error providing github auth provider", zap.Error(err))
+		panic(err)
+	}
+
 	err = c.Provide(workspace.NewWorkspaceServiceClient)
 	if err != nil {
-		log.Println("Error providing workspace service:", err)
+		config.Logger.Error("Error providing workspace service client", zap.Error(err))
 		panic(err)
 	}
 
@@ -180,7 +217,6 @@ func main() {
 		*repositories.StoryTestCaseRepository,
 		*repositories.ExecutionStepRepository,
 		*repositories.OrganisationRepository,
-		*repositories.UserRepository,
 		*repositories.PullRequestRepository,
 		*repositories.PullRequestCommentsRepository,
 		*repositories.LLMAPIKeyRepository,
@@ -196,7 +232,6 @@ func main() {
 			repositories.NewStoryTestCaseRepository(db),
 			repositories.NewExecutionStepRepository(db),
 			repositories.NewOrganisationRepository(db),
-			repositories.NewUserRepository(db),
 			repositories.NewPullRequestRepository(db),
 			repositories.NewPullRequestCommentsRepository(db),
 			repositories.NewLLMAPIKeyRepository(db),
@@ -224,29 +259,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.Provide(services.NewUserService)
 
 	err = c.Provide(services.NewLLMAPIKeyService)
 	if err != nil {
 		panic(err)
 	}
 
-	err = c.Provide(func(userService *services.UserService, jwtService *services.JWTService, organisationService *services.OrganisationService) *services.GithubOauthService {
-		clientID := config.GithubClientId()
-		clientSecret := config.GithubClientSecret()
-		redirectURL := config.GithubRedirectURL()
-		return services.NewGithubOauthService(
-			userService,
-			jwtService,
-			organisationService,
-			clientID,
-			clientSecret,
-			redirectURL,
-		)
-	})
-	if err != nil {
-		panic(err)
-	}
 	err = c.Provide(services.NewDesignStoryReviewService)
 	if err != nil {
 		panic(err)
@@ -298,26 +316,8 @@ func main() {
 		fmt.Printf("Error providing PullRequestCommentsService: %v\n", err)
 		panic(err)
 	}
-	err = c.Provide(func() string {
-		return config.JWTSecret()
-	})
-	if err != nil {
-		panic(err)
-	}
-	err = c.Provide(func() time.Duration {
-		return config.JWTExpiryHours()
-	})
-	if err != nil {
-		panic(err)
-	}
-	err = c.Provide(func(secretKey string, jwtExpiryHours time.Duration) *services.JWTService {
-		return services.NewJwtService(secretKey, jwtExpiryHours)
-	})
-	if err != nil {
-		panic(err)
-	}
-	err = c.Provide(func(secretKey string) *middleware.JWTClaims {
-		return middleware.NewJWTClaims(secretKey)
+	err = c.Provide(func() *services.JWTService {
+		return services.NewJwtService(config.JWTSecret(), config.JWTExpiryHours())
 	})
 	if err != nil {
 		panic(err)
@@ -326,20 +326,8 @@ func main() {
 	//Provide ExecutionStepService
 	err = c.Provide(services.NewExecutionStepService)
 
-	//Provide AuthService
-	err = c.Provide(services.NewAuthService)
-	if err != nil {
-		panic(err)
-	}
-
 	// Provide Controllers
-	err = c.Provide(func(githubOauthService *services.GithubOauthService, authService *services.AuthService,
-		userService *services.UserService, jwtService *services.JWTService) *controllers.AuthController {
-		clientID := config.GithubClientId()
-		clientSecret := config.GithubClientSecret()
-		redirectURL := config.GithubRedirectURL()
-		return controllers.NewAuthController(githubOauthService, authService, jwtService, userService, clientID, clientSecret, redirectURL)
-	})
+	err = c.Provide(controllers.NewAuthController)
 	if err != nil {
 		panic(err)
 	}
@@ -427,11 +415,38 @@ func main() {
 	}
 	fmt.Println("WorkspaceGateway provided")
 
+	// User Controller
+	{
+		if err = c.Provide(repositories.NewUserRepository); err != nil {
+			config.Logger.Error("Error providing UserRepository", zap.Error(err))
+			panic(err)
+		}
+
+		if err = c.Provide(services.NewUserService); err != nil {
+			config.Logger.Error("Error providing UserService", zap.Error(err))
+			panic(err)
+		}
+
+		if err = c.Provide(controllers.NewUserController); err != nil {
+			config.Logger.Error("Error providing UserController", zap.Error(err))
+			panic(err)
+		}
+
+		if err = c.Provide(middleware.NewUserAuthorizationMiddleware); err != nil {
+			config.Logger.Error("Error providing UserAuthorizationMiddleware", zap.Error(err))
+			panic(err)
+		}
+
+		if err = c.Provide(auth.NewAuthMiddleWare); err != nil {
+			config.Logger.Error("Error providing AuthMiddleWare", zap.Error(err))
+			panic(err)
+		}
+	}
+
 	// Setup routes and start the server
 	err = c.Invoke(func(
 		health *controllers.HealthController,
 		auth *controllers.AuthController,
-		middleware *middleware.JWTClaims,
 		projectsController *controllers.ProjectController,
 		storiesController *controllers.StoryController,
 		designStoryReviewCtrl *controllers.DesignStoryReviewController,
@@ -451,6 +466,10 @@ func main() {
 		ioServer *socketio.Server,
 		nrApp *newrelic.Application,
 		designStoryCtrl *controllers.DesignStoryReviewController,
+		authenticator *auth.Authenticator,
+		authMiddleware *auth.JWTAuthenticationMiddleware,
+		userController *controllers.UserController,
+		userAuthorizationMiddleware *middleware.UserAuthorizationMiddleware,
 		logger *zap.Logger,
 	) error {
 
@@ -490,9 +509,12 @@ func main() {
 
 		githubAuth := api.Group("/github")
 		githubAuth.GET("/signin", auth.GithubSignIn)
-		githubAuth.GET("/callback", auth.GithubCallback)
+		githubAuth.GET("/callback", authenticator.GithubAuthMiddleware(), authMiddleware.LoginHandler)
 
-		projects := api.Group("/projects", middleware.AuthenticateJWT())
+		users := api.Group("/users", authMiddleware.MiddlewareFunc())
+		users.GET("/details", userController.GetUserDetails)
+
+		projects := api.Group("/projects", authMiddleware.MiddlewareFunc())
 
 		projects.GET("", projectsController.GetAllProjects)
 		projects.POST("", projectsController.CreateProject)
@@ -513,13 +535,13 @@ func main() {
 		project.GET("/stories/in-progress", storiesController.GetInProgressStoriesByProjectId)
 		project.GET("/design/stories", storiesController.GetDesignStoriesOfProject)
 
-		stories := api.Group("/stories", middleware.AuthenticateJWT())
+		stories := api.Group("/stories", authMiddleware.MiddlewareFunc())
 
 		stories.POST("", storiesController.CreateStory)
 		stories.POST("/", storiesController.CreateStory)
 		stories.POST("/retrieve-code", storiesController.RetrieveCodeForFile)
 
-		designStory := stories.Group("/design", middleware.AuthenticateJWT())
+		designStory := stories.Group("/design", authMiddleware.MiddlewareFunc())
 
 		designStory.POST("", storiesController.CreateDesignStory)
 		designStory.PUT("/edit", storiesController.EditDesignStoryById)
@@ -543,10 +565,10 @@ func main() {
 		story.GET("/activity-logs", activityLogCtrl.GetActivityLogsByStoryID)
 		story.PUT("/status", storiesController.UpdateStoryStatus)
 
-		designReview := api.Group("/design/review", middleware.AuthenticateJWT())
+		designReview := api.Group("/design/review", authMiddleware.MiddlewareFunc())
 		designReview.POST("", designStoryReviewCtrl.CreateCommentForDesignStory)
 
-		pullRequests := api.Group("/pull-requests", middleware.AuthenticateJWT())
+		pullRequests := api.Group("/pull-requests", authMiddleware.MiddlewareFunc())
 
 		pullRequests.POST("/create", pullRequestCtrl.CreateManualPullRequest)
 		pullRequest := pullRequests.Group("/:pull_request_id", pullRequestAuthMiddleware.Authorize())
@@ -555,7 +577,7 @@ func main() {
 		pullRequest.POST("/comment", pullRequestCommentCtrl.CreateCommentForPrID)
 		pullRequest.POST("/merge", pullRequestCtrl.MergePullRequest)
 
-		llmApiKeys := api.Group("/llm_api_key", middleware.AuthenticateJWT())
+		llmApiKeys := api.Group("/llm_api_key", authMiddleware.MiddlewareFunc())
 		llmApiKeys.POST("", llm_api_key.CreateLLMAPIKey)
 		llmApiKeys.POST("/", llm_api_key.CreateLLMAPIKey)
 		llmApiKeys.GET("", llm_api_key.FetchAllLLMAPIKeyByOrganisationID)
@@ -563,12 +585,13 @@ func main() {
 
 		authentication := api.Group("/auth")
 		authentication.GET("/check_user", auth.CheckUser)
-		authentication.POST("/sign_in", auth.SignIn)
+		authentication.POST("/sign_in", authenticator.EmailAuthMiddleware(), authMiddleware.LoginHandler)
 		authentication.POST("/sign_up", auth.SignUp)
+		authentication.POST("/logout", authMiddleware.LogoutHandler)
 
 		// Wrap the socket.io server as Gin handlers for specific routes
-		r.GET("/api/socket.io/*any", middleware.AuthenticateJWT(), gin.WrapH(ioServer))
-		r.POST("/api/socket.io/*any", middleware.AuthenticateJWT(), gin.WrapH(ioServer))
+		r.GET("/api/socket.io/*any", authMiddleware.MiddlewareFunc(), gin.WrapH(ioServer))
+		r.POST("/api/socket.io/*any", authMiddleware.MiddlewareFunc(), gin.WrapH(ioServer))
 
 		go func() {
 			if err := ioServer.Serve(); err != nil {
@@ -576,7 +599,12 @@ func main() {
 				log.Fatalf("socket.io listen error: %s\n", err)
 			}
 		}()
-		defer ioServer.Close()
+		defer func(ioServer *socketio.Server) {
+			err := ioServer.Close()
+			if err != nil {
+				config.Logger.Error("Error closing socket.io server", zap.Error(err))
+			}
+		}(ioServer)
 
 		fmt.Println("Starting Gin server on port 8080...")
 		return r.Run()

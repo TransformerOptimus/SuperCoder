@@ -31,7 +31,7 @@ func NewCheckExecutionStatusTaskHandler(
 
 func (h *CheckExecutionStatusTaskHandler) HandleTask(ctx context.Context, t *asynq.Task) error {
 	h.logger.Info("Running CheckExecutionStatusTaskHandler.........")
-	executions, err := h.executionService.GetExecutionsWithStatusAndCreatedAtRange(constants.InProgress, time.Now().Add(-1*time.Hour), time.Now().Add(-30*time.Minute))
+	executions, err := h.executionService.GetExecutionsWithStatusAndCreatedAtRange(constants.InProgress, time.Now().Add(-10*time.Minute), time.Now())
 	if err != nil {
 		h.logger.Error("Failed to get in-progress executions", zap.Error(err))
 		return fmt.Errorf("get in-progress executions: %w", err)

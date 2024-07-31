@@ -14,7 +14,6 @@ type WorkspaceGateway struct {
 	projectNotificationService *services.ProjectNotificationService
 	jwtAuth        *middleware.JWTClaims
 	logger         *zap.Logger
-	server         *socketio.Server
 }
 
 func (w *WorkspaceGateway) OnConnect(s socketio.Conn) error {
@@ -74,7 +73,7 @@ func (wg *WorkspaceGateway) OnWorkspaceStartEvent(s socketio.Conn, data map[stri
 	s.Emit("workspace-started", fmt.Sprintf("Workspace started for project: %v", projectID))
 	
 	channel := fmt.Sprintf("project-notifications-%d", projectID)
-	go wg.projectNotificationService.ReceiveNotification(func(msg string) {
+	wg.projectNotificationService.ReceiveNotification(func(msg string) {
 		s.Emit("projectNotification", msg)
 		wg.logger.Info("_____message sent to frontend ",zap.Any("with connection id____ ", s.ID()))
 		wg.logger.Info("_____message sent to frontend____",zap.Any("", msg))

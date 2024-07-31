@@ -23,11 +23,11 @@ func NewProjectNotificationService(client *redis.Client, ctx context.Context, lo
 
 func (s *ProjectNotificationService) SendNotification(projectID uint, message string) error {
 	channel := fmt.Sprintf("project-notifications-%d", projectID)
-    err := s.client.Publish(s.ctx, channel, message).Err()
-    if err != nil {
+	err := s.client.Publish(s.ctx, channel, message).Err()
+	if err != nil {
 		s.logger.Error("Error publishing message to Redis", zap.Error(err))
-        return err
-    }
+	        return err
+	}
 	s.logger.Info("_____sent message_____to ", zap.Any("",channel), zap.Any("message",message))
 	return nil
 }

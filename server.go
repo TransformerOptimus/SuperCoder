@@ -134,24 +134,6 @@ func main() {
 		panic(err)
 	}
 
-	err = c.Provide(config.NewGithubOAuthConfig)
-	if err != nil {
-		config.Logger.Error("Error providing github oauth config", zap.Error(err))
-		panic(err)
-	}
-
-	err = c.Provide(auth.NewAuthenticator)
-	if err != nil {
-		config.Logger.Error("Error providing authenticator", zap.Error(err))
-		panic(err)
-	}
-
-	err = c.Provide(auth.NewGithubAuthService)
-	if err != nil {
-		config.Logger.Error("Error providing github auth service", zap.Error(err))
-		panic(err)
-	}
-
 	err = c.Provide(workspace.NewWorkspaceServiceClient)
 	if err != nil {
 		config.Logger.Error("Error providing workspace service client", zap.Error(err))
@@ -397,6 +379,38 @@ func main() {
 	}
 	fmt.Println("WorkspaceGateway provided")
 
+	// Provide Auth Middleware
+	{
+		err = c.Provide(config.NewGithubOAuthConfig)
+		if err != nil {
+			config.Logger.Error("Error providing github oauth config", zap.Error(err))
+			panic(err)
+		}
+
+		err = c.Provide(auth.NewGithubAuthService)
+		if err != nil {
+			config.Logger.Error("Error providing github auth service", zap.Error(err))
+			panic(err)
+		}
+
+		err = c.Provide(auth.NewEmailAuthService)
+		if err != nil {
+			config.Logger.Error("Error providing github auth service", zap.Error(err))
+			panic(err)
+		}
+
+		err = c.Provide(auth.NewAuthenticator)
+		if err != nil {
+			config.Logger.Error("Error providing authenticator", zap.Error(err))
+			panic(err)
+		}
+
+		if err = c.Provide(auth.NewAuthMiddleWare); err != nil {
+			config.Logger.Error("Error providing AuthMiddleWare", zap.Error(err))
+			panic(err)
+		}
+	}
+
 	// User Controller
 	{
 		if err = c.Provide(repositories.NewUserRepository); err != nil {
@@ -416,11 +430,6 @@ func main() {
 
 		if err = c.Provide(middleware.NewUserAuthorizationMiddleware); err != nil {
 			config.Logger.Error("Error providing UserAuthorizationMiddleware", zap.Error(err))
-			panic(err)
-		}
-
-		if err = c.Provide(auth.NewAuthMiddleWare); err != nil {
-			config.Logger.Error("Error providing AuthMiddleWare", zap.Error(err))
 			panic(err)
 		}
 	}
@@ -566,7 +575,7 @@ func main() {
 
 		authentication := api.Group("/auth")
 		authentication.GET("/check_user", auth.CheckUser)
-		authentication.POST("/sign_in", authMiddleware.LoginHandler)
+		authentication.POST("/sign_in", auth.SignIn)
 		authentication.POST("/sign_up", auth.SignUp)
 		authentication.POST("/logout", authMiddleware.LogoutHandler)
 

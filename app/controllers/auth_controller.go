@@ -5,11 +5,9 @@ import (
 	"ai-developer/app/services"
 	"ai-developer/app/services/auth"
 	"ai-developer/app/types/request"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 	"net/http"
 )
 
@@ -20,6 +18,7 @@ type AuthController struct {
 	envConfig         *config.EnvConfig
 	githubOAuthConfig *config.GithubOAuthConfig
 	githubAuthService *auth.GithubAuthService
+	emailAuthService  *auth.EmailAuthService
 }
 
 func (controller *AuthController) GithubSignIn(c *gin.Context) {
@@ -60,6 +59,35 @@ func (controller *AuthController) HandleDefaultUser(c *gin.Context) {
 	c.Redirect(http.StatusFound, controller.githubOAuthConfig.FrontendURL())
 }
 
+func (controller *AuthController) SignIn(c *gin.Context) {
+	var userSignInRequest request.UserSignInRequest
+	err := c.ShouldBindJSON(&userSignInRequest)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := controller.emailAuthService.HandleSignIn(userSignInRequest.Email, userSignInRequest.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = controller.authMiddleware.SetAuth(c, user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to set auth"})
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		gin.H{
+			"success": true,
+		},
+	)
+	return
+}
+
 func (controller *AuthController) SignUp(c *gin.Context) {
 	var createUserRequest request.CreateUserRequest
 
@@ -69,23 +97,10 @@ func (controller *AuthController) SignUp(c *gin.Context) {
 		return
 	}
 
-	user, err := controller.userService.GetUserByEmail(createUserRequest.Email)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to get user"})
+	user, err := controller.userService.HandleUserSignUp(createUserRequest.Email, createUserRequest.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-
-	if user == nil {
-		user, err = controller.userService.HandleUserSignUp(createUserRequest)
-		if err != nil {
-			c.JSON(
-				http.StatusInternalServerError,
-				gin.H{
-					"error": err.Error(),
-				},
-			)
-			return
-		}
 	}
 
 	err = controller.authMiddleware.SetAuth(c, user)
@@ -93,6 +108,7 @@ func (controller *AuthController) SignUp(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to set auth"})
 		return
 	}
+
 	c.JSON(
 		http.StatusOK,
 		gin.H{
@@ -121,6 +137,7 @@ func NewAuthController(
 	logger *zap.Logger,
 	authMiddleware *auth.JWTAuthenticationMiddleware,
 	githubAuthService *auth.GithubAuthService,
+	emailAuthService *auth.EmailAuthService,
 	userService *services.UserService,
 	envConfig *config.EnvConfig,
 	githubOAuthConfig *config.GithubOAuthConfig,
@@ -132,5 +149,6 @@ func NewAuthController(
 		envConfig:         envConfig,
 		githubOAuthConfig: githubOAuthConfig,
 		githubAuthService: githubAuthService,
+		emailAuthService:  emailAuthService,
 	}
 }

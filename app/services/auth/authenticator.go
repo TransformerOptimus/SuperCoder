@@ -4,7 +4,6 @@ import (
 	"ai-developer/app/config"
 	"ai-developer/app/models"
 	"ai-developer/app/services"
-	"ai-developer/app/types/request"
 	"errors"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
@@ -19,12 +18,6 @@ type Authenticator struct {
 	envConfig   *config.EnvConfig
 	logger      *zap.Logger
 }
-
-const (
-	AuthType = "auth_type"
-	Github   = "github"
-	Email    = "email"
-)
 
 func (a *Authenticator) payloadFunc() func(data interface{}) jwt.MapClaims {
 	return func(data interface{}) jwt.MapClaims {
@@ -61,27 +54,11 @@ func (a *Authenticator) identityHandler() func(c *gin.Context) interface{} {
 
 func (a *Authenticator) authenticator() func(c *gin.Context) (interface{}, error) {
 	return func(c *gin.Context) (interface{}, error) {
-		var userSignInRequest request.UserSignInRequest
-		err := c.ShouldBindJSON(&userSignInRequest)
-		if err != nil {
-			return nil, err
-		}
-
-		existingUser, err := a.userService.GetUserByEmail(userSignInRequest.Email)
-		if err != nil {
-			return nil, err
-		}
-
-		if existingUser == nil {
+		user, exists := c.Get("user")
+		if !exists {
 			return nil, errors.New("user not found")
 		}
-
-		validated := a.userService.VerifyUserPassword(userSignInRequest.Password, existingUser.Password)
-		if !validated {
-			return nil, errors.New("invalid credentials")
-		}
-
-		return existingUser, nil
+		return user, nil
 	}
 }
 
@@ -91,18 +68,6 @@ func (a *Authenticator) unauthorized() func(c *gin.Context, code int, message st
 			"code":    code,
 			"message": message,
 		})
-	}
-}
-
-func (a *Authenticator) GithubAuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Set(AuthType, Github)
-	}
-}
-
-func (a *Authenticator) EmailAuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Set(AuthType, Email)
 	}
 }
 

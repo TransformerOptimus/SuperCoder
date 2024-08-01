@@ -2,7 +2,7 @@ import React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { rgba } from 'color2k';
-import {ActivityLogType} from "@/app/constants/ActivityLogType";
+import { ActivityLogType } from "@/app/constants/ActivityLogType";
 
 interface SyntaxDisplayProps {
   type: string;
@@ -11,25 +11,26 @@ interface SyntaxDisplayProps {
 
 const SyntaxDisplay: React.FC<SyntaxDisplayProps> = ({ type, msg }) => {
   let title = '';
-  let content = '';
+  let content = msg || '';
 
-  const parseMessage = (message: string) => {
-    const titleMatch = message.match(/"title":\s*"(.*?)"/);
-    const contentMatch = message.match(/"content":\s*"([\s\S]*?)"/);
+  if (type === ActivityLogType.CODE) {
+    const parseMessage = (message: string) => {
+      const titleMatch = message.match(/"title":\s*"(.*?)"/);
+      const contentMatch = message.match(/"content":\s*"([\s\S]*?)"/);
 
-    return {
-      title: titleMatch ? titleMatch[1] : '',
-      content: contentMatch ? contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : ''
+      return {
+        title: titleMatch ? titleMatch[1] : '',
+        content: contentMatch ? contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : ''
+      };
     };
-  };
 
-  try {
-    const parsedMsg = parseMessage(msg || '');
-    title = parsedMsg.title;
-    content = parsedMsg.content;
-  } catch (e) {
-    console.error('Failed to parse activity log message:', e);
-    content = msg || '';
+    try {
+      const parsedMsg = parseMessage(msg || '');
+      title = parsedMsg.title;
+      content = parsedMsg.content;
+    } catch (e) {
+      console.error('Failed to parse activity log message:', e);
+    }
   }
 
   const command = title.replace('Running command: ', '');

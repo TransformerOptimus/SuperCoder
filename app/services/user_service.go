@@ -3,7 +3,6 @@ package services
 import (
 	"ai-developer/app/models"
 	"ai-developer/app/repositories"
-	"ai-developer/app/types/request"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
@@ -46,7 +45,7 @@ func (s *UserService) UpdateUserByEmail(email string, user *models.User) error {
 	return s.userRepo.UpdateUserByEmail(email, user)
 }
 
-func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (user *models.User, err error) {
+func (s *UserService) HandleUserSignUp(email string, password string) (user *models.User, err error) {
 	organisation := &models.Organisation{
 		Name: s.orgService.CreateOrganisationName(),
 	}
@@ -57,15 +56,15 @@ func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (user 
 		return nil, err
 	}
 
-	hashedPassword, err := s.HashUserPassword(request.Password)
+	hashedPassword, err := s.HashUserPassword(password)
 	if err != nil {
 		fmt.Println("Error while hashing password: ", err.Error())
 		return nil, err
 	}
 
 	user = &models.User{
-		Name:           request.Email,
-		Email:          request.Email,
+		Name:           email,
+		Email:          email,
 		OrganisationID: organisation.ID,
 		Password:       hashedPassword,
 	}

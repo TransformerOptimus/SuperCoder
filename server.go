@@ -363,6 +363,12 @@ func main() {
 		panic(err)
 	}
 
+	err = c.Provide(services.NewProjectNotificationService)
+	if err != nil {
+		config.Logger.Error("Error providing ProjectNotificationService", zap.Error(err))
+		panic(err)
+	}
+
 	//Websocket
 	err = c.Provide(gateways.NewSocketIOServer)
 	if err != nil {
@@ -530,6 +536,7 @@ func main() {
 
 		stories.POST("", storiesController.CreateStory)
 		stories.POST("/", storiesController.CreateStory)
+		stories.POST("/retrieve-code", storiesController.RetrieveCodeForFile)
 
 		designStory := stories.Group("/design", authMiddleware.MiddlewareFunc())
 

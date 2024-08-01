@@ -15,17 +15,20 @@ import (
 type NextJsUpdateCodeFileExecutor struct {
 	executionStepService *services.ExecutionStepService
 	activityLogService   *services.ActivityLogService
+	projectNotificationService *services.ProjectNotificationService
 	logger               *zap.Logger
 }
 
 func NewNextJsUpdateCodeFileExecutor(
 	executionStepService *services.ExecutionStepService,
 	activeLogService *services.ActivityLogService,
+	projectNotificationService *services.ProjectNotificationService,
 	logger *zap.Logger,
 ) *NextJsUpdateCodeFileExecutor {
 	return &NextJsUpdateCodeFileExecutor{
 		executionStepService: executionStepService,
 		activityLogService:   activeLogService,
+		projectNotificationService: projectNotificationService,
 		logger: 			  logger,
 	}
 }
@@ -33,6 +36,12 @@ func NewNextJsUpdateCodeFileExecutor(
 type Response struct {
 	LLMResponse string `json:"llm_response"`
 	FileName    string `json:"file_name"`
+}
+
+type FileUpdate struct {
+	ProjectID uint   `json:"project_id"`
+	StoryID   uint   `json:"story_id"`
+	FileName  string `json:"file_name"`
 }
 
 func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) error {
@@ -82,8 +91,32 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 			return err
 		}
 	}
+
+	fileName = strings.TrimPrefix(fileName, "app/")
+	err = e.activityLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", fmt.Sprintf("Updated file %s", fileName))
+	if err != nil {
+		fmt.Println("Error creating activity log" + err.Error())
+		return err
+	}
 	fmt.Println("File Updated Successfully")
-	return nil
+
+    	fileUpdate := FileUpdate{
+		ProjectID: step.Project.ID,
+		StoryID:   step.Story.ID,
+        	FileName:  fileName,
+   	}
+    	jsonData, err := json.Marshal(fileUpdate)
+    	if err != nil {
+        	e.logger.Error("Error marshalling JSON", zap.Any("error", err))
+        	return err
+    	}
+    	err = e.projectNotificationService.SendNotification(step.Project.ID, string(jsonData))
+    	if err!= nil {
+        	e.logger.Error("Error sending notification", zap.Any("error", err))
+        	return err
+    	}
+	
+    	return nil
 }
 
 func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Response, step steps.UpdateCodeFileStep) error {
@@ -227,7 +260,7 @@ func (e *NextJsUpdateCodeFileExecutor) InsertCode(filePath string, lineNumber in
 	return nil
 }
 
-func (e NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName string, step steps.UpdateCodeFileStep) error {
+func (e *NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName string, step steps.UpdateCodeFileStep) error {
 	e.logger.Info("_____Updating file_____ %s", zap.String("fileName", fileName))
 	if strings.HasPrefix(llmResponse, "```") {
 		llmResponse = llmResponse[3:] // Remove the first 3 characters (```)
@@ -242,12 +275,6 @@ func (e NextJsUpdateCodeFileExecutor) UpdateCodeFile(llmResponse, fileName strin
 		if err != nil {
 			return err
 		}
-	}
-
-	err := e.activityLogService.CreateActivityLog(step.Execution.ID, step.ExecutionStep.ID, "INFO", fmt.Sprintf("Updated file %s", fileName))
-	if err != nil {
-		fmt.Println("Error creating activity log" + err.Error())
-		return err
 	}
 	return nil
 }

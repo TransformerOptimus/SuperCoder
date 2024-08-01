@@ -268,6 +268,12 @@ func main() {
 		return git_providers.NewGitnessService(client)
 	})
 
+	err = c.Provide(services.NewProjectNotificationService)
+	if err != nil {
+		config.Logger.Error("Error providing ProjectNotificationService", zap.Error(err))
+		panic(err)
+	}
+
 	// Provide Asynq client
 	err = c.Provide(func() *asynq.Client {
 		return asynq.NewClient(asynq.RedisClientOpt{

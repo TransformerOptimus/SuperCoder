@@ -246,6 +246,7 @@ func main() {
 	_ = c.Provide(services.NewExecutionOutputService)
 	_ = c.Provide(services.NewLLMAPIKeyService)
 	_ = c.Provide(services.NewDesignStoryReviewService)
+	_ = c.Provide(services.NewProjectNotificationService)
 	fmt.Println("Services Successfully Provided.")
 
 	//GenerateCodeStep

@@ -25,7 +25,7 @@ func (c *LLMAPIKeyController) CreateLLMAPIKey(context *gin.Context) {
 		return
 	}
 
-	orgId, err := c.userService.FetchOrganisationIDByUserID(uint(userID.(int)))
+	orgId, err := c.userService.FetchOrganisationIDByUserID(userID.(uint))
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -52,7 +52,7 @@ func (c *LLMAPIKeyController) FetchAllLLMAPIKeyByOrganisationID(context *gin.Con
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "User ID not found in context"})
 		return
 	}
-	userIDInt, ok := userID.(int)
+	userIDInt, ok := userID.(uint)
 	if !ok {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "User ID is not of type int"})
 		return

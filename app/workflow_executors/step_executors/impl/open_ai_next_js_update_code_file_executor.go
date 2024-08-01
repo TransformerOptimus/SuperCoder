@@ -100,23 +100,23 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
 	}
 	fmt.Println("File Updated Successfully")
 
-    fileUpdate := FileUpdate{
+    	fileUpdate := FileUpdate{
 		ProjectID: step.Project.ID,
 		StoryID:   step.Story.ID,
-        FileName:  fileName,
-    }
-    jsonData, err := json.Marshal(fileUpdate)
-    if err != nil {
-        e.logger.Error("Error marshalling JSON", zap.Any("error", err))
-        return err
-    }
-    err = e.projectNotificationService.SendNotification(step.Project.ID, string(jsonData))
-    if err!= nil {
-        e.logger.Error("Error sending notification", zap.Any("error", err))
-        return err
-    }
+        	FileName:  fileName,
+   	}
+    	jsonData, err := json.Marshal(fileUpdate)
+    	if err != nil {
+        	e.logger.Error("Error marshalling JSON", zap.Any("error", err))
+        	return err
+    	}
+    	err = e.projectNotificationService.SendNotification(step.Project.ID, string(jsonData))
+    	if err!= nil {
+        	e.logger.Error("Error sending notification", zap.Any("error", err))
+        	return err
+    	}
 	
-    return nil
+    	return nil
 }
 
 func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Response, step steps.UpdateCodeFileStep) error {

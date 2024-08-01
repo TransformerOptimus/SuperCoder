@@ -12,7 +12,6 @@ import (
 type UserService struct {
 	userRepo   *repositories.UserRepository
 	orgService *OrganisationService
-	jwtService *JWTService
 }
 
 func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
@@ -47,42 +46,35 @@ func (s *UserService) UpdateUserByEmail(email string, user *models.User) error {
 	return s.userRepo.UpdateUserByEmail(email, user)
 }
 
-func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (*models.User, string, error) {
+func (s *UserService) HandleUserSignUp(request request.CreateUserRequest) (user *models.User, err error) {
 	organisation := &models.Organisation{
 		Name: s.orgService.CreateOrganisationName(),
 	}
-	var err error = nil
+
 	organisation, err = s.orgService.CreateOrganisation(organisation)
 	if err != nil {
 		fmt.Println("Error while creating organization: ", err.Error())
-		return nil, "", err
+		return nil, err
 	}
 
 	hashedPassword, err := s.HashUserPassword(request.Password)
 	if err != nil {
 		fmt.Println("Error while hashing password: ", err.Error())
-		return nil, "", err
+		return nil, err
 	}
 
-	var newUser = &models.User{
+	user = &models.User{
 		Name:           request.Email,
 		Email:          request.Email,
 		OrganisationID: organisation.ID,
 		Password:       hashedPassword,
 	}
-	newUser, err = s.CreateUser(newUser)
+	user, err = s.CreateUser(user)
 	if err != nil {
 		fmt.Println("Error while creating user: ", err.Error())
-		return nil, "", err
+		return nil, err
 	}
-
-	var accessToken, jwtErr = s.jwtService.GenerateToken(int(newUser.ID), newUser.Email)
-	if jwtErr != nil {
-		fmt.Println(" Jwt error: ", accessToken, jwtErr.Error())
-		return nil, "", nil
-	}
-
-	return newUser, accessToken, nil
+	return
 }
 
 func (s *UserService) HashUserPassword(password string) (string, error) {
@@ -98,14 +90,6 @@ func (s *UserService) VerifyUserPassword(password string, hash string) bool {
 	return err == nil
 }
 
-func NewUserService(userRepo *repositories.UserRepository, orgService *OrganisationService, jwtService *JWTService) *UserService {
-	return &UserService{
-		userRepo:   userRepo,
-		orgService: orgService,
-		jwtService: jwtService,
-	}
-}
-
 func (s *UserService) FetchOrganisationIDByUserID(userID uint) (uint, error) {
 	return s.userRepo.FetchOrganisationIDByUserID(userID)
 }
@@ -116,4 +100,11 @@ func (s *UserService) GetDefaultUser() (*models.User, error) {
 		return nil, err
 	}
 	return defaultUser, nil
+}
+
+func NewUserService(userRepo *repositories.UserRepository, orgService *OrganisationService) *UserService {
+	return &UserService{
+		userRepo:   userRepo,
+		orgService: orgService,
+	}
 }

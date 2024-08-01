@@ -1,25 +1,16 @@
-import { NextResponse, NextRequest } from 'next/server';
-import { parse } from 'cookie';
+import { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const cookies = parse(request.headers.get('cookie') || '');
-  const accessToken = cookies.accessToken;
-
-  if (request.nextUrl.pathname === '/') {
-    if (accessToken) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/projects';
-      return NextResponse.redirect(url);
+  const token = request.cookies.get('token')?.value;
+  if (!token) {
+    if (request.nextUrl.pathname !== '/') {
+      return Response.redirect(new URL('/', request.url));
     }
   } else {
-    if (!accessToken) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/';
-      return NextResponse.redirect(url);
+    if (request.nextUrl.pathname === '/') {
+      return Response.redirect(new URL('/projects', request.url));
     }
   }
-
-  return NextResponse.next();
 }
 
 export const config = {

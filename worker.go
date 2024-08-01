@@ -348,7 +348,7 @@ func main() {
 	err = c.Invoke(func(srv *asynq.Server, mux *asynq.ServeMux, scheduler *asynq.Scheduler,
 	) error {
 		task := asynq.NewTask(constants.CheckExecutionStatusTaskType, nil, asynq.TaskID(constants.CheckExecutionStatusTaskType))
-		if _, err := scheduler.Register("*/30 * * * *", task); err != nil {
+		if _, err := scheduler.Register("*/5 * * * *", task); err != nil {
 			log.Fatalf("could not schedule task: %v", err)
 		}
 

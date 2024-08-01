@@ -7,8 +7,6 @@ import React, {
   useState,
 } from 'react';
 import io, { Socket } from 'socket.io-client';
-import Cookies from 'js-cookie';
-import { useRouter } from 'next/navigation';
 
 interface SocketContextProps {
   socket: Socket | null;
@@ -31,18 +29,15 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const socketRef = useRef(null);
 
   const connectSocket = () => {
-    const token = Cookies.get('accessToken');
-    if (!token) {
-      console.error('No access token found');
-      return;
-    }
-
     const socketUrl =
       process.env.NODE_ENV === 'production'
         ? 'wss://developer.superagi.com'
         : 'ws://localhost:8080';
 
-    const socketInstance = io(socketUrl, { transports: ['websocket'], path:'/api/socket.io' });
+    const socketInstance = io(socketUrl, {
+      transports: ['websocket'],
+      path: '/api/socket.io',
+    });
 
     socketInstance.on('connect', () => {
       console.log('Connected to websocket server');

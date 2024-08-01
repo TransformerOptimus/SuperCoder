@@ -490,10 +490,10 @@ func (s *StoryService) RetrieveCodeForFile (projectID uint, storyID uint, fileNa
 		filePath = config.FrontendWorkspacePath(project.HashID, story.HashID) + "/app/" + fileName
 	}
 	content, err := os.ReadFile(filePath)
-    if err != nil {
+        if err != nil {
 		s.logger.Error("Error reading file", zap.Error(err))
-        return nil, err
-    }
+                return nil, err
+        }
 	return content, nil
 }
 

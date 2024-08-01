@@ -260,7 +260,7 @@ func (controller *StoryController) RetrieveCodeForFile(context *gin.Context) {
 	code, err := controller.storyService.RetrieveCodeForFile(retrieveCodeRequest.ProjectID, retrieveCodeRequest.StoryID, retrieveCodeRequest.FileName)
 	if err != nil {
 		context.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-        return 
+        	return 
 	}
 	context.JSON(http.StatusOK, gin.H{"code": string(code)})
 }

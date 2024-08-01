@@ -18,7 +18,7 @@ func (e EnvConfig) IsDevelopment() bool {
 func (e EnvConfig) Domain() string {
 	var domain string
 	if !e.IsDevelopment() {
-		domain = "developer.superagi.com"
+		domain = e.config.String("domain")
 	}
 	e.logger.Debug("Setting domain for auth", zap.String("domain", domain))
 	return domain

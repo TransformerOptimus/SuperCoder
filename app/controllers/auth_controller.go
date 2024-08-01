@@ -32,7 +32,6 @@ func (controller *AuthController) GithubSignIn(c *gin.Context) {
 }
 
 func (controller *AuthController) GithubCallback(c *gin.Context) {
-	c.Redirect(http.StatusFound, controller.githubOAuthConfig.FrontendURL())
 	state := c.Query("state")
 	code := c.Query("code")
 	user, err := controller.githubAuthService.HandleGithubCallback(code, state)
@@ -40,6 +39,7 @@ func (controller *AuthController) GithubCallback(c *gin.Context) {
 		return
 	}
 	_ = controller.authMiddleware.SetAuth(c, user)
+	c.Redirect(http.StatusTemporaryRedirect, controller.githubOAuthConfig.FrontendURL())
 }
 
 func (controller *AuthController) HandleDefaultUser(c *gin.Context) {

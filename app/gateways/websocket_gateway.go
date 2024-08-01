@@ -45,15 +45,15 @@ func (w *WorkspaceGateway) OnDisconnect(s socketio.Conn, reason string) {
 		w.logger.Info("Project ID not found or invalid type")
 	}
 
-    if pubsub, ok := ctx["pubsub"].(*redis.PubSub); ok {
-        err := pubsub.Close()
-        if err != nil {
-            w.logger.Error("Error closing PubSub", zap.Error(err))
-        } else {
-            w.logger.Info("PubSub closed successfully")
-        }
-        delete(ctx, "pubsub")
-    }
+        if pubsub, ok := ctx["pubsub"].(*redis.PubSub); ok {
+        	err := pubsub.Close()
+        	if err != nil {
+            		w.logger.Error("Error closing PubSub", zap.Error(err))
+        	} else {
+            		w.logger.Info("PubSub closed successfully")
+        	}
+        	delete(ctx, "pubsub")
+    	}
 }
 
 func (wg *WorkspaceGateway) OnWorkspaceStartEvent(s socketio.Conn, data map[string]interface{}) {
@@ -89,9 +89,9 @@ func (wg *WorkspaceGateway) OnWorkspaceStartEvent(s socketio.Conn, data map[stri
 		wg.logger.Debug("Message sent to frontend",zap.Any(" on connection id- ", s.ID()), zap.Any(" message- ",msg))
 	}, projectIDStr, channel)
 	if err != nil {
-        wg.logger.Error("Error setting up project notification", zap.Error(err))
-        return
-    }
+        	wg.logger.Error("Error setting up project notification", zap.Error(err))
+        	return
+	}
 	ctx["pubsub"] = pubsub
 }
 

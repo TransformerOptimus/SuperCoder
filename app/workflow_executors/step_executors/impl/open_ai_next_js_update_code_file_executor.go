@@ -110,13 +110,13 @@ func (e NextJsUpdateCodeFileExecutor) Execute(step steps.UpdateCodeFileStep) err
         e.logger.Error("Error marshalling JSON", zap.Any("error", err))
         return err
     }
-	err = e.projectNotificationService.SendNotification(step.Project.ID, string(jsonData))
-	if err!= nil {
+    err = e.projectNotificationService.SendNotification(step.Project.ID, string(jsonData))
+    if err!= nil {
         e.logger.Error("Error sending notification", zap.Any("error", err))
         return err
     }
-
-	return nil
+	
+    return nil
 }
 
 func (e *NextJsUpdateCodeFileExecutor) UpdateReGeneratedCodeFile(response Response, step steps.UpdateCodeFileStep) error {

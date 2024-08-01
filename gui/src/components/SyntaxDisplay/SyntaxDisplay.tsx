@@ -34,9 +34,7 @@ const SyntaxDisplay: React.FC<SyntaxDisplayProps> = ({ type, msg }) => {
   }
 
   const command = title.replace('Running command: ', '');
-
-  const command = title.replace('Running command: ', '');
-
+  
   return (
     <>
       {type === ActivityLogType.ERROR && (

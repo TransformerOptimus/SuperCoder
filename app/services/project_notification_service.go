@@ -28,7 +28,7 @@ func (s *ProjectNotificationService) SendNotification(projectID uint, message st
 		s.logger.Error("Error publishing message to Redis", zap.Error(err))
 	        return err
 	}
-	s.logger.Info("_____sent message_____to ", zap.Any("",channel), zap.Any("message",message))
+	s.logger.Debug("Sent message to", zap.Any(" channel- ",channel), zap.Any(" message- ",message))
 	return nil
 }
 
@@ -44,7 +44,7 @@ func (s *ProjectNotificationService) ReceiveNotification(sendFunction func(msg s
 		ch := pubsub.Channel()
 		for msg := range ch {
 			channel := msg.Channel
-			s.logger.Info("____received message on channel--", zap.Any("",channel), zap.Any("___payload____",msg.Payload))
+			s.logger.Debug("Received message on", zap.Any(" channel- ",channel), zap.Any(" message- ",msg.Payload))
 			sendFunction(msg.Payload)
 		}
 	}()

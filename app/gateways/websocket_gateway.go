@@ -86,8 +86,7 @@ func (wg *WorkspaceGateway) OnWorkspaceStartEvent(s socketio.Conn, data map[stri
 	channel := fmt.Sprintf("project-notifications-%d", projectID)
 	pubsub, err := wg.projectNotificationService.ReceiveNotification(func(msg string) {
 		s.Emit("projectNotification", msg)
-		wg.logger.Info("_____message sent to frontend ",zap.Any("with connection id____ ", s.ID()))
-		wg.logger.Info("_____message sent to frontend____",zap.Any("", msg))
+		wg.logger.Debug("Message sent to frontend",zap.Any(" on connection id- ", s.ID()), zap.Any(" message- ",msg))
 	}, projectIDStr, channel)
 	if err != nil {
         wg.logger.Error("Error setting up project notification", zap.Error(err))

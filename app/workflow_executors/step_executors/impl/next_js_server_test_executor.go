@@ -14,8 +14,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
 	"go.uber.org/zap"
+	"ai-developer/app/monitoring"
 )
 
 type NextJsServerStartTestExecutor struct {
@@ -26,6 +26,7 @@ type NextJsServerStartTestExecutor struct {
 	llmAPIKeyService     *services.LLMAPIKeyService
 	storyService         *services.StoryService
 	projectService       *services.ProjectService
+	slackAlert           *monitoring.SlackAlert
 }
 
 func NewNextJsServerStartTestExecutor(
@@ -36,6 +37,7 @@ func NewNextJsServerStartTestExecutor(
 	executionService *services.ExecutionService,
 	storyService *services.StoryService,
 	projectService *services.ProjectService,
+	slackAlert           *monitoring.SlackAlert,
 ) *NextJsServerStartTestExecutor {
 	return &NextJsServerStartTestExecutor{
 		executionStepService: executionStepService,
@@ -45,6 +47,7 @@ func NewNextJsServerStartTestExecutor(
 		executionService:     executionService,
 		storyService:         storyService,
 		projectService:       projectService,
+		slackAlert:           slackAlert,
 	}
 }
 
@@ -170,46 +173,71 @@ func (e NextJsServerStartTestExecutor) Execute(step steps.ServerStartTestStep) e
 
 func (e NextJsServerStartTestExecutor) AnalyseBuildLogs(buildLogs, directoryPlan, apiKey string, step steps.ServerStartTestStep) (bool, map[string]interface{}, error) {
 	e.logger.Info("____Analyzing build logs____ ", zap.String("buildLogs", buildLogs))
-	messages, err := e.CreateMessage(buildLogs, directoryPlan)
-	if err != nil {
-		return false, nil, err
-	}
-	claudeClient:= llms.NewClaudeClient(apiKey)
-	response, err := claudeClient.ChatCompletion(messages)
-	if err != nil {
-		settingsUrl := config.Get("app.url").(string) + "/settings"
-		err = e.activityLogService.CreateActivityLog(
-			step.Execution.ID,
-			step.ExecutionStep.ID,
-			"INFO",
-			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
-		)
-		if err != nil {
-			fmt.Printf("Error creating activity log: %s\n", err.Error())
-			return false, nil, err
-		}
-		//Update Execution Status and Story Status
-		if err = e.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
-			fmt.Printf("Error updating story status: %s\n", err.Error())
-			return false, nil, err
-		}
-		if err = e.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
-			fmt.Printf("Error updating execution step: %s\n", err.Error())
-			return false, nil, err
-		}
-		fmt.Println("failed to generate code from llm")
-		return false, nil, fmt.Errorf("failed to generate code from llm: %w", err)
-	}
+	claudeClient := llms.NewClaudeClient(apiKey)
 	var jsonResponse map[string]interface{}
-	if err = json.Unmarshal([]byte(response), &jsonResponse); err != nil {
-		fmt.Println("failed to unmarshal response from Claude API, Failed to parse response as JSON on attempt.")
-		return false, nil, fmt.Errorf("failed to unmarshal response from Claude API: %w", err)
-	}
-	fmt.Println("Response after extracting JSON: ", jsonResponse)
-	buildResponse, action := e.CheckBuildResponse(jsonResponse)
-	fmt.Println("Build Logs Check Response")
-	return buildResponse, action, nil
+	var response string
 
+	for retryCount := 1; retryCount <= constants.MAX_JSON_RETRIES; retryCount++ {
+		messages, err := e.CreateMessage(buildLogs, directoryPlan, retryCount)
+		if err != nil{
+			e.logger.Error("failed to create messages for llm")
+            return false, nil, err
+		}
+		response, err = claudeClient.ChatCompletion(messages)
+		if err != nil {
+			settingsUrl := config.Get("app.url").(string) + "/settings"
+			err = e.activityLogService.CreateActivityLog(
+				step.Execution.ID,
+				step.ExecutionStep.ID,
+				"INFO",
+				fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
+			)
+			if err != nil {
+				e.logger.Error("failed to create activity log for llm", zap.Error(err))
+				return false, nil, err
+			}
+			//Update Execution Status and Story Status
+			if err = e.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
+				fmt.Printf("Error updating story status: %s\n", err.Error())
+				return false, nil, err
+			}
+			if err = e.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
+				e.logger.Error("Error updating execution status", zap.Error(err))
+				return false, nil, err
+			}
+			e.logger.Error("failed to generate code from llm")
+			if retryCount == constants.MAX_JSON_RETRIES {
+				return false, nil, fmt.Errorf("failed to generate code from llm after 5 attempts: %w", err)
+			}
+			continue
+		}
+		if err = json.Unmarshal([]byte(response), &jsonResponse); err != nil {
+			e.logger.Error("error decoding build logs response from Claude API", zap.Error(err))
+			e.logger.Error("failed to unmarshal response from Claude API, retrying...")
+			err := e.slackAlert.SendAlert(
+				"error occurred while parsing build logs JSON response",
+				map[string]string{
+					"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
+					"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
+					"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
+					"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
+					"error":             err.Error(),
+					"attempt":          fmt.Sprintf("%d", int64(retryCount)),
+				})
+			if err != nil {
+				e.logger.Error("error sending slack alert", zap.Error(err))
+				return false, nil, err
+			}
+			if retryCount == 5 {
+				return false, nil, fmt.Errorf("failed to unmarshal response from Claude API after 5 attempts: %w", err)
+			}
+			continue
+		}
+		break
+	}
+
+	buildResponse, action := e.CheckBuildResponse(jsonResponse)
+	return buildResponse, action, nil
 }
 
 func (e NextJsServerStartTestExecutor) CheckBuildResponse(response map[string]interface{}) (bool, map[string]interface{}) {
@@ -230,8 +258,20 @@ func (e NextJsServerStartTestExecutor) CheckBuildResponse(response map[string]in
 	return false, action
 }
 
-func (e NextJsServerStartTestExecutor) CreateMessage(buildLogs string, directoryPlan string) ([]llms.ClaudeChatCompletionMessage, error) {
-	content, err := os.ReadFile("/go/prompts/nextjs/next_js_build_checker.txt")
+func (e NextJsServerStartTestExecutor) CreateMessage(buildLogs string, directoryPlan string, attempts int) ([]llms.ClaudeChatCompletionMessage, error) {
+	var content []byte
+	var err error
+	if attempts > 1 {
+		content, err = os.ReadFile("/go/prompts/nextjs/next_js_build_checker_retry.txt")
+		if err!= nil {
+            return nil, fmt.Errorf("failed to load system prompt: %w", err)
+        }
+	} else {
+		content, err = os.ReadFile("/go/prompts/nextjs/next_js_build_checker.txt")
+		if err!= nil {
+            return nil, fmt.Errorf("failed to load system prompt: %w", err)
+        }
+	}
 	modifiedContent := strings.Replace(string(content), "{{BUILD_LOGS}}", buildLogs, -1)
 	modifiedContent = strings.Replace(string(modifiedContent), "{{DIRECTORY_STRUCTURE}}", directoryPlan, -1)
 	if err != nil {

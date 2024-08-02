@@ -5,16 +5,20 @@ import (
 	"ai-developer/app/constants"
 	"ai-developer/app/llms"
 	"ai-developer/app/models"
+	"ai-developer/app/models/types"
+	"ai-developer/app/monitoring"
 	"ai-developer/app/services"
 	"ai-developer/app/services/filestore"
 	"ai-developer/app/utils"
 	"ai-developer/app/workflow_executors/step_executors/steps"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -28,6 +32,7 @@ type OpenAiNextJsCodeGenerator struct {
 	designReviewService  *services.DesignStoryReviewService
 	llmAPIKeyService     *services.LLMAPIKeyService
 	logger               *zap.Logger
+	slackAlert           *monitoring.SlackAlert
 	fileStore 	      filestore.FileStore 
 }
 
@@ -40,6 +45,7 @@ func NewOpenAINextJsCodeGenerationExecutor(
 	designReviewService *services.DesignStoryReviewService,
 	llmAPIKeyService *services.LLMAPIKeyService,
 	logger *zap.Logger,
+	slackAlert *monitoring.SlackAlert,
 	fileStore filestore.FileStore,
 ) *OpenAiNextJsCodeGenerator {
 	return &OpenAiNextJsCodeGenerator{
@@ -51,6 +57,7 @@ func NewOpenAINextJsCodeGenerationExecutor(
 		designReviewService:  designReviewService,
 		llmAPIKeyService:     llmAPIKeyService,
 		logger:               logger,
+		slackAlert:           slackAlert,
 		fileStore: 	      fileStore,
 	}
 }
@@ -80,6 +87,18 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 
 	if count > step.MaxLoopIterations {
 		fmt.Println("Max retry limit reached for LLM steps")
+		err = openAiCodeGenerator.slackAlert.SendAlert(
+			"Max retry limit reached",
+			map[string]string{
+				"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
+				"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
+				"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
+				"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
+			})
+		if err != nil {
+			fmt.Printf("Error sending slack alert: %s\n", err.Error())
+			return err
+		}
 		//Update story status to MAX_LOOP_ITERATION_REACHED
 		if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.MaxLoopIterationReached); err != nil {
 			fmt.Printf("Error updating story status: %s\n", err.Error())
@@ -161,27 +180,63 @@ func (openAiCodeGenerator OpenAiNextJsCodeGenerator) Execute(step steps.Generate
 	code, err := openAiCodeGenerator.GenerateCode(step, finalInstructionForGeneration, storyDir, apiKey)
 	if err != nil {
 		fmt.Println("____ERROR OCCURRED WHILE GENERATING CODE: ______", err)
-		settingsUrl := config.Get("app.url").(string) + "/settings"
-		err = openAiCodeGenerator.activityLogService.CreateActivityLog(
-			step.Execution.ID,
-			step.ExecutionStep.ID,
-			"INFO",
-			fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
-		)
-		if err != nil {
-			fmt.Printf("Error creating activity log: %s\n", err.Error())
+		if err == types.ErrJsonParsingRetriesExceeded {
+			err = openAiCodeGenerator.slackAlert.SendAlert(
+				"Max retry limit reached while parsing JSON, error occurred while parsing the generated edit code",
+				map[string]string{
+					"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
+					"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
+					"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
+					"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
+					"model_name": 	     constants.CLAUDE_3,
+				})
+			if err != nil {
+				fmt.Printf("Error sending slack alert: %s\n", err.Error())
+				return err
+			}
+			err = openAiCodeGenerator.activityLogService.CreateActivityLog(
+				step.Execution.ID,
+				step.ExecutionStep.ID,
+				"INFO",
+				fmt.Sprintf("Json parsing retries exceeded for code generation!"),
+			)
+			if err != nil {
+				fmt.Printf("Error creating activity log: %s\n", err.Error())
+				return err
+			}
+			//Update Execution Status and Story Status
+			if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReview); err != nil {
+				fmt.Printf("Error updating story status: %s\n", err.Error())
+				return err
+			}
+			if err = openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReview); err != nil {
+				fmt.Printf("Error updating execution step: %s\n", err.Error())
+				return err
+			}
+			return err
+		} else {
+			settingsUrl := config.Get("app.url").(string) + "/settings"
+			err = openAiCodeGenerator.activityLogService.CreateActivityLog(
+				step.Execution.ID,
+				step.ExecutionStep.ID,
+				"INFO",
+				fmt.Sprintf("Action required: There's an issue with your LLM API Key. Ensure your API Key for %s is correct. <a href='%s' style='color:%s; text-decoration:%s;'>Settings</a>", constants.CLAUDE_3, settingsUrl, "blue", "underline"),
+			)
+			if err != nil {
+				fmt.Printf("Error creating activity log: %s\n", err.Error())
+				return err
+			}
+			//Update Execution Status and Story Status
+			if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
+				fmt.Printf("Error updating story status: %s\n", err.Error())
+				return err
+			}
+			if err = openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
+				fmt.Printf("Error updating execution step: %s\n", err.Error())
+				return err
+			}
 			return err
 		}
-		//Update Execution Status and Story Status
-		if err = openAiCodeGenerator.storyService.UpdateStoryStatus(int(step.Story.ID), constants.InReviewLLMKeyNotFound); err != nil {
-			fmt.Printf("Error updating story status: %s\n", err.Error())
-			return err
-		}
-		if err = openAiCodeGenerator.executionService.UpdateExecutionStatus(step.Execution.ID, constants.InReviewLLMKeyNotFound); err != nil {
-			fmt.Printf("Error updating execution step: %s\n", err.Error())
-			return err
-		}
-		return err
 	}
 
 	if err = openAiCodeGenerator.executionStepService.UpdateExecutionStepResponse(
@@ -407,10 +462,10 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) buildInstructionOnReExecut
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCode(step steps.GenerateCodeStep, instruction map[string]string, storyDir string, apiKey string) (string, error) {
 	if step.Retry {
-		response, err := openAiCodeGenerator.GenerateCodeOnRetry(step.ExecutionStep, instruction, storyDir, apiKey)
+		response, err := openAiCodeGenerator.GenerateCodeOnRetry(step.ExecutionStep, instruction, storyDir, apiKey, step)
 		if err != nil {
 			fmt.Println("Error generating code on retry")
-			return "", fmt.Errorf("failed to generate retry code from Claude API: %w", err)
+			return "", err
 		}
 		return response, nil
 	} else {
@@ -450,7 +505,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) ProcessMessageResponse(mes
 
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(executionStep *models.ExecutionStep, instruction map[string]string, storyDir string, apiKey string) (string, error) {
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(executionStep *models.ExecutionStep, instruction map[string]string, storyDir string, apiKey string, step steps.GenerateCodeStep) (string, error) {
 	switch instruction["actionType"] {
 	case "create":
 		filePath := storyDir + instruction["fileName"]
@@ -478,7 +533,7 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(execut
 		}
 		return "", nil
 	case "edit":
-		response, err := openAiCodeGenerator.EditCodeOnRetry(instruction, storyDir, executionStep, apiKey)
+		response, err := openAiCodeGenerator.EditCodeOnRetry(instruction, storyDir, executionStep, apiKey, step)
 		if err != nil {
 			return "", err
 		}
@@ -489,30 +544,80 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateCodeOnRetry(execut
 	}
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instruction map[string]string, storyDir string, executionStep *models.ExecutionStep, apiKey string) (string, error) {
-	generationPlan, err := openAiCodeGenerator.GetCodeGenerationPlan(storyDir)
-	if err != nil {
-		return "", err
-	}
-	systemPrompt, err := openAiCodeGenerator.GetRetrySystemPrompt(instruction, generationPlan)
-	if err != nil {
-		return "", err
-	}
-	messages := openAiCodeGenerator.GetMessagesOnRetry(systemPrompt, instruction["description"])
-	err = openAiCodeGenerator.executionStepService.UpdateExecutionStepRequest(
-		executionStep,
-		map[string]interface{}{
-			"final_instruction": instruction,
-			"llm_request":       messages,
-		},
-		"IN_PROGRESS",
-	)
-	claudeClient := llms.NewClaudeClient(apiKey)
-	response, err := claudeClient.ChatCompletion(messages)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate code from llm: %w", err)
-	}
-	return response, nil
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) EditCodeOnRetry(instruction map[string]string, storyDir string, executionStep *models.ExecutionStep, apiKey string, step steps.GenerateCodeStep) (string, error) {
+    var response string
+    var err error
+    var jsonErr error
+
+    for attempt := 1; attempt <= constants.MAX_JSON_RETRIES; attempt++ {
+        response, err = openAiCodeGenerator.attemptEditCode(instruction, storyDir, executionStep, apiKey, attempt)
+		if err !=nil {
+			return "", err
+		}
+		jsonErr = openAiCodeGenerator.checkJsonValidity(response)
+		if jsonErr == nil {
+			return response, nil
+		}
+
+        if attempt <= constants.MAX_JSON_RETRIES {
+			err = openAiCodeGenerator.slackAlert.SendAlert(
+				"error occurred while parsing edit code JSON response",
+				map[string]string{
+					"story_id":          fmt.Sprintf("%d", int64(step.Story.ID)),
+					"execution_id":      fmt.Sprintf("%d", int64(step.Execution.ID)),
+					"execution_step_id": fmt.Sprintf("%d", int64(step.ExecutionStep.ID)),
+					"is_re_execution":   fmt.Sprintf("%t", step.Execution.ReExecution),
+					"error":             jsonErr.Error(),
+					"attempt":          fmt.Sprintf("%d", int64(attempt)),
+				})
+			if err != nil {
+				fmt.Printf("Error sending slack alert: %s\n", err.Error())
+				return "", err
+			}
+            fmt.Printf("Attempt %d failed: %v. Retrying...\n", attempt, jsonErr)
+            time.Sleep(time.Second * time.Duration(attempt))
+        }
+    }
+
+    return "", types.ErrJsonParsingRetriesExceeded
+}
+
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) attemptEditCode(instruction map[string]string, storyDir string, executionStep *models.ExecutionStep, apiKey string, attempts int) (string, error) {
+    generationPlan, err := openAiCodeGenerator.GetCodeGenerationPlan(storyDir)
+    if err != nil {
+        return "", err
+    }
+    systemPrompt, err := openAiCodeGenerator.GetRetrySystemPrompt(instruction, generationPlan, attempts)
+    if err != nil {
+        return "", err
+    }
+    messages := openAiCodeGenerator.GetMessagesOnRetry(systemPrompt, instruction["description"])
+    err = openAiCodeGenerator.executionStepService.UpdateExecutionStepRequest(
+        executionStep,
+        map[string]interface{}{
+            "final_instruction": instruction,
+            "llm_request":       messages,
+        },
+        "IN_PROGRESS",
+    )
+    if err != nil {
+        return "", err
+    }
+    claudeClient := llms.NewClaudeClient(apiKey)
+    response, err := claudeClient.ChatCompletion(messages)
+    if err != nil {
+        return "", fmt.Errorf("failed to generate code from llm: %w", err)
+    }
+    return response, nil
+}
+
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) checkJsonValidity(input string) error {
+	fmt.Println("_____input to json validator_____:", input)
+	var llmResponse map[string]interface{}
+    if err := json.Unmarshal([]byte(input), &llmResponse); err != nil {
+        return fmt.Errorf("failed to unmarshal edit response: %w", err)
+    }
+    return nil
 }
 
 func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GenerateMessages(instruction map[string]string, storyDir string, step steps.GenerateCodeStep) ([]llms.ClaudeChatCompletionMessage, error) {
@@ -589,11 +694,19 @@ func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) getSystemPrompt(instructio
 	return systemPrompt, nil
 }
 
-func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetRetrySystemPrompt(instruction map[string]string, directoryStructure string) (string, error) {
-	content, err := os.ReadFile("/go/prompts/nextjs/ai_frontend_developer_edit_code.txt")
-	if err != nil {
-		panic(fmt.Sprintf("failed to read system prompt: %v", err))
-		return "", err
+func (openAiCodeGenerator *OpenAiNextJsCodeGenerator) GetRetrySystemPrompt(instruction map[string]string, directoryStructure string, attempts int) (string, error) {
+	var content []byte
+	var err error
+	if attempts > 1 {
+		content, err = os.ReadFile("/go/prompts/nextjs/ai_frontend_developer_edit_code_retry.txt")
+		if err != nil {
+			panic(fmt.Sprintf("failed to read system prompt: %v", err))
+		}
+	} else {
+		content, err = os.ReadFile("/go/prompts/nextjs/ai_frontend_developer_edit_code.txt")
+		if err != nil {
+			panic(fmt.Sprintf("failed to read system prompt: %v", err))
+		}
 	}
 	modifiedContent := strings.Replace(string(content), "{{FILE_NAME}}", instruction["fileName"], -1)
 	modifiedContent = strings.Replace(string(modifiedContent), "{{ERROR_DESCRIPTION}}", instruction["description"], -1)

@@ -1,6 +1,6 @@
 # This should be the only entry point of the application
 import os
-from flask import Flask
+from flask import Flask, render_template
 from logging.config import dictConfig
 from models import db
 from flask_migrate import Migrate
@@ -35,6 +35,10 @@ migrate = Migrate(app, db)
 
 # Add Code Here
 
+@app.route('/')
+def home():
+    """Default home route."""
+    return render_template('index.html')
 
 
 # Run the application

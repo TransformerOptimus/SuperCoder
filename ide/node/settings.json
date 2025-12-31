@@ -9,6 +9,23 @@
   "terminal.integrated.fontWeight": "normal",
   "terminal.integrated.hideOnStartup": "never",
   "workbench.startupEditor": "terminal",
+  "remote.localPortHost": "localhost",
+  "remote.autoForwardPorts": true,
+  "remote.autoForwardPortsSource": "process",
+  "remote.portsAttributes": {
+    "5000": {
+      "label": "Backend Server",
+      "onAutoForward": "openBrowserOnce"
+    },
+    "3000": {
+      "label": "Frontend Server",
+      "onAutoForward": "openBrowserOnce"
+    },
+    "8000": {
+      "label": "Dev Server",
+      "onAutoForward": "openBrowserOnce"
+    }
+  },
   "workbench.colorCustomizations": {
     "sideBar.background": "#131315",
     "sideBarSectionHeader.background": "#131315",

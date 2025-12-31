@@ -573,6 +573,7 @@ func main() {
 		pullRequest.GET("/commits", pullRequestCtrl.FetchPullRequestCommits)
 		pullRequest.POST("/comment", pullRequestCommentCtrl.CreateCommentForPrID)
 		pullRequest.POST("/merge", pullRequestCtrl.MergePullRequest)
+		pullRequest.POST("/close", pullRequestCtrl.ClosePullRequest)
 
 		llmApiKeys := api.Group("/llm_api_key", authMiddleware.MiddlewareFunc())
 		llmApiKeys.POST("", llm_api_key.CreateLLMAPIKey)

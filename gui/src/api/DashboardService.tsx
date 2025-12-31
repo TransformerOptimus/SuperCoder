@@ -113,6 +113,10 @@ export const mergePullRequest = (pull_request_id: number) => {
   });
 };
 
+export const closePullRequest = (pull_request_id: number) => {
+  return api.post(`/pull-requests/${pull_request_id}/close`, {});
+};
+
 export const getCommitsPullRequest = (pr_id: number) => {
   return api.get(`/pull-requests/${pr_id}/commits`);
 };

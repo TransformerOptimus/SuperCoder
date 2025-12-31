@@ -2,6 +2,6 @@ package constants
 
 const (
 	Open   = "OPEN"
-	Close  = "CLOSE"
+	Close  = "CLOSED"
 	Merged = "MERGED"
 )

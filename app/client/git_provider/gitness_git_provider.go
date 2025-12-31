@@ -356,3 +356,29 @@ func (c *GitnessClient) GetBranchCommits(repoPath string, branchName ...string) 
 
 	return &getMainBranchCommitResponse, nil
 }
+
+func (c *GitnessClient) ClosePullRequest(repoPath string, pullRequestID int) error {
+	url := fmt.Sprintf("%s/api/v1/repos/%s/+/pullreq/%d/state", c.baseURL, repoPath, pullRequestID)
+
+	payload := gitness.UpdatePullRequestStatePayload{
+		State: "closed",
+	}
+
+	headers := map[string]string{
+		"Accept":        "*/*",
+		"Content-Type":  "application/json",
+		"Authorization": "Bearer " + c.authToken,
+	}
+
+	response, err := c.httpClient.Post(url, payload, headers)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to close pull request, status code: %d", response.StatusCode)
+	}
+
+	return nil
+}

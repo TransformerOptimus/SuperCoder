@@ -134,3 +134,13 @@ func (s *GitnessService) GetAllCommitsOfProjectBranch(organisation *models.Organ
 	}
 	return commitResponse, nil
 }
+
+func (s *GitnessService) ClosePullRequest(projectName, repoName string, pullRequestID int) error {
+	repoPath := fmt.Sprintf("%s/%s", projectName, repoName)
+
+	err := s.client.ClosePullRequest(repoPath, pullRequestID)
+	if err != nil {
+		return err
+	}
+	return nil
+}

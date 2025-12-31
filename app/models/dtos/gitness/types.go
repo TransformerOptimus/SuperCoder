@@ -242,3 +242,7 @@ type GetMainBranchCommitResponse struct {
 	} `json:"rename_details"`
 	TotalCommits int `json:"total_commits"`
 }
+
+type UpdatePullRequestStatePayload struct {
+	State string `json:"state"`
+}

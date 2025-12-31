@@ -67,6 +67,33 @@ func (ctrl *PullRequestController) MergePullRequest(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"merge_sha": mergeSHA})
 }
+
+func (ctrl *PullRequestController) ClosePullRequest(c *gin.Context) {
+	pullRequestIdStr := c.Param("pull_request_id")
+	pullRequestID, err := strconv.Atoi(pullRequestIdStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pull request ID"})
+		return
+	}
+	email, _ := c.Get("email")
+	user, err := ctrl.userService.GetUserByEmail(email.(string))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if user == nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+		return
+	}
+	organisationId := user.OrganisationID
+	err = ctrl.pullRequestService.ClosePullRequestByID(pullRequestID, organisationId)
+	if err != nil {
+		fmt.Println("Error while closing Pull Request", err.Error())
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Pull Request closed successfully"})
+}
 func (ctrl *PullRequestController) FetchPullRequestCommits(c *gin.Context) {
 	pullRequestIdStr := c.Param("pull_request_id")
 	pullRequestID, err := strconv.Atoi(pullRequestIdStr)
@@ -121,9 +148,9 @@ func (ctrl *PullRequestController) CreateManualPullRequest(c *gin.Context) {
 	Description := createPRRequest.Description
 	fmt.Println("project id _____", ProjectID)
 	prId, err := ctrl.pullRequestService.CreateManualPullRequest(ProjectID, Title, Description)
-	if err !=nil{
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Pull Request"})
-        return
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"pull_request_id": prId})

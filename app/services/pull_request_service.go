@@ -44,13 +44,13 @@ func NewPullRequestService(pullRequestRepo *repositories.PullRequestRepository, 
 
 func (s *PullRequestService) GetAllPullRequests(projectID int, status string) ([]*response.GetAllPullRequests, error) {
 	backendStories, err := s.storyRepo.GetStoriesByProjectIdAndStoryType(projectID, constants.Backend)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	frontendStories, err := s.storyRepo.GetStoriesByProjectIdAndStoryType(projectID, constants.Frontend)
-	if err!= nil {
-        return nil, err
-    }
+	if err != nil {
+		return nil, err
+	}
 	stories := append(backendStories, frontendStories...)
 	storyIDs := make([]uint, len(stories))
 	for i, story := range stories {
@@ -124,11 +124,51 @@ func (s *PullRequestService) MergePullRequestByID(pullRequestID int, organisatio
 	return mergeSHA, nil
 }
 
+func (s *PullRequestService) ClosePullRequestByID(pullRequestID int, organisationID uint) error {
+	organisation, err := s.organisationRepo.GetOrganisationByID(organisationID)
+	if err != nil {
+		fmt.Println("Error fetching Organisation by ID")
+		return err
+	}
+	pullRequest, err := s.pullRequestRepo.GetPullRequestByID(uint(pullRequestID))
+	if err != nil {
+		fmt.Println("Error fetching Pull Request by ID")
+		return err
+	}
+	if pullRequest == nil {
+		fmt.Println("Pull Request not found")
+		return errors.New("Pull Request not found")
+	}
+	story, err := s.storyRepo.GetStoryById(int(pullRequest.StoryID))
+	if err != nil {
+		fmt.Println("Error fetching Story by ID")
+		return err
+	}
+	project, err := s.projectRepo.GetProjectById(int(story.ProjectID))
+	if err != nil {
+		fmt.Println("Error fetching Project by ID")
+		return err
+	}
+	spaceOrProjectName := s.gitService.GetSpaceOrProjectName(organisation)
+	err = s.gitService.ClosePullRequest(spaceOrProjectName, project.Name, pullRequest.PullRequestNumber)
+	if err != nil {
+		fmt.Println("Error closing pull request")
+		return err
+	}
+	fmt.Println("PR Closed Successfully")
+	err = s.pullRequestRepo.UpdatePullRequestStatus(pullRequest, constants.Close)
+	if err != nil {
+		fmt.Println("Error updating pull request status")
+		return err
+	}
+	return nil
+}
+
 func (s *PullRequestService) GetPullRequestsCommits(pullRequestID int, organisationID int) ([]*response.GetAllCommitsResponse, error) {
 	organisation, err := s.organisationRepo.GetOrganisationByID(uint(organisationID))
-	if err!=nil{
+	if err != nil {
 		fmt.Println("Error fetching Organisation by ID")
-        return nil, err
+		return nil, err
 	}
 	pullRequest, err := s.pullRequestRepo.GetPullRequestByID(uint(pullRequestID))
 	if err != nil {
@@ -151,7 +191,7 @@ func (s *PullRequestService) GetPullRequestsCommits(pullRequestID int, organisat
 	}
 	spaceOrProjectName := s.gitService.GetSpaceOrProjectName(organisation)
 	commitsResponse, err := s.gitService.FetchPullRequestCommits(spaceOrProjectName, project.Name, pullRequest.PullRequestNumber)
-	if err!=nil{
+	if err != nil {
 		return nil, err
 	}
 	commits, err := s.FetchCommitsResponse(commitsResponse)
@@ -163,7 +203,7 @@ func (s *PullRequestService) GetPullRequestsCommits(pullRequestID int, organisat
 
 func (s *PullRequestService) GetPullRequestDiffByPullRequestID(pullRequestID uint) (string, error) {
 	pullRequest, err := s.pullRequestRepo.GetPullRequestByID(pullRequestID)
-	if err!=nil{
+	if err != nil {
 		return "", err
 	}
 	story, err := s.storyRepo.GetStoryById(int(pullRequest.StoryID))
@@ -179,10 +219,10 @@ func (s *PullRequestService) GetPullRequestDiffByPullRequestID(pullRequestID uin
 	}
 
 	organisation, err := s.organisationRepo.GetOrganisationByID(uint(int(project.OrganisationID)))
-	if err!= nil {
-        fmt.Println("Error getting organisation by ID: ", err)
-        return "", err
-    }
+	if err != nil {
+		fmt.Println("Error getting organisation by ID: ", err)
+		return "", err
+	}
 	spaceOrProjectName := s.gitService.GetSpaceOrProjectName(organisation)
 	fmt.Printf("Project: %v\n", project)
 	diff, err := s.gitService.GetPullRequestDiff(
@@ -268,44 +308,44 @@ func (s *PullRequestService) GetPullRequestByID(pullRequestId uint) (*models.Pul
 func (s *PullRequestService) UpdatePullRequestSourceSHA(pullRequest *models.PullRequest, sourceSHA string) error {
 	return s.pullRequestRepo.UpdatePullRequestSourceSHA(pullRequest, sourceSHA)
 }
-func (s *PullRequestService) CreateManualPullRequest(projectID int, title string, description string) (int, error){
+func (s *PullRequestService) CreateManualPullRequest(projectID int, title string, description string) (int, error) {
 	project, err := s.projectRepo.GetProjectById(projectID)
-	if err!= nil {
+	if err != nil {
 		fmt.Println("failed to fetch project", err)
-        return -1, err
-    }
+		return -1, err
+	}
 
-	workingDir := "/workspaces/"+project.HashID
+	workingDir := "/workspaces/" + project.HashID
 	err = utils.ConfigureGitUserName(workingDir)
-	if err!= nil {
-        fmt.Println("failed to configure git user name", err)
-        return -1, err
-    }
+	if err != nil {
+		fmt.Println("failed to configure git user name", err)
+		return -1, err
+	}
 	err = utils.ConfigGitUserEmail(workingDir)
-	if err!= nil {
-        fmt.Println("failed to configure git user email", err)
-        return -1, err
-    }
+	if err != nil {
+		fmt.Println("failed to configure git user email", err)
+		return -1, err
+	}
 	err = utils.ConfigGitSafeDir(workingDir)
-	if err!= nil {
-        fmt.Println("failed to configure git safe dir", err)
-        return -1, err
-    }
+	if err != nil {
+		fmt.Println("failed to configure git safe dir", err)
+		return -1, err
+	}
 
 	currentBranch, err := utils.GetCurrentBranch(workingDir)
-	if err!=nil{
+	if err != nil {
 		fmt.Println("failed to get current branch", err)
-        return -1, err
+		return -1, err
 	}
 	fmt.Printf("-------Current branch: %s----- ", currentBranch)
-	if currentBranch=="main"{
+	if currentBranch == "main" {
 		return -1, errors.New("current branch is main can not raise a pr")
 	}
 	execution, err := s.executionRepo.GetExecutionsByBranchName(currentBranch)
-	if err!= nil {
-        fmt.Println("failed to fetch executions by branch name", err)
-        return -1, err
-    }
+	if err != nil {
+		fmt.Println("failed to fetch executions by branch name", err)
+		return -1, err
+	}
 	storyID := execution.StoryID
 
 	output, err := utils.GitAddToTrackFiles(workingDir, nil)
@@ -316,7 +356,7 @@ func (s *PullRequestService) CreateManualPullRequest(projectID int, title string
 	fmt.Printf("Git add output: %s\n", output)
 
 	commitMsg := fmt.Sprintf("commiting for project id: %s\n", strconv.Itoa(projectID))
-	output, err =utils.GitCommitWithMessage(
+	output, err = utils.GitCommitWithMessage(
 		workingDir,
 		commitMsg,
 		nil,
@@ -329,16 +369,16 @@ func (s *PullRequestService) CreateManualPullRequest(projectID int, title string
 
 	organisationID := project.OrganisationID
 	organisation, err := s.organisationRepo.GetOrganisationByID(uint(organisationID))
-	if err!= nil {
+	if err != nil {
 		fmt.Println("failed to fetch organisation", err)
 		return -1, err
 	}
 	spaceOrProjectName := s.gitService.GetSpaceOrProjectName(organisation)
 	openPullRequest, err := s.pullRequestRepo.GetOpenPullRequestsByStoryID(int(storyID))
-	if err!= nil {
-        fmt.Println("failed to fetch open pull requests by story id", err)
-        return -1, err
-    }
+	if err != nil {
+		fmt.Println("failed to fetch open pull requests by story id", err)
+		return -1, err
+	}
 
 	httpPrefix := "https"
 	if config.AppEnv() == constants.Development {
@@ -346,17 +386,17 @@ func (s *PullRequestService) CreateManualPullRequest(projectID int, title string
 	}
 	origin := fmt.Sprintf("%s://%s:%s@%s/git/%s/%s.git", httpPrefix, config.GitnessUser(), config.GitnessToken(), config.GitnessHost(), spaceOrProjectName, project.Name)
 	err = utils.GitPush(workingDir, origin, currentBranch)
-	if err!=nil{
+	if err != nil {
 		fmt.Printf("Error pushing changes: %s\n", err.Error())
 		return -1, err
 	}
 
 	if openPullRequest == nil {
 		err := utils.PullOriginMain(workingDir, origin)
-		if err!= nil {
-            fmt.Printf("Error pulling origin main: %s\n", err.Error())
-            return -1, err
-        }
+		if err != nil {
+			fmt.Printf("Error pulling origin main: %s\n", err.Error())
+			return -1, err
+		}
 		fmt.Println("____no open pull requests, creating a new one____")
 		pr, err := s.gitService.CreatePullRequest(spaceOrProjectName, project.Name, currentBranch, "main", "Pull Request: "+title, description)
 		if err != nil {
@@ -365,14 +405,14 @@ func (s *PullRequestService) CreateManualPullRequest(projectID int, title string
 		}
 		prType := constants.Manual
 		pullRequest, err := s.CreatePullRequest(pr.Title, pr.Description, strconv.Itoa(pr.Number), "GITNESS", pr.SourceSHA, "sample", pr.MergeBaseSHA, pr.Number, storyID, 0, prType)
-		if err!= nil {
+		if err != nil {
 			fmt.Printf("Error creating pull request in database: %s\n", err.Error())
 			return -1, err
 		}
 		fmt.Println("Pull Request created successfully", pullRequest)
 
 		err = utils.ConfigGitSafeDir("/workspaces")
-		if err!= nil {
+		if err != nil {
 			fmt.Println("failed to configure git safe dir", err)
 			return -1, err
 		}
@@ -381,22 +421,22 @@ func (s *PullRequestService) CreateManualPullRequest(projectID int, title string
 	} else {
 		fmt.Println("______found an open pull request pushing changes in it______")
 		latestCommitID, err := utils.GetLatestCommitID(workingDir, err)
-		if err!= nil{
-            fmt.Printf("Error getting latest commit id: %s\n", err.Error())
-            return -1, err
-        }
+		if err != nil {
+			fmt.Printf("Error getting latest commit id: %s\n", err.Error())
+			return -1, err
+		}
 		err = s.UpdatePullRequestSourceSHA(openPullRequest, latestCommitID)
-		if err!= nil {
-            fmt.Printf("Error updating pull request source sha: %s\n", err.Error())
-            return -1, err
-        }
+		if err != nil {
+			fmt.Printf("Error updating pull request source sha: %s\n", err.Error())
+			return -1, err
+		}
 
 		err = utils.ConfigGitSafeDir("/workspaces")
-		if err!= nil {
+		if err != nil {
 			fmt.Println("failed to configure git safe dir", err)
 			return -1, err
 		}
-		
+
 		return int(openPullRequest.ID), nil
 	}
 }

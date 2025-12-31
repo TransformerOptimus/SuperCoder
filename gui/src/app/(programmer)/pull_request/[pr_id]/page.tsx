@@ -14,6 +14,7 @@ import CustomTabs from '@/components/CustomTabs/CustomTabs';
 import FilesChanged from '@/app/(programmer)/pull_request/[pr_id]/FilesChanged';
 import { usePullRequestsContext } from '@/context/PullRequests';
 import {
+  closePullRequest,
   commentRebuildStory,
   getCommitsPullRequest,
   getPullRequestDiff,
@@ -149,6 +150,19 @@ export default function PRDetails(props) {
     }
   }
 
+  async function toClosePullRequest() {
+    try {
+      const response = await closePullRequest(Number(selectedPRId));
+      if (response) {
+        toast.success('PR has been Successfully Closed');
+        router.push(`/pull_request`);
+      }
+    } catch (error) {
+      console.error('Error while closing pull request: ', error);
+      toast.error('Error occurred while Closing the PR');
+    }
+  }
+
   async function toGetCommitsPullRequest() {
     try {
       const response = await getCommitsPullRequest(Number(selectedPRId));
@@ -236,6 +250,12 @@ export default function PRDetails(props) {
                     onClick={() => handleRebuildCommentClick()}
                   >
                     Re-Build
+                  </Button>
+                  <Button
+                    className={'secondary_medium'}
+                    onClick={() => toClosePullRequest()}
+                  >
+                    Close
                   </Button>
                   <Button
                     className={'primary_medium'}

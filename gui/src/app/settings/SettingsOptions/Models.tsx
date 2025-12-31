@@ -6,9 +6,13 @@ import toast from 'react-hot-toast';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import imagePath from '@/app/imagePath';
 import { ModelsList } from '../../../../types/settingTypes';
+import { validateOpenAIKey } from '@/app/utils';
 
 export default function Models() {
   const [modelsList, setModelsList] = useState<ModelsList[] | null>(null);
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
   const modelDetails = {
     'gpt-4o': { text: 'Open AI API Key (gpt-4o)', icon: imagePath.openAIIcon },
     'claude-3': {
@@ -17,7 +21,24 @@ export default function Models() {
     },
   };
 
+  const validateApiKeys = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    modelsList?.forEach((model) => {
+      if (model.model_name === 'gpt-4o' && !validateOpenAIKey(model.api_key)) {
+        errors[model.model_name] =
+          'Invalid OpenAI API key. Key must start with "sk-" and be at least 20 characters.';
+      }
+    });
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleButtonClick = () => {
+    if (!validateApiKeys()) {
+      return;
+    }
     toCreateOrUpdateLLMAPIKey().then().catch();
   };
 
@@ -30,6 +51,13 @@ export default function Models() {
             : model,
         ) || null,
     );
+    if (validationErrors[model_name]) {
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[model_name];
+        return newErrors;
+      });
+    }
   };
 
   useEffect(() => {
@@ -94,6 +122,8 @@ export default function Models() {
               icon={model.icon}
               iconCSS={'size-4'}
               alt={`${model.model_name}_icon`}
+              isError={!!validationErrors[model.model_name]}
+              errorMessage={validationErrors[model.model_name]}
             />
           </div>
         ))}

@@ -179,6 +179,13 @@ export function validateEmail(email: string) {
   return emailRegex.test(email);
 }
 
+export function validateOpenAIKey(apiKey: string): boolean {
+  if (!apiKey || apiKey.trim() === '') {
+    return true;
+  }
+  return apiKey.startsWith('sk-') && apiKey.length >= 20;
+}
+
 export function handleStoryInReviewIssue(data: {
   story: { reason: any };
 }): StoryInReviewIssue {

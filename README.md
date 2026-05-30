@@ -118,3 +118,54 @@ If you have questions or encounter issues, please don't hesitate to [create a ne
 
 ### ⚠️ Under Development!
 This project is under active development and may still have issues. We appreciate your understanding and patience. If you encounter any problems, please check the open issues first. If your issue is not listed, kindly create a new issue detailing the error or problem you experienced. Thank you for your support!
+
+## FAQ
+
+### What is SuperCoder?
+SuperCoder is an Open Source Autonomous Software Development System that leverages advanced AI tools and agents to streamline and automate coding, testing, and deployment tasks, enhancing efficiency and reliability.
+
+### Key Features
+| Feature | Description |
+|---------|-------------|
+| Autonomous Coding | AI-driven code generation |
+| Testing Automation | Automated test creation and execution |
+| Deployment Support | CI/CD integration |
+| Multi-Language | Flask, Django, NextJS support |
+| Docker-Based | Containerized for easy setup |
+
+### Supported Languages & Frameworks
+- Flask
+- Django
+- NextJS
+- And more...
+
+### How do I set up SuperCoder?
+Prerequisites:
+- Docker and Docker Compose installed
+
+```bash
+docker-compose up --build
+```
+
+This builds and runs the Go server, Asynq worker, and Postgres.
+
+### Requirements
+| Requirement | Description |
+|-------------|-------------|
+| Docker | Container runtime |
+| Docker Compose | Multi-container orchestration |
+
+### What's included in the system?
+- Go Server: Main application server
+- Asynq Worker: Background task processing
+- Postgres: Database for persistence
+
+### License
+Open Source - check repository for license details.
+
+### Help Resources
+- [SuperAGI Website](https://superagi.com/)
+- [GitHub Issues](https://github.com/TransformerOptimus/SuperCoder/issues)
+- [Discord Community](https://discord.gg/pmFVyCDDyH)
+- [Twitter @_superAGI](https://twitter.com/_superAGI)
+- [Reddit r/Super_AGI](https://www.reddit.com/r/Super_AGI)

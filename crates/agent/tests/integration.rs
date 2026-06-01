@@ -165,10 +165,6 @@ async fn run_agent(config: AgentConfig, message: &str) -> TestRunResult {
             eprintln!("Agent completed: {summary}");
             summary
         }
-        Ok(AgentResult::StartSession { task_summary, .. }) => {
-            eprintln!("Agent wants to start session: {task_summary}");
-            task_summary
-        }
         Ok(AgentResult::AskUser { question, .. }) => {
             eprintln!("Agent asks: {question}");
             question
@@ -421,65 +417,6 @@ async fn test_agent_uses_git_tool() {
 
 // ── Phase 3 Tests ──
 
-/// Phase 3 — Ask mode agent calls start_session when asked to make changes.
-#[tokio::test]
-#[ignore = "requires OPENAI_API_KEY"]
-async fn test_ask_mode_starts_coding_session() {
-    let _ = env_logger::try_init();
-    let tmp = tempdir().unwrap();
-    std::fs::write(tmp.path().join("main.rs"), "fn main() {}\n").unwrap();
-
-    // Initialize a git repo so start_session validation passes
-    std::process::Command::new("git")
-        .args(["init"])
-        .current_dir(tmp.path())
-        .output()
-        .unwrap();
-
-    let mut config = make_config(&api_key(), tmp.path().to_path_buf());
-    config.system_prompt = Some(sys(
-        "You are a coding assistant in ask mode. You have read-only tools (read, glob, grep) \
-         and a start_session tool. When the user asks you to modify code, you MUST call start_session \
-         with the project_path set to the working directory and a task_summary. \
-         Do NOT try to use write or edit tools — they are not available. \
-         Call start_session immediately without explanation.",
-    ));
-
-    let r = run_agent_with_mode(
-        config,
-        &format!(
-            "Please fix the main function in main.rs to print 'hello'. \
-             The project path is '{}'.",
-            tmp.path().display()
-        ),
-        ToolMode::Ask,
-    )
-    .await;
-
-    // The agent should yield a StartSession result
-    match &r.agent_result {
-        AgentResult::StartSession {
-            project_path,
-            task_summary,
-            ..
-        } => {
-            eprintln!("StartSession: project_path={project_path}, task_summary={task_summary}");
-            assert!(!project_path.is_empty(), "project_path should not be empty");
-            assert!(!task_summary.is_empty(), "task_summary should not be empty");
-        }
-        other => {
-            panic!("Expected StartSession, got {:?}", other);
-        }
-    }
-
-    // Verify start_session was called
-    let names = r.tool_names();
-    assert!(
-        names.contains(&"start_session"),
-        "Expected start_session tool, got: {names:?}"
-    );
-}
-
 /// Phase 3 — Ask mode cannot use destructive tools (write, edit, bash, git).
 #[tokio::test]
 #[ignore = "requires OPENAI_API_KEY"]
@@ -490,7 +427,7 @@ async fn test_ask_mode_tool_isolation() {
 
     let mut config = make_config(&api_key(), tmp.path().to_path_buf());
     config.system_prompt = Some(sys(
-        "You are a coding assistant in ask mode. You only have read, glob, grep, and start_session tools. \
+        "You are a coding assistant in ask mode. You only have read, glob, grep, and ask_user tools. \
          Read the file test.txt and tell the user its content. Do NOT try to modify it.",
     ));
 
@@ -501,11 +438,11 @@ async fn test_ask_mode_tool_isolation() {
     )
     .await;
 
-    // Verify only read-only tools were used (ask mode has: read, glob, grep, start_session, ask_user)
+    // Verify only read-only tools were used (ask mode has: read, glob, grep, ask_user)
     let names = r.tool_names();
     for name in &names {
         assert!(
-            ["read", "glob", "grep", "start_session", "ask_user"].contains(name),
+            ["read", "glob", "grep", "ask_user"].contains(name),
             "Ask mode used unexpected tool: {name}"
         );
     }
@@ -575,7 +512,7 @@ async fn test_coding_mode_with_persistence() {
         tokio::spawn(async move {
             let mut agent_loop =
                 AgentLoop::new(config, registry, cancel_token, event_tx, session_id);
-            agent_loop = agent_loop.with_persister(persister_clone, Some("test-thread".into()));
+            agent_loop = agent_loop.with_persister(persister_clone, "test-thread".into());
             agent_loop.run(agent::llm::types::ChatMessage::user("Read hello.txt and tell me its content.")).await
         })
     };
@@ -618,12 +555,12 @@ async fn test_coding_mode_with_persistence() {
     );
     eprintln!("Persisted {} messages", messages.len());
 
-    // All should have thread_id = "test-thread"
-    for (tid, _msg) in &messages {
+    // All should have session_id = "test-thread"
+    for (sid, _msg) in &messages {
         assert_eq!(
-            tid.as_deref(),
-            Some("test-thread"),
-            "Expected thread_id 'test-thread'"
+            sid.as_str(),
+            "test-thread",
+            "Expected session_id 'test-thread'"
         );
     }
 }
@@ -667,7 +604,7 @@ async fn test_compaction_triggers_with_small_context() {
         tokio::spawn(async move {
             let mut agent_loop =
                 AgentLoop::new(config, registry, cancel_token, event_tx, session_id);
-            agent_loop = agent_loop.with_persister(persister_clone, Some("compact-thread".into()));
+            agent_loop = agent_loop.with_persister(persister_clone, "compact-thread".into());
             agent_loop
                 .run(agent::llm::types::ChatMessage::user("Read all .txt files one by one (file0.txt through file4.txt) and summarize each one."))
                 .await
@@ -810,7 +747,7 @@ async fn test_coding_mode_todo_write() {
     assert!(r.has_done_event());
 }
 
-/// Plan mode: tool isolation — only read-only tools + ask_user + start_session + todo_write.
+/// Plan mode: tool isolation — only read-only tools + ask_user + save_plan + edit_plan.
 #[tokio::test]
 #[ignore = "requires OPENAI_API_KEY"]
 async fn test_plan_mode_tool_isolation() {
@@ -834,7 +771,7 @@ async fn test_plan_mode_tool_isolation() {
 
     // Verify only plan-mode tools were used
     let names = r.tool_names();
-    let plan_tools = ["read", "glob", "grep", "ask_user", "start_session", "todo_write"];
+    let plan_tools = ["read", "glob", "grep", "ask_user", "save_plan", "edit_plan"];
     for name in &names {
         assert!(
             plan_tools.contains(name),

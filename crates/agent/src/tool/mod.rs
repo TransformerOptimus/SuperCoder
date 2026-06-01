@@ -7,7 +7,6 @@ pub mod glob;
 pub mod grep;
 pub mod git_tool;
 pub mod pr_tool;
-pub mod start_session;
 pub mod ask_user;
 pub mod todo_write;
 pub mod apply_patch;
@@ -39,7 +38,7 @@ pub struct ToolResult {
     pub output: String,
     pub is_error: bool,
     /// Optional yield data — when set, the agent loop will yield control
-    /// (e.g., start_session sets this to signal a coding session should begin).
+    /// (e.g., save_plan / ask_user set this to signal a yield to the host).
     pub yield_data: Option<serde_json::Value>,
     /// Files modified by this tool execution (for write/edit/apply_patch tools).
     pub modified_files: Vec<String>,
@@ -102,11 +101,11 @@ pub trait Tool: Send + Sync {
 /// Mode that determines which tools are available.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum ToolMode {
-    /// Ask mode: read-only tools + start_session + ask_user.
+    /// Ask mode: read-only tools + ask_user.
     Ask,
     /// Coding mode: full tool suite for making changes.
     Coding,
-    /// Plan mode: read-only tools + ask_user + start_session + todo_write.
+    /// Plan mode: read-only tools + ask_user + save_plan + edit_plan.
     Plan,
 }
 
@@ -148,7 +147,6 @@ impl ToolRegistry {
                 registry.register(Arc::new(read::ReadTool));
                 registry.register(Arc::new(glob::GlobTool));
                 registry.register(Arc::new(grep::GrepTool));
-                registry.register(Arc::new(start_session::StartSessionTool));
                 registry.register(Arc::new(ask_user::AskUserTool));
             }
             ToolMode::Coding => {
@@ -210,12 +208,12 @@ impl ToolRegistry {
             return;
         }
         log::info!(
-            "[subagents] registering spawn_subagent: {} subagent(s) available, names={:?}, persister_factory={}, approval_factory={}, parent_thread_id={:?}",
+            "[subagents] registering spawn_subagent: {} subagent(s) available, names={:?}, persister={}, approval_factory={}, parent_session_id={:?}",
             registry.len(),
             registry.names(),
-            inherit.persister_factory.is_some(),
+            inherit.persister.is_some(),
             inherit.approval_handler_factory.is_some(),
-            inherit.parent_thread_id,
+            inherit.parent_session_id,
         );
         self.register(Arc::new(SpawnSubagentTool::new(registry, inherit)));
     }
@@ -340,7 +338,7 @@ mod tests {
             .map(|d| d.function.name.clone())
             .collect();
         names.sort();
-        assert_eq!(names, vec!["ask_user", "glob", "grep", "read", "start_session"]);
+        assert_eq!(names, vec!["ask_user", "glob", "grep", "read"]);
     }
 
     #[test]
@@ -365,12 +363,6 @@ mod tests {
             .collect();
         names.sort();
         assert_eq!(names, vec!["ask_user", "edit_plan", "glob", "grep", "read", "save_plan"]);
-    }
-
-    #[test]
-    fn test_start_session_not_in_coding() {
-        let reg = ToolRegistry::for_mode(ToolMode::Coding, None, None);
-        assert!(reg.get("start_session").is_none());
     }
 
     #[test]
@@ -429,7 +421,7 @@ mod tests {
         // Original ask tools still present
         assert!(reg.get("read").is_some());
         assert!(reg.get("grep").is_some());
-        assert!(reg.get("start_session").is_some());
+        assert!(reg.get("ask_user").is_some());
     }
 
     #[test]

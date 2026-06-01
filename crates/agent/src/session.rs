@@ -86,7 +86,7 @@ impl SessionManager {
             None,
             initial_context,
             None,
-            Some(String::new()), // persist with thread_id="" so load_ask_messages finds them
+            None, // ask mode persists under its own session_id (no override)
             initial_token_count,
             approval_handler,
             None, // no turn offset for ask mode
@@ -98,7 +98,7 @@ impl SessionManager {
 
     /// Start a coding session. Returns a receiver for events.
     /// `initial_context` carries the sliding window of ask-mode messages (with their original roles).
-    /// `persist_thread_id` overrides the persistence key (defaults to session_id if None).
+    /// `persist_session_id` overrides the persistence key (defaults to session_id if None).
     /// `is_resume`: true when resuming an existing thread (don't re-persist context),
     ///              false when creating a new thread from ask mode (persist as completion_summary).
     /// `persister_override`: see `start_ask_session`.
@@ -111,7 +111,7 @@ impl SessionManager {
         worktree_path: Option<PathBuf>,
         branch: Option<String>,
         initial_context: Option<Vec<ChatMessage>>,
-        persist_thread_id: Option<String>,
+        persist_session_id: Option<String>,
         initial_token_count: Option<usize>,
         approval_handler: Option<Arc<dyn ApprovalHandler>>,
         turn_offset: Option<u32>,
@@ -127,7 +127,7 @@ impl SessionManager {
             branch,
             initial_context,
             None,
-            persist_thread_id,
+            persist_session_id,
             initial_token_count,
             approval_handler,
             turn_offset,
@@ -148,7 +148,7 @@ impl SessionManager {
         branch: Option<String>,
         initial_context: Option<Vec<ChatMessage>>,
         provider: Option<Box<dyn LlmProvider>>,
-        persist_thread_id: Option<String>,
+        persist_session_id: Option<String>,
         initial_token_count: Option<usize>,
         approval_handler: Option<Arc<dyn ApprovalHandler>>,
         turn_offset: Option<u32>,
@@ -173,7 +173,7 @@ impl SessionManager {
             registry.register_spawn_subagent(sub_reg, inherit);
         }
         let persister = persister_override.unwrap_or_else(|| Arc::clone(&self.persister));
-        let thread_id = Some(persist_thread_id.unwrap_or_else(|| session_id.clone()));
+        let persist_session_id = persist_session_id.unwrap_or_else(|| session_id.clone());
 
         let client: Box<dyn LlmProvider> = match provider {
             Some(p) => p,
@@ -192,7 +192,7 @@ impl SessionManager {
                     event_tx,
                     sid.clone(),
                 );
-                agent_loop = agent_loop.with_persister(persister, thread_id);
+                agent_loop = agent_loop.with_persister(persister, persist_session_id);
                 if let Some(h) = approval_handler {
                     agent_loop = agent_loop.with_approval_handler(h);
                 }
@@ -341,7 +341,7 @@ impl SessionManager {
         message: ChatMessage,
         initial_context: Option<Vec<ChatMessage>>,
         provider: Box<dyn LlmProvider>,
-        persist_thread_id: Option<String>,
+        persist_session_id: Option<String>,
     ) -> Result<mpsc::Receiver<AgentEvent>, AgentError> {
         self.start_session_inner(
             session_id,
@@ -352,7 +352,7 @@ impl SessionManager {
             None,
             initial_context,
             Some(provider),
-            persist_thread_id,
+            persist_session_id,
             None,
             None,
             None, // no turn offset for test coding sessions
@@ -640,13 +640,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_persist_thread_id_routes_correctly() {
+    async fn test_persist_session_id_routes_correctly() {
         let persister = Arc::new(MockPersister::new());
         let manager = SessionManager::new(Arc::clone(&persister) as Arc<dyn MessagePersister>);
 
         let mock = MockLlm::new(vec![Ok(text_response("Done!"))]);
 
-        // Start a coding session with a custom persist_thread_id
+        // Start a coding session with a custom persist_session_id
         let mut rx = manager
             .start_coding_session_with_provider(
                 "session-uuid-123".into(),
@@ -654,7 +654,7 @@ mod tests {
                 ChatMessage::user("Fix the bug"),
                 None,
                 Box::new(mock),
-                Some("real-thread-id".into()), // This should be the persistence key
+                Some("real-session-id".into()), // This should be the persistence key
             )
             .await
             .unwrap();
@@ -665,33 +665,33 @@ mod tests {
         // Give persistence worker time to finish
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        // Messages should be stored under "real-thread-id", not "session-uuid-123"
+        // Messages should be stored under "real-session-id", not "session-uuid-123"
         let msgs = persister.messages();
-        let thread_ids: Vec<Option<&str>> = msgs.iter().map(|(tid, _)| tid.as_deref()).collect();
+        let session_ids: Vec<&str> = msgs.iter().map(|(sid, _)| sid.as_str()).collect();
 
         assert!(
-            !thread_ids.is_empty(),
+            !session_ids.is_empty(),
             "Should have persisted messages"
         );
         assert!(
-            thread_ids.iter().all(|tid| *tid == Some("real-thread-id")),
-            "All messages should be stored under 'real-thread-id', got: {:?}",
-            thread_ids
+            session_ids.iter().all(|sid| *sid == "real-session-id"),
+            "All messages should be stored under 'real-session-id', got: {:?}",
+            session_ids
         );
         assert!(
-            !thread_ids.iter().any(|tid| *tid == Some("session-uuid-123")),
+            !session_ids.iter().any(|sid| *sid == "session-uuid-123"),
             "No messages should be stored under the session UUID"
         );
     }
 
     #[tokio::test]
-    async fn test_persist_thread_id_defaults_to_session_id() {
+    async fn test_persist_session_id_defaults_to_session_id() {
         let persister = Arc::new(MockPersister::new());
         let manager = SessionManager::new(Arc::clone(&persister) as Arc<dyn MessagePersister>);
 
         let mock = MockLlm::new(vec![Ok(text_response("Done!"))]);
 
-        // Start without persist_thread_id (None) — should use session_id
+        // Start without persist_session_id (None) — should use session_id
         let mut rx = manager
             .start_coding_session_with_provider(
                 "my-session".into(),
@@ -699,7 +699,7 @@ mod tests {
                 ChatMessage::user("Hello"),
                 None,
                 Box::new(mock),
-                None, // No custom persist_thread_id
+                None, // No custom persist_session_id
             )
             .await
             .unwrap();
@@ -708,12 +708,12 @@ mod tests {
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let msgs = persister.messages();
-        let thread_ids: Vec<Option<&str>> = msgs.iter().map(|(tid, _)| tid.as_deref()).collect();
+        let session_ids: Vec<&str> = msgs.iter().map(|(sid, _)| sid.as_str()).collect();
 
         assert!(
-            thread_ids.iter().all(|tid| *tid == Some("my-session")),
+            session_ids.iter().all(|sid| *sid == "my-session"),
             "Messages should default to session_id for persistence, got: {:?}",
-            thread_ids
+            session_ids
         );
     }
 }

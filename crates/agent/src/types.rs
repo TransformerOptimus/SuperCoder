@@ -62,13 +62,6 @@ pub enum AgentEvent {
         turn_count: u32,
         modified_files: Vec<String>,
     },
-    /// The ask-mode agent wants to start a coding session.
-    SessionStart {
-        session_id: String,
-        project_path: String,
-        branch: Option<String>,
-        task_summary: String,
-    },
     /// The agent is asking the user a clarifying question (yield).
     UserQuestionAsked {
         session_id: String,
@@ -130,12 +123,6 @@ pub struct TodoItem {
 pub enum AgentResult {
     /// Agent completed normally with a final summary.
     Done { summary: String },
-    /// Agent wants to start a coding session (yield from ask mode).
-    StartSession {
-        project_path: String,
-        branch: Option<String>,
-        task_summary: String,
-    },
     /// Agent is asking the user a clarifying question (yield from ask/plan mode).
     AskUser {
         question: String,

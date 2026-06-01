@@ -15,7 +15,7 @@ use crate::context_engine::ContextEngineApi;
 use crate::error::{AgentError, ToolError};
 use crate::llm::types::{CacheControl, ChatMessage};
 use crate::llm::{LlmClient, LlmClientConfig, LlmProvider};
-use crate::persistence::PersisterFactory;
+use crate::persistence::MessagePersister;
 use crate::tool::{Tool, ToolContext, ToolMode, ToolRegistry, ToolResult};
 use crate::types::{AgentEvent, AgentResult};
 
@@ -39,9 +39,9 @@ pub struct SubagentInheritance {
     pub max_iterations: u32,
     pub context_engine: Option<Arc<dyn ContextEngineApi>>,
     pub context_engine_repo_path: Option<PathBuf>,
-    pub persister_factory: Option<Arc<dyn PersisterFactory>>,
+    pub persister: Option<Arc<dyn MessagePersister>>,
     pub approval_handler_factory: Option<Arc<dyn ApprovalHandlerFactory>>,
-    pub parent_thread_id: Option<String>,
+    pub parent_session_id: Option<String>,
     pub write_lock_registry: Arc<WriteLockRegistry>,
 }
 
@@ -169,14 +169,12 @@ impl Tool for SpawnSubagentTool {
         let definition = definition.clone();
 
         let child_session_id = Uuid::new_v4().to_string();
-        let child_thread_id = format!("{}-sub-{}", ctx.session_id, &child_session_id[..8]);
         log::info!(
-            "[subagents::spawn] resolved definition: name={} model_override={:?} allowed_tools={:?} child_session={} child_thread={}",
+            "[subagents::spawn] resolved definition: name={} model_override={:?} allowed_tools={:?} child_session={}",
             definition.name,
             definition.model,
             definition.allowed_tools,
             child_session_id,
-            child_thread_id,
         );
 
         // Build child's Coding-mode tool registry, then apply `allowed-tools` filter.
@@ -332,17 +330,16 @@ impl Tool for SpawnSubagentTool {
 
         let child_cancel = ctx.cancel_token.child_token();
 
-        let child_persister = self.inherit.persister_factory.as_ref().map(|f| {
-            let parent_tid = self.inherit.parent_thread_id.as_deref().unwrap_or("");
+        let child_persister = self.inherit.persister.as_ref().map(|p| {
             log::info!(
-                "[subagents::spawn] attaching child persister parent_thread_id={:?} child_thread_id={}",
-                parent_tid, child_thread_id,
+                "[subagents::spawn] attaching inherited persister: child_session={} parent_session={:?}",
+                child_session_id, self.inherit.parent_session_id,
             );
-            f.for_subagent(parent_tid)
+            Arc::clone(p)
         });
-        if self.inherit.persister_factory.is_none() {
+        if self.inherit.persister.is_none() {
             log::warn!(
-                "[subagents::spawn] no persister_factory inherited — child messages will NOT be persisted"
+                "[subagents::spawn] no persister inherited — child messages will NOT be persisted"
             );
         }
 
@@ -368,7 +365,10 @@ impl Tool for SpawnSubagentTool {
             child_session_id.clone(),
         );
         if let Some(p) = child_persister {
-            child_loop = child_loop.with_persister(p, Some(child_thread_id));
+            child_loop = child_loop.with_persister(p, child_session_id.clone());
+            if let Some(parent) = self.inherit.parent_session_id.clone() {
+                child_loop = child_loop.with_parent_session_id(parent);
+            }
         }
         if let Some(h) = child_approval {
             child_loop = child_loop.with_approval_handler(h);

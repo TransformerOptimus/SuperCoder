@@ -36,7 +36,7 @@ pub fn spawn_agent(
     mut config: AgentConfig,
     user_message: ChatMessage,
     persister: Option<Arc<dyn MessagePersister>>,
-    thread_id: Option<String>,
+    persist_session_id: Option<String>,
     approval_handler: Option<Arc<dyn ApprovalHandler>>,
 ) -> SpawnedAgent {
     let (event_tx, event_rx) = mpsc::channel(256);
@@ -75,9 +75,10 @@ pub fn spawn_agent(
         let cancel_token = cancel_token.clone();
         let session_id = session_id.clone();
         tokio::spawn(async move {
+            let persist_id = persist_session_id.unwrap_or_else(|| session_id.clone());
             let mut agent_loop = AgentLoop::new(config, registry, cancel_token, event_tx, session_id);
             if let Some(p) = persister {
-                agent_loop = agent_loop.with_persister(p, thread_id);
+                agent_loop = agent_loop.with_persister(p, persist_id);
             }
             if let Some(h) = approval_handler {
                 agent_loop = agent_loop.with_approval_handler(h);

@@ -73,8 +73,6 @@ pub struct AgentMessage {
     pub message_type: MessageType,
     /// Who originated this message.
     pub sender: Sender,
-    /// Whether to also post this to the main DM channel.
-    pub also_send_to_channel: bool,
     /// Which agent loop iteration (turn) produced this message.
     /// Set by the agent loop from its iteration counter.
     pub turn_count: Option<u32>,
@@ -98,34 +96,23 @@ pub enum PersistError {
 /// Trait for persisting agent messages to external storage.
 #[async_trait]
 pub trait MessagePersister: Send + Sync {
-    /// Persist a single message, optionally associated with a thread.
+    /// Persist a single message associated with a session.
     async fn persist_message(
         &self,
         message: &AgentMessage,
-        thread_id: Option<&str>,
+        session_id: &str,
     ) -> Result<PersistResult, PersistError>;
 
-    /// Load all messages for a coding session (thread).
-    async fn load_session_context(
+    /// Load all messages for a session.
+    async fn load_context(
         &self,
-        thread_id: &str,
+        session_id: &str,
     ) -> Result<Vec<AgentMessage>, PersistError>;
-
-    /// Load ask-mode context (messages not associated with any thread).
-    async fn load_ask_context(&self) -> Result<Vec<AgentMessage>, PersistError>;
-}
-
-/// Builds a child persister that stamps `parent_thread_id` on every insert.
-/// Implemented by the Tauri layer (SQLite-backed) so `spawn_subagent` stays
-/// Tauri-agnostic. A child AgentLoop receives the `Arc<dyn MessagePersister>`
-/// returned from `for_subagent` and writes to it as normal.
-pub trait PersisterFactory: Send + Sync {
-    fn for_subagent(&self, parent_thread_id: &str) -> Arc<dyn MessagePersister>;
 }
 
 /// In-memory mock persister for testing.
 pub struct MockPersister {
-    messages: Arc<Mutex<Vec<(Option<String>, AgentMessage)>>>,
+    messages: Arc<Mutex<Vec<(String, AgentMessage)>>>,
 }
 
 impl MockPersister {
@@ -135,8 +122,8 @@ impl MockPersister {
         }
     }
 
-    /// Access all stored (thread_id, message) pairs for test assertions.
-    pub fn messages(&self) -> Vec<(Option<String>, AgentMessage)> {
+    /// Access all stored (session_id, message) pairs for test assertions.
+    pub fn messages(&self) -> Vec<(String, AgentMessage)> {
         self.messages.lock().unwrap().clone()
     }
 }
@@ -152,38 +139,26 @@ impl MessagePersister for MockPersister {
     async fn persist_message(
         &self,
         message: &AgentMessage,
-        thread_id: Option<&str>,
+        session_id: &str,
     ) -> Result<PersistResult, PersistError> {
         let id = uuid::Uuid::new_v4().to_string();
         self.messages
             .lock()
             .unwrap()
-            .push((thread_id.map(String::from), message.clone()));
+            .push((session_id.to_string(), message.clone()));
         Ok(PersistResult { id })
     }
 
-    async fn load_session_context(
+    async fn load_context(
         &self,
-        thread_id: &str,
+        session_id: &str,
     ) -> Result<Vec<AgentMessage>, PersistError> {
         let msgs = self
             .messages
             .lock()
             .unwrap()
             .iter()
-            .filter(|(tid, _)| tid.as_deref() == Some(thread_id))
-            .map(|(_, msg)| msg.clone())
-            .collect();
-        Ok(msgs)
-    }
-
-    async fn load_ask_context(&self) -> Result<Vec<AgentMessage>, PersistError> {
-        let msgs = self
-            .messages
-            .lock()
-            .unwrap()
-            .iter()
-            .filter(|(tid, _)| tid.is_none())
+            .filter(|(sid, _)| sid == session_id)
             .map(|(_, msg)| msg.clone())
             .collect();
         Ok(msgs)
@@ -200,21 +175,17 @@ impl MessagePersister for NoopPersister {
     async fn persist_message(
         &self,
         _message: &AgentMessage,
-        _thread_id: Option<&str>,
+        _session_id: &str,
     ) -> Result<PersistResult, PersistError> {
         Ok(PersistResult {
             id: String::new(),
         })
     }
 
-    async fn load_session_context(
+    async fn load_context(
         &self,
-        _thread_id: &str,
+        _session_id: &str,
     ) -> Result<Vec<AgentMessage>, PersistError> {
-        Ok(Vec::new())
-    }
-
-    async fn load_ask_context(&self) -> Result<Vec<AgentMessage>, PersistError> {
         Ok(Vec::new())
     }
 }
@@ -232,7 +203,6 @@ mod tests {
             role,
             message_type: msg_type,
             sender: Sender::HumanUser,
-            also_send_to_channel: false,
             turn_count: None,
         }
     }
@@ -242,12 +212,12 @@ mod tests {
         let persister = MockPersister::new();
 
         let msg = make_message("hello", MessageRole::User, MessageType::Text);
-        let result = persister.persist_message(&msg, None).await.unwrap();
+        let result = persister.persist_message(&msg, "session-1").await.unwrap();
         assert!(!result.id.is_empty());
 
-        let ask_msgs = persister.load_ask_context().await.unwrap();
-        assert_eq!(ask_msgs.len(), 1);
-        assert_eq!(ask_msgs[0].content, "hello");
+        let msgs = persister.load_context("session-1").await.unwrap();
+        assert_eq!(msgs.len(), 1);
+        assert_eq!(msgs[0].content, "hello");
     }
 
     #[tokio::test]
@@ -258,39 +228,39 @@ mod tests {
         let msg_b = make_message("thread-b msg", MessageRole::User, MessageType::Text);
 
         persister
-            .persist_message(&msg_a, Some("thread-a"))
+            .persist_message(&msg_a, "thread-a")
             .await
             .unwrap();
         persister
-            .persist_message(&msg_b, Some("thread-b"))
+            .persist_message(&msg_b, "thread-b")
             .await
             .unwrap();
 
-        let a_msgs = persister.load_session_context("thread-a").await.unwrap();
+        let a_msgs = persister.load_context("thread-a").await.unwrap();
         assert_eq!(a_msgs.len(), 1);
         assert_eq!(a_msgs[0].content, "thread-a msg");
 
-        let b_msgs = persister.load_session_context("thread-b").await.unwrap();
+        let b_msgs = persister.load_context("thread-b").await.unwrap();
         assert_eq!(b_msgs.len(), 1);
         assert_eq!(b_msgs[0].content, "thread-b msg");
     }
 
     #[tokio::test]
-    async fn test_ask_context_excludes_thread_messages() {
+    async fn test_sessions_isolated_by_id() {
         let persister = MockPersister::new();
 
-        let ask_msg = make_message("ask msg", MessageRole::User, MessageType::Text);
-        let thread_msg = make_message("thread msg", MessageRole::User, MessageType::Text);
+        let msg_one = make_message("session-1 msg", MessageRole::User, MessageType::Text);
+        let msg_two = make_message("session-2 msg", MessageRole::User, MessageType::Text);
 
-        persister.persist_message(&ask_msg, None).await.unwrap();
+        persister.persist_message(&msg_one, "session-1").await.unwrap();
         persister
-            .persist_message(&thread_msg, Some("thread-1"))
+            .persist_message(&msg_two, "session-2")
             .await
             .unwrap();
 
-        let ask_msgs = persister.load_ask_context().await.unwrap();
-        assert_eq!(ask_msgs.len(), 1);
-        assert_eq!(ask_msgs[0].content, "ask msg");
+        let msgs = persister.load_context("session-1").await.unwrap();
+        assert_eq!(msgs.len(), 1);
+        assert_eq!(msgs[0].content, "session-1 msg");
     }
 
     #[tokio::test]
@@ -301,15 +271,15 @@ mod tests {
         let compact_msg = make_message("summary", MessageRole::System, MessageType::Compaction);
 
         persister
-            .persist_message(&text_msg, Some("thread-1"))
+            .persist_message(&text_msg, "thread-1")
             .await
             .unwrap();
         persister
-            .persist_message(&compact_msg, Some("thread-1"))
+            .persist_message(&compact_msg, "thread-1")
             .await
             .unwrap();
 
-        let msgs = persister.load_session_context("thread-1").await.unwrap();
+        let msgs = persister.load_context("thread-1").await.unwrap();
         assert_eq!(msgs.len(), 2);
 
         let compaction_msgs: Vec<_> = msgs

@@ -6,7 +6,7 @@ use super::{Tool, ToolContext, ToolResult};
 
 /// Tool that lets the agent ask the user a clarifying question.
 ///
-/// Uses the yield pattern (same as start_session): sets `yield_data` on the result,
+/// Uses the yield pattern (same as save_plan): sets `yield_data` on the result,
 /// which causes the agent loop to yield `AgentResult::AskUser`. The caller collects
 /// the user's answer and re-invokes `run()` with the answer as a new user message.
 pub struct AskUserTool;

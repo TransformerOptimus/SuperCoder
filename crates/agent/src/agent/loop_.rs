@@ -50,6 +50,10 @@ pub struct AgentLoop {
     /// Offset added to iteration counter for globally unique turn numbering
     /// across multiple AgentLoop invocations in the same thread.
     iteration_offset: u32,
+    /// When this loop is a subagent child, the parent's session id. Stamped into
+    /// every persisted message's metadata so child history stays linkable to the
+    /// parent. `None` for top-level loops.
+    parent_session_id: Option<String>,
 }
 
 impl AgentLoop {
@@ -122,6 +126,7 @@ impl AgentLoop {
             approval_handler: None,
             total_tokens_used: 0,
             iteration_offset: 0,
+            parent_session_id: None,
         }
     }
 
@@ -133,20 +138,28 @@ impl AgentLoop {
 
     /// Attach a persister — spawns a background worker that writes messages in order.
     /// Panics (in debug builds) if called more than once on the same AgentLoop.
-    pub fn with_persister(mut self, persister: Arc<dyn MessagePersister>, thread_id: Option<String>) -> Self {
+    pub fn with_persister(mut self, persister: Arc<dyn MessagePersister>, session_id: String) -> Self {
         debug_assert!(self.persist_tx.is_none(), "with_persister called twice on the same AgentLoop");
         let (tx, mut rx) = mpsc::unbounded_channel::<PersistItem>();
         // Spawn a single ordered worker that drains messages sequentially.
-        // thread_id is captured once here — it never changes for the lifetime of an AgentLoop.
+        // session_id is captured once here — it never changes for the lifetime of an AgentLoop.
         let handle = tokio::spawn(async move {
             while let Some(item) = rx.recv().await {
-                if let Err(e) = persister.persist_message(&item.message, thread_id.as_deref()).await {
+                if let Err(e) = persister.persist_message(&item.message, &session_id).await {
                     log::error!("Persist failed: {e}");
                 }
             }
         });
         self.persist_tx = Some(tx);
         self.persist_worker = Some(handle);
+        self
+    }
+
+    /// Mark this loop as a subagent child of `parent_session_id`. The id is
+    /// stamped into every persisted message's metadata so child history stays
+    /// linkable to the parent session.
+    pub fn with_parent_session_id(mut self, parent_session_id: String) -> Self {
+        self.parent_session_id = Some(parent_session_id);
         self
     }
 
@@ -542,12 +555,12 @@ impl AgentLoop {
                 }).await;
             }
 
-            // Check for yield_data (e.g., start_session, ask_user) — after results are persisted.
+            // Check for yield_data (e.g., save_plan, ask_user) — after results are persisted.
             // Note: TurnCompleted is intentionally NOT emitted on yield. Ask/Plan modes
             // (the only modes with yielding tools) have no file-modifying tools,
             // so turn_modified_files is always empty here.
             if let Some(ref data) = yield_data {
-                let yield_type = data["yield_type"].as_str().unwrap_or("start_session");
+                let yield_type = data["yield_type"].as_str().unwrap_or_default();
 
                 match yield_type {
                     "save_plan" => {
@@ -591,30 +604,9 @@ impl AgentLoop {
 
                         return Ok(AgentResult::AskUser { question, options });
                     }
-                    _ => {
-                        // start_session (existing behavior)
-                        let project_path = data["project_path"]
-                            .as_str()
-                            .unwrap_or_default()
-                            .to_string();
-                        let branch = data["branch"].as_str().map(String::from);
-                        let task_summary = data["task_summary"]
-                            .as_str()
-                            .unwrap_or_default()
-                            .to_string();
-
-                        let _ = self.event_tx.send(AgentEvent::SessionStart {
-                            session_id: self.session_id.clone(),
-                            project_path: project_path.clone(),
-                            branch: branch.clone(),
-                            task_summary: task_summary.clone(),
-                        }).await;
-
-                        return Ok(AgentResult::StartSession {
-                            project_path,
-                            branch,
-                            task_summary,
-                        });
+                    other => {
+                        // Unknown yield type — log and ignore rather than acting on it.
+                        log::warn!("[agent] ignoring unknown yield_type: {other:?}");
                     }
                 }
             }
@@ -653,8 +645,16 @@ impl AgentLoop {
     }
 
     /// Send a message to the ordered persistence worker. Non-blocking.
-    fn persist_fire_and_forget(&self, msg: AgentMessage) {
+    fn persist_fire_and_forget(&self, mut msg: AgentMessage) {
         if let Some(ref tx) = self.persist_tx {
+            // For subagent children, record the parent session id in metadata so
+            // child history stays linkable to the parent (replaces the old
+            // composite child-session naming scheme).
+            if let Some(ref parent) = self.parent_session_id {
+                if let Some(obj) = msg.metadata.as_object_mut() {
+                    obj.insert("parent_session_id".to_string(), serde_json::json!(parent));
+                }
+            }
             let _ = tx.send(PersistItem { message: msg });
         }
     }
@@ -681,7 +681,6 @@ impl AgentLoop {
             },
             message_type,
             sender,
-            also_send_to_channel: false,
             turn_count,
         }
     }
@@ -1274,10 +1273,6 @@ fn build_args_summary(tool_name: &str, args: &serde_json::Value, working_dir: &s
         "create_pr" => {
             let title = args.get("title").and_then(|v| v.as_str()).unwrap_or("?");
             format!("Creating PR: {title}")
-        }
-        "start_session" => {
-            let summary = args.get("task_summary").and_then(|v| v.as_str()).unwrap_or("?");
-            format!("Starting session: {summary}")
         }
         "save_plan" => {
             let filename = args.get("filename").and_then(|v| v.as_str()).unwrap_or("plan.md");
@@ -2241,103 +2236,6 @@ mod tests {
     }
 
     // ════════════════════════════════════════════
-    // start_session yield
-    // ════════════════════════════════════════════
-
-    /// Helper: create a temp dir with `git init` for start_session tests
-    fn make_git_repo_for_session() -> (tempfile::TempDir, String) {
-        let dir = tempfile::tempdir().unwrap();
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(dir.path())
-            .output()
-            .unwrap();
-        let path = dir.path().to_string_lossy().to_string();
-        (dir, path)
-    }
-
-    #[tokio::test]
-    async fn test_start_session_returns_start_session_result() {
-        use crate::tool::start_session::StartSessionTool;
-
-        let (_dir, dir_str) = make_git_repo_for_session();
-        let mut reg = ToolRegistry::new();
-        reg.register(Arc::new(StartSessionTool));
-
-        let args = format!(r#"{{"project_path":"{}","task_summary":"Fix the login bug"}}"#, dir_str);
-        let mock = MockLlm::new(vec![Ok(tool_call_response(
-            "call_1",
-            "start_session",
-            &args,
-        ))]);
-        let (mut agent, _rx) = make_agent(mock, reg, None);
-
-        let result = agent.run(ChatMessage::user("Fix the login bug")).await.unwrap();
-        match result {
-            AgentResult::StartSession {
-                project_path,
-                branch,
-                task_summary,
-            } => {
-                assert_eq!(project_path, dir_str);
-                assert!(branch.is_none());
-                assert_eq!(task_summary, "Fix the login bug");
-            }
-            other => panic!("Expected StartSession, got {:?}", other),
-        }
-    }
-
-    #[tokio::test]
-    async fn test_start_session_with_branch() {
-        use crate::tool::start_session::StartSessionTool;
-
-        let (_dir, dir_str) = make_git_repo_for_session();
-        let mut reg = ToolRegistry::new();
-        reg.register(Arc::new(StartSessionTool));
-
-        let args = format!(r#"{{"project_path":"{}","branch":"fix/login","task_summary":"Fix login"}}"#, dir_str);
-        let mock = MockLlm::new(vec![Ok(tool_call_response(
-            "call_1",
-            "start_session",
-            &args,
-        ))]);
-        let (mut agent, _rx) = make_agent(mock, reg, None);
-
-        let result = agent.run(ChatMessage::user("Fix login")).await.unwrap();
-        match result {
-            AgentResult::StartSession { branch, .. } => {
-                assert_eq!(branch.as_deref(), Some("fix/login"));
-            }
-            other => panic!("Expected StartSession, got {:?}", other),
-        }
-    }
-
-    #[tokio::test]
-    async fn test_start_session_without_branch() {
-        use crate::tool::start_session::StartSessionTool;
-
-        let (_dir, dir_str) = make_git_repo_for_session();
-        let mut reg = ToolRegistry::new();
-        reg.register(Arc::new(StartSessionTool));
-
-        let args = format!(r#"{{"project_path":"{}","task_summary":"Refactor auth"}}"#, dir_str);
-        let mock = MockLlm::new(vec![Ok(tool_call_response(
-            "call_1",
-            "start_session",
-            &args,
-        ))]);
-        let (mut agent, _rx) = make_agent(mock, reg, None);
-
-        let result = agent.run(ChatMessage::user("Refactor auth")).await.unwrap();
-        match result {
-            AgentResult::StartSession { branch, .. } => {
-                assert!(branch.is_none());
-            }
-            other => panic!("Expected StartSession, got {:?}", other),
-        }
-    }
-
-    // ════════════════════════════════════════════
     // Persister integration
     // ════════════════════════════════════════════
 
@@ -2379,7 +2277,7 @@ mod tests {
             tx,
             "test-persist".into(),
         )
-        .with_persister(Arc::clone(&persister) as Arc<dyn crate::persistence::MessagePersister>, Some("thread-1".into()));
+        .with_persister(Arc::clone(&persister) as Arc<dyn crate::persistence::MessagePersister>, "session-1".into());
 
         let _result = agent.run(ChatMessage::user("ping")).await.unwrap();
         drop(rx);
@@ -2391,9 +2289,9 @@ mod tests {
         // Should have: user message, assistant (tool_call), tool result, assistant (done)
         assert!(msgs.len() >= 3, "Expected at least 3 persisted messages, got {}", msgs.len());
 
-        // All should be in thread-1
-        for (tid, _) in &msgs {
-            assert_eq!(tid.as_deref(), Some("thread-1"));
+        // All should be in session-1
+        for (sid, _) in &msgs {
+            assert_eq!(sid, "session-1");
         }
     }
 
@@ -2405,13 +2303,10 @@ mod tests {
 
         #[async_trait::async_trait]
         impl MessagePersister for FailingPersister {
-            async fn persist_message(&self, _msg: &AgentMessage, _thread_id: Option<&str>) -> Result<PersistResult, PersistError> {
+            async fn persist_message(&self, _msg: &AgentMessage, _session_id: &str) -> Result<PersistResult, PersistError> {
                 Err(PersistError::Storage("simulated failure".into()))
             }
-            async fn load_session_context(&self, _thread_id: &str) -> Result<Vec<AgentMessage>, PersistError> {
-                Ok(vec![])
-            }
-            async fn load_ask_context(&self) -> Result<Vec<AgentMessage>, PersistError> {
+            async fn load_context(&self, _session_id: &str) -> Result<Vec<AgentMessage>, PersistError> {
                 Ok(vec![])
             }
         }
@@ -2439,7 +2334,7 @@ mod tests {
             tx,
             "test-fail".into(),
         )
-        .with_persister(Arc::new(FailingPersister), None);
+        .with_persister(Arc::new(FailingPersister), "test-fail".into());
 
         // Should complete successfully despite persistence failures
         let result = agent.run(ChatMessage::user("Hi")).await.unwrap().unwrap_done();
@@ -2529,7 +2424,7 @@ mod tests {
             "test-compact".into(),
         )
         .with_initial_context(initial_context)
-        .with_persister(Arc::clone(&persister) as Arc<dyn crate::persistence::MessagePersister>, Some("thread-compact".into()));
+        .with_persister(Arc::clone(&persister) as Arc<dyn crate::persistence::MessagePersister>, "thread-compact".into());
 
         let result = agent.run(ChatMessage::user("test compaction")).await.unwrap().unwrap_done();
         assert_eq!(result, "Done with compaction.");
@@ -2687,7 +2582,7 @@ mod tests {
             tx,
             "test-ctx".into(),
         )
-        .with_persister(Arc::clone(&persister) as Arc<dyn MessagePersister>, Some("thread-ctx".into()))
+        .with_persister(Arc::clone(&persister) as Arc<dyn MessagePersister>, "thread-ctx".into())
         .with_initial_context(vec![
             ChatMessage::user("What does main.rs do?"),
             ChatMessage::assistant(Some("It starts the server.".into()), None, None),
@@ -2772,7 +2667,7 @@ mod tests {
             tx,
             "test-order".into(),
         )
-        .with_persister(Arc::clone(&persister) as Arc<dyn MessagePersister>, Some("thread-order".into()));
+        .with_persister(Arc::clone(&persister) as Arc<dyn MessagePersister>, "thread-order".into());
 
         let result = agent.run(ChatMessage::user("test ordering")).await.unwrap().unwrap_done();
         assert_eq!(result, "Done.");
@@ -2795,29 +2690,26 @@ mod tests {
     }
 
     // ════════════════════════════════════════════
-    // Yield ordering: tool results are persisted before StartSession return
+    // Yield ordering: tool results are persisted before the yield return
     // ════════════════════════════════════════════
 
     #[tokio::test]
     async fn test_yield_persists_tool_results_before_returning() {
         use crate::persistence::MockPersister;
-        use crate::tool::start_session::StartSessionTool;
+        use crate::tool::save_plan::SavePlanTool;
 
         let persister = Arc::new(MockPersister::new());
 
-        // Create a real git repo for start_session validation
-        let git_dir = tempfile::tempdir().unwrap();
-        std::process::Command::new("git").args(["init"]).current_dir(git_dir.path()).output().unwrap();
-        let git_path = git_dir.path().to_string_lossy().to_string();
+        let work_dir = tempfile::tempdir().unwrap();
 
-        // LLM calls start_session
-        let args = format!(r#"{{"project_path":"{}","task_summary":"fix bug"}}"#, git_path);
+        // LLM calls save_plan, which yields PlanReady.
+        let args = r#"{"plan":"Goal: fix bug","filename":"plan.md"}"#;
         let mock = MockLlm::new(vec![
-            Ok(tool_call_response("call_ss", "start_session", &args)),
+            Ok(tool_call_response("call_sp", "save_plan", args)),
         ]);
 
         let mut registry = ToolRegistry::new();
-        registry.register(Arc::new(StartSessionTool));
+        registry.register(Arc::new(SavePlanTool));
 
         let (tx, rx) = mpsc::channel(256);
         let config = AgentConfig::new(
@@ -2830,7 +2722,7 @@ mod tests {
                 thinking: None,
                 disable_cache_control: false,
             },
-            git_dir.path().to_path_buf(),
+            work_dir.path().to_path_buf(),
         );
 
         let mut agent = AgentLoop::with_provider(
@@ -2841,17 +2733,17 @@ mod tests {
             tx,
             "test-yield".into(),
         )
-        .with_persister(Arc::clone(&persister) as Arc<dyn MessagePersister>, Some("thread-yield".into()));
+        .with_persister(Arc::clone(&persister) as Arc<dyn MessagePersister>, "session-yield".into());
 
-        let result = agent.run(ChatMessage::user("fix the bug")).await.unwrap();
+        let result = agent.run(ChatMessage::user("plan the fix")).await.unwrap();
         drop(rx);
 
-        // Should be StartSession
+        // Should be PlanReady
         match &result {
-            AgentResult::StartSession { task_summary, .. } => {
-                assert!(task_summary.contains("fix bug"), "Got: {task_summary}");
+            AgentResult::PlanReady { plan, .. } => {
+                assert!(plan.contains("fix bug"), "Got: {plan}");
             }
-            other => panic!("Expected StartSession, got {:?}", other),
+            other => panic!("Expected PlanReady, got {:?}", other),
         }
 
         // Let persistence drain
@@ -2867,7 +2759,7 @@ mod tests {
 
         // The tool result should be persisted (this was the original bug — it was skipped before)
         let has_tool_result = persisted.iter().any(|(_, m)| m.message_type == crate::persistence::MessageType::ToolResult);
-        assert!(has_tool_result, "Tool result for start_session should be persisted");
+        assert!(has_tool_result, "Tool result for the yielding tool should be persisted");
     }
 
     // ════════════════════════════════════════════

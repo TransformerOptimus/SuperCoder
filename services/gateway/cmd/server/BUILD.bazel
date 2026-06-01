@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "server_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/gateway/cmd/server",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//services/gateway/config",
+        "//services/gateway/controllers",
+        "//services/gateway/services",
+        "//services/gateway/services/impl",
+        "@com_github_gin_gonic_gin//:gin",
+        "@com_github_knadh_koanf_providers_env//:env",
+        "@com_github_knadh_koanf_v2//:koanf",
+        "@org_uber_go_zap//:zap",
+    ],
+)
+
+go_binary(
+    name = "server",
+    embed = [":server_lib"],
+    visibility = ["//visibility:public"],
+)

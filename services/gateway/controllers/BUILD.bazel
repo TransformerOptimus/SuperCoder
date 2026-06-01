@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "controllers",
+    srcs = [
+        "completions_controller.go",
+        "health_controller.go",
+        "models_controller.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/gateway/controllers",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//services/gateway/config",
+        "//services/gateway/models/dto",
+        "//services/gateway/services",
+        "@com_github_gin_gonic_gin//:gin",
+        "@dev_resty_v3//:resty",
+        "@org_uber_go_zap//:zap",
+    ],
+)
+
+go_test(
+    name = "controllers_test",
+    srcs = [
+        "completions_controller_test.go",
+        "models_controller_test.go",
+    ],
+    embed = [":controllers"],
+    deps = [
+        "//services/gateway/config",
+        "//services/gateway/models/dto",
+        "//services/gateway/services",
+        "//services/gateway/services/impl",
+        "@com_github_gin_gonic_gin//:gin",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@org_uber_go_zap//:zap",
+    ],
+)

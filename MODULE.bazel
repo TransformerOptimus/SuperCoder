@@ -1,0 +1,18 @@
+"""SuperCoder — Bazel module (Go side). Rust crates build with native cargo."""
+
+module(
+    name = "supercoder",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "rules_go", version = "0.59.0", repo_name = "io_bazel_rules_go")
+bazel_dep(name = "gazelle", version = "0.47.0", repo_name = "bazel_gazelle")
+
+go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(version = "1.25.6")
+
+go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_mod = "//:go.mod")
+use_repo(go_deps, "com_github_gin_gonic_gin", "com_github_knadh_koanf_providers_env", "com_github_knadh_koanf_v2", "com_github_stretchr_testify", "dev_resty_v3", "org_uber_go_zap")
+
+# use_repo(go_deps, ...) entries are managed by `bazel mod tidy`.

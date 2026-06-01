@@ -1,0 +1,9 @@
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix github.com/TransformerOptimus/SuperCoder
+# resty.dev/v3's library target is //:resty, not the version-suffix default //:v3
+# gazelle:resolve go resty.dev/v3 @dev_resty_v3//:resty
+# gazelle:exclude v1
+# gazelle:exclude crates
+# gazelle:exclude apps
+gazelle(name = "gazelle")

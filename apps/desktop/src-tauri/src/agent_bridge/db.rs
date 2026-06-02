@@ -164,7 +164,7 @@ impl AgentDb {
         let now = now_iso();
         conn.execute(
             "INSERT INTO sessions (id, folder, mode, title, parent_session_id, created_at, updated_at, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'active')",
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'idle')",
             rusqlite::params![id, folder, mode, title, parent_session_id, now, now],
         )?;
         Ok(())
@@ -217,6 +217,16 @@ impl AgentDb {
         conn.execute(
             "UPDATE sessions SET title = ?, updated_at = ? WHERE id = ?",
             rusqlite::params![title, now_iso(), id],
+        )?;
+        Ok(())
+    }
+
+    /// Set a session's current mode ("ask" | "plan" | "coding") and bump `updated_at`.
+    pub fn set_session_mode(&self, id: &str, mode: &str) -> Result<(), AgentDbError> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "UPDATE sessions SET mode = ?, updated_at = ? WHERE id = ?",
+            rusqlite::params![mode, now_iso(), id],
         )?;
         Ok(())
     }

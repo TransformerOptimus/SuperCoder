@@ -1,0 +1,272 @@
+// ============================================================
+// Agent TypeScript interfaces
+// ============================================================
+
+// --- Agent (same shape as WorkspaceUser from Rails get_users?filter=agents) ---
+
+export interface Agent {
+  id: number;
+  agent_id?: string;
+  name: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  avatar_url?: string;
+  description?: string;
+  agent_type?: string;
+}
+
+// ============================================================
+// Agent Chat — Diffs, Artifacts, Messages, Threads
+// ============================================================
+
+// --- Diff primitives ---
+
+export type FileDiffStatus = 'added' | 'modified' | 'deleted' | 'renamed';
+
+export interface DiffLine {
+  type: 'add' | 'delete' | 'context';
+  content: string;
+  old_line_number?: number;
+  new_line_number?: number;
+}
+
+export interface DiffHunk {
+  old_start: number;
+  old_lines: number;
+  new_start: number;
+  new_lines: number;
+  header: string;
+  lines: DiffLine[];
+}
+
+export interface FileDiff {
+  file_path: string;
+  old_path?: string;
+  status: FileDiffStatus;
+  additions: number;
+  deletions: number;
+  hunks: DiffHunk[];
+}
+
+// --- Generic Artifact System ---
+
+export type ArtifactType = 'code_changes' | 'terminal' | 'file' | 'text';
+
+export interface BaseArtifact {
+  id: string;
+  type: ArtifactType;
+  name: string;
+  created_at: string;
+}
+
+export interface CodeChangesArtifact extends BaseArtifact {
+  type: 'code_changes';
+  files: FileDiff[];
+  total_additions: number;
+  total_deletions: number;
+  files_changed?: number;
+  /** Turn number this diff belongs to (undefined = cumulative/legacy). */
+  turnCount?: number;
+}
+
+export interface TerminalArtifact extends BaseArtifact {
+  type: 'terminal';
+  command: string;
+  output: string;
+  exit_code: number;
+}
+
+export interface FileArtifact extends BaseArtifact {
+  type: 'file';
+  url: string;
+  file_name: string;
+  media_type: string;
+  size?: number;
+}
+
+export interface TextArtifact extends BaseArtifact {
+  type: 'text';
+  content: string;
+  format?: 'plain' | 'markdown' | 'html';
+}
+
+export type Artifact = CodeChangesArtifact | TerminalArtifact | FileArtifact | TextArtifact;
+
+// --- Agent Messages ---
+
+export type AgentMessageRole = 'user' | 'agent';
+
+export interface AgentMessage {
+  id: string;
+  thread_id: string;
+  agent_id: string;
+  role: AgentMessageRole;
+  text: string;
+  artifacts: Artifact[];
+  created_at: string;
+  thinking?: {
+    toolCalls: { toolCallId: string; toolName: string; argsSummary: string; status: string; summary?: string }[];
+    durationSeconds: number;
+  };
+}
+
+// --- Agent Thread ---
+
+export interface AgentThread {
+  id: string;
+  agent_id: string;
+  task_summary: string;
+  folder_path: string;
+  branch: string;
+  worktree_path?: string;
+  status: 'active' | 'completed' | 'error';
+  is_coding_session: boolean;
+  total_additions: number;
+  total_deletions: number;
+  /** Number of files changed in the working tree (from the git diff). */
+  files_changed?: number;
+  checkpoints: CheckpointSummary[];
+  selectedDiffTurn: number | null;
+  messages: AgentMessage[];
+  /** Full plan text when this coding session was started from a plan. */
+  sourcePlanText?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CheckpointSummary {
+  turn_count: number;
+  checkpoint_ref: string;
+  commit_sha: string;
+  files: string[];
+  additions: number;
+  deletions: number;
+  status: string;
+  created_at: string;
+}
+
+// --- UI State ---
+
+export type AgentViewMode = 'chat' | 'thread' | 'diff_review';
+
+export interface ArtifactFileDecision {
+  filePath: string;
+  decision: 'pending' | 'accepted' | 'rejected';
+}
+
+// --- Agent Display Message (from SQLite via Tauri) ---
+
+export interface AgentToolChip {
+  name: string;
+  summary: string;
+}
+
+export interface AgentDisplayMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  created_at: string;
+  session_id: string;
+  /** Tool calls reconstructed from the SQLite table for the "Thought for…" chips. */
+  tools: AgentToolChip[];
+  /** Seconds spent on tool calls before this message (for "Thought for Ns"). */
+  duration_seconds: number;
+}
+
+// --- Session (from the `sessions` table via Tauri) ---
+
+export type SessionMode = 'ask' | 'plan' | 'coding';
+
+export interface SessionRow {
+  id: string;
+  folder: string;
+  mode: string;
+  title: string | null;
+  parent_session_id: string | null;
+  created_at: string;
+  updated_at: string;
+  status: string;
+}
+
+// --- Thread Summary (from SQLite via Tauri) ---
+
+export interface ThreadSummary {
+  thread_id: string;
+  is_coding_session: boolean;
+  task_summary: string;
+  project_path: string;
+  branch: string;
+  created_at: string;
+  message_count: number;
+}
+
+export interface AgentToolCallState {
+  toolCallId: string;
+  toolName: string;
+  argsSummary: string;
+  status: 'running' | 'success' | 'error';
+  summary?: string;
+}
+
+export type AgentSessionStatus = 'idle' | 'streaming' | 'tool_running' | 'done' | 'error';
+
+export interface LlmConfig {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+}
+
+export interface ModelProfile {
+  id: string;
+  display_name: string;
+  provider: string;
+  context_window: number;
+}
+
+// --- Agent List API ---
+
+export interface ListAgentsParams {
+  page?: number;
+  size?: number;
+  status?: string;
+  query?: string;
+}
+
+export interface AgentListResponse {
+  success: boolean;
+  agents: Agent[];
+  page: number;
+  size: number;
+  total: number;
+  hasMore: boolean;
+}
+
+// --- Agent Chat API Payloads/Responses ---
+
+export interface SendAgentMessagePayload {
+  agent_id: string;
+  text: string;
+  folder_path: string;
+  branch: string;
+  thread_id?: string;
+}
+
+export interface SendAgentMessageResponse {
+  success: boolean;
+  thread: AgentThread;
+}
+
+export interface AgentThreadResponse {
+  success: boolean;
+  thread: AgentThread;
+}
+
+export interface AgentThreadListResponse {
+  success: boolean;
+  threads: AgentThread[];
+  page: number;
+  size: number;
+  total: number;
+  hasMore: boolean;
+}

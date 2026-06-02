@@ -1,0 +1,45 @@
+.thinking_text {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 17px;
+  background: linear-gradient(
+    90deg,
+    var(--text-secondary, #6b7280) 0%,
+    var(--text-secondary, #6b7280) 35%,
+    var(--text-primary, #111827) 50%,
+    var(--text-secondary, #6b7280) 65%,
+    var(--text-secondary, #6b7280) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: thinking_shimmer 2s linear infinite;
+}
+
+.thinking_text::after {
+  content: ".";
+  -webkit-text-fill-color: var(--text-secondary, #6b7280);
+  animation: thinking_dots 1.5s steps(1) infinite;
+}
+
+@keyframes thinking_shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes thinking_dots {
+  0% {
+    content: ".";
+  }
+  33% {
+    content: "..";
+  }
+  66% {
+    content: "...";
+  }
+}

@@ -1,0 +1,23 @@
+.item_button {
+  width: calc(100% - 16px);
+}
+
+.agent_tag {
+  display: flex;
+  padding: 2px 4px;
+  align-items: center;
+  gap: 6px;
+  border-radius: 24px;
+  border: 1px solid #B343CB;
+  background: linear-gradient(99deg, rgba(179, 67, 203, 0.16) 0%, rgba(112, 149, 235, 0.16) 100%), #FFF;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: normal;
+}
+
+.agent_tag_text {
+  background: linear-gradient(97deg, #B343CB -3.09%, #7095EB 99.3%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

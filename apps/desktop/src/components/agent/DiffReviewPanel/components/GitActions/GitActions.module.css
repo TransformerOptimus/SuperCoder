@@ -1,0 +1,209 @@
+/* ── Dropdown button ── */
+.dropdown_trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dropdown_icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Menu ── */
+.menu_header {
+  padding: 8px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.menu_item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.menu_item:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+.menu_item_disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.menu_item_icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* ── Modal common ── */
+.modal_header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.modal_icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal_icon img {
+  width: 20px;
+  height: 20px;
+}
+
+.modal_title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.info_row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.info_label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.info_value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.info_value img {
+  width: 14px;
+  height: 14px;
+}
+
+.stat_add {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.stat_del {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* ── Commit modal ── */
+.field {
+  margin-top: 16px;
+}
+
+.field_label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.next_steps {
+  margin-top: 20px;
+}
+
+.next_step_option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color-8);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.next_step_option:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.03));
+}
+
+.next_step_option_selected {
+  border-color: var(--primary-button-bg-color);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.03));
+}
+
+.next_step_icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.next_step_label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.next_step_check {
+  width: 16px;
+  height: 16px;
+  color: var(--primary-button-bg-color);
+}
+
+/* ── Success modal ── */
+.success_icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+}
+
+.success_footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* ── Arrow between branches ── */
+.branch_arrow {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 4px;
+}
+
+/* ── Shared utilities ── */
+.radio_group_full {
+  width: 100%;
+}
+
+.footer_actions {
+  margin-top: 20px;
+}
+
+.flex_1 {
+  flex: 1;
+}

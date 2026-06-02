@@ -86,6 +86,11 @@ pub struct AttachmentPayload {
 }
 
 async fn fetch_image_as_base64(url: &str, media_type: &str) -> String {
+    // Local attachments (pasted/picked images) arrive as data: URLs already
+    // base64-encoded by the frontend — pass them through untouched.
+    if url.starts_with("data:") {
+        return url.to_string();
+    }
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()
@@ -133,12 +138,23 @@ pub struct LlmSettings {
     pub model: String,
 }
 
+/// The LLM gateway base URL. Configurable via `SUPERCODER_GATEWAY_URL`; defaults
+/// to the local gateway. This is the default endpoint the app talks to when the
+/// user hasn't set a custom base URL in Settings.
+pub fn gateway_url() -> String {
+    std::env::var("SUPERCODER_GATEWAY_URL")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "http://localhost:8080/api/v1".to_string())
+}
+
 fn read_llm_settings(app_state: &AppState) -> Result<LlmSettings, String> {
     let base_url = std::env::var("LLM_BASE_URL")
         .ok()
         .or_else(|| app_state.db.get_setting("llm_base_url").ok().flatten())
         .or_else(|| option_env!("LLM_BASE_URL").map(String::from))
-        .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(gateway_url);
 
     let api_key = std::env::var("LLM_API_KEY")
         .ok()
@@ -154,10 +170,24 @@ fn read_llm_settings(app_state: &AppState) -> Result<LlmSettings, String> {
     Ok(LlmSettings { base_url, api_key, model })
 }
 
+/// The host:port authority of a URL (everything between `://` and the first `/`).
+fn authority(url: &str) -> Option<&str> {
+    let after = url.split("://").nth(1)?;
+    Some(after.split('/').next().unwrap_or(after))
+}
+
 /// A URL is treated as a gateway (OpenAI→Anthropic translation + tenancy
-/// headers) when it points at the recommended gateway host.
+/// headers) when its host:port matches the configured gateway, or it points at
+/// a known SuperAGI gateway host.
 fn is_gateway_url(url: &str) -> bool {
-    url.contains("superagi.com")
+    if url.contains("superagi.com") {
+        return true;
+    }
+    let gw = gateway_url();
+    match (authority(url), authority(&gw)) {
+        (Some(a), Some(b)) => a == b,
+        _ => false,
+    }
 }
 
 /// Local machine/user id headers for gateway tenancy (no accounts in v1).
@@ -361,12 +391,76 @@ pub struct LlmConfigResponse {
 }
 
 #[derive(Debug, Serialize)]
+pub struct ToolChip {
+    pub name: String,
+    pub summary: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct AgentDisplayMessage {
     pub id: String,
     pub role: String,
     pub text: String,
     pub created_at: String,
     pub session_id: String,
+    /// Tool calls that ran in the lead-up to this assistant message (for the
+    /// "Thought for…" collapsible). Reconstructed from persisted tool_call rows.
+    pub tools: Vec<ToolChip>,
+    /// Wall-clock seconds spent on tool calls before this assistant message.
+    pub duration_seconds: u32,
+}
+
+/// Pull a short, human-friendly summary out of a tool call's JSON arguments.
+/// Tool names + arg keys mirror the crate's tools (camelCase keys).
+fn tool_arg_summary(name: &str, args: &serde_json::Value) -> String {
+    let get = |k: &str| args.get(k).and_then(|v| v.as_str()).unwrap_or("");
+    let base = |p: &str| p.rsplit('/').next().unwrap_or(p).to_string();
+    match name {
+        "read" | "write" | "edit" | "apply_patch" => base(get("filePath")),
+        "ls" => base(get("path")),
+        "bash" | "git" => get("command").to_string(),
+        "grep" | "glob" => get("pattern").to_string(),
+        "codebase_search" | "codebase_graph" => get("query").to_string(),
+        "save_plan" | "edit_plan" => base(get("path")),
+        "todo_write" => "Updated todos".to_string(),
+        "spawn_subagent" => get("name").to_string(),
+        _ => String::new(),
+    }
+}
+
+/// Seconds between two RFC3339 timestamps (0 if unparseable / negative).
+fn elapsed_secs(from: &str, to: &str) -> u32 {
+    match (
+        chrono::DateTime::parse_from_rfc3339(from),
+        chrono::DateTime::parse_from_rfc3339(to),
+    ) {
+        (Ok(a), Ok(b)) => (b - a).num_seconds().max(0) as u32,
+        _ => 0,
+    }
+}
+
+/// Parse the tool_call name(s) + arg summaries from a persisted tool_call row.
+fn parse_tool_chips(llm_message: &str) -> Vec<ToolChip> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(llm_message) else {
+        return Vec::new();
+    };
+    let Some(calls) = v.get("tool_calls").and_then(|c| c.as_array()) else {
+        return Vec::new();
+    };
+    calls
+        .iter()
+        .filter_map(|c| {
+            let func = c.get("function")?;
+            let name = func.get("name").and_then(|n| n.as_str())?.to_string();
+            let args = func
+                .get("arguments")
+                .and_then(|a| a.as_str())
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+                .unwrap_or(serde_json::Value::Null);
+            let summary = tool_arg_summary(&name, &args);
+            Some(ToolChip { name, summary })
+        })
+        .collect()
 }
 
 #[derive(Debug, Serialize)]
@@ -408,14 +502,15 @@ fn parse_mode(mode: &str) -> ToolMode {
 #[tauri::command]
 pub async fn agent_create_session(
     folder: String,
-    mode: String,
     title: Option<String>,
+    mode: Option<String>,
     agent_state: State<'_, AgentState>,
 ) -> Result<SessionRow, String> {
     let id = uuid::Uuid::new_v4().to_string();
     let db = Arc::clone(&agent_state.db);
     let folder_c = folder.clone();
-    let mode_c = mode.clone();
+    // Mode is just the session's initial mode; it can be switched per message.
+    let mode_c = mode.unwrap_or_else(|| "coding".to_string());
     let title_c = title.clone();
     tokio::task::spawn_blocking(move || {
         db.create_session(&id, &folder_c, &mode_c, title_c.as_deref(), None)?;
@@ -425,6 +520,20 @@ pub async fn agent_create_session(
     .map_err(|e| format!("join error: {e}"))?
     .map_err(|e| format!("Failed to create session: {e}"))?
     .ok_or_else(|| "Session not found after create".to_string())
+}
+
+/// Rename a session (sidebar title).
+#[tauri::command]
+pub async fn agent_rename_session(
+    session_id: String,
+    title: String,
+    agent_state: State<'_, AgentState>,
+) -> Result<(), String> {
+    let db = Arc::clone(&agent_state.db);
+    tokio::task::spawn_blocking(move || db.set_session_title(&session_id, &title))
+        .await
+        .map_err(|e| format!("join error: {e}"))?
+        .map_err(|e| format!("Failed to rename session: {e}"))
 }
 
 /// List all sessions for the sidebar, most recent first.
@@ -439,17 +548,19 @@ pub async fn agent_list_sessions(
         .map_err(|e| format!("Failed to list sessions: {e}"))
 }
 
-/// Send a message into a session, starting an agent loop in the session's mode.
+/// Send a message into a session. `mode` ("ask" | "plan" | "coding") can be
+/// switched on any message; it is persisted as the session's current mode.
 #[tauri::command]
 pub async fn agent_send_message(
     session_id: String,
     message: String,
+    mode: Option<String>,
     attachments: Option<Vec<AttachmentPayload>>,
     app_handle: AppHandle,
     agent_state: State<'_, AgentState>,
     app_state: State<'_, AppState>,
 ) -> Result<SendMessageResponse, String> {
-    let session = {
+    let mut session = {
         let db = Arc::clone(&agent_state.db);
         let sid = session_id.clone();
         tokio::task::spawn_blocking(move || db.get_session(&sid))
@@ -458,6 +569,17 @@ pub async fn agent_send_message(
             .map_err(|e| format!("Failed to load session: {e}"))?
             .ok_or_else(|| format!("Session not found: {session_id}"))?
     };
+
+    // Apply a per-message mode switch and remember it on the session.
+    if let Some(m) = mode {
+        if m != session.mode {
+            let db = Arc::clone(&agent_state.db);
+            let sid = session_id.clone();
+            let m_c = m.clone();
+            let _ = tokio::task::spawn_blocking(move || db.set_session_mode(&sid, &m_c)).await;
+        }
+        session.mode = m;
+    }
 
     run_agent_turn(
         app_handle,
@@ -793,8 +915,20 @@ pub async fn agent_get_messages(
         .map_err(|e| format!("join error: {e}"))?
         .map_err(|e| format!("Failed to load messages: {e}"))?;
 
+    // Walk rows chronologically: accumulate tool_call chips and attach them to
+    // the next assistant text message (the "Thought for…" collapsible). This
+    // replaces the old `<!-- thinking -->` marker scheme (chat-DB compat).
     let mut out = Vec::new();
+    let mut pending_tools: Vec<ToolChip> = Vec::new();
+    let mut pending_started: Option<String> = None;
     for msg in &stored {
+        if msg.type_ == "tool_call" {
+            if pending_started.is_none() {
+                pending_started = Some(msg.created_at.clone());
+            }
+            pending_tools.extend(parse_tool_chips(&msg.llm_message));
+            continue;
+        }
         if (msg.role != "user" && msg.role != "assistant") || msg.type_ != "text" {
             continue;
         }
@@ -803,14 +937,32 @@ pub async fn agent_get_messages(
             .and_then(|v| v.get("content").and_then(|c| c.as_str()).map(String::from))
             .unwrap_or_default();
         if text.is_empty() {
+            if msg.role == "user" {
+                pending_tools.clear();
+                pending_started = None;
+            }
             continue;
         }
+        let (tools, duration_seconds) = if msg.role == "assistant" {
+            let secs = pending_started
+                .as_deref()
+                .map(|start| elapsed_secs(start, &msg.created_at))
+                .unwrap_or(0);
+            pending_started = None;
+            (std::mem::take(&mut pending_tools), secs)
+        } else {
+            pending_tools.clear();
+            pending_started = None;
+            (Vec::new(), 0)
+        };
         out.push(AgentDisplayMessage {
             id: msg.id.to_string(),
             role: msg.role.clone(),
             text,
             created_at: msg.created_at.clone(),
             session_id: msg.session_id.clone(),
+            tools,
+            duration_seconds,
         });
     }
     Ok(out)
@@ -1021,28 +1173,20 @@ pub async fn agent_fetch_models(
         }
     }
 
-    let defaults = || {
-        agent::agent::model_profile::ModelRegistry::with_defaults()
-            .list()
-            .into_iter()
-            .cloned()
-            .collect::<Vec<_>>()
-    };
-
+    // No hardcoded fallback list: return exactly what the endpoint advertises.
+    // If it returns nothing (or fails), the UI lets the user type a model id.
     match client.get(&url).headers(headers).send().await {
         Ok(resp) if resp.status().is_success() => {
             let body_text = resp.text().await.map_err(|e| format!("Failed to read response: {e}"))?;
             match serde_json::from_str::<agent::agent::model_profile::ModelsResponse>(&body_text) {
                 Ok(body) if !body.models.is_empty() => {
-                    if is_gateway_url(&settings.base_url) {
-                        agent_state.model_registry.write().await.merge(body.models.clone());
-                    }
+                    agent_state.model_registry.write().await.merge(body.models.clone());
                     Ok(body.models)
                 }
-                _ => Ok(defaults()),
+                _ => Ok(Vec::new()),
             }
         }
-        _ => Ok(defaults()),
+        _ => Ok(Vec::new()),
     }
 }
 

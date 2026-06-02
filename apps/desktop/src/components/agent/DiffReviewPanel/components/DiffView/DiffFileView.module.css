@@ -1,0 +1,147 @@
+.card {
+  border: 1px solid var(--border-color-8);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  /* Keep natural height inside the flex-column body so the panel scrolls
+     instead of squishing/clipping tall files. */
+  flex-shrink: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.header:hover {
+  background: var(--hover-bg);
+}
+
+.path {
+  flex: 1;
+  min-width: 0;
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statAdd {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--diff-add-color);
+}
+
+.statDel {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--diff-del-color);
+}
+
+.body {
+  border-top: 1px solid var(--border-color-8);
+  overflow-x: auto;
+  font-size: 12px;
+}
+
+/* react-diff-view theme overrides (global classnames, scoped under .body) */
+.body :global(.diff) {
+  --diff-font-family: "Space Mono", monospace;
+  font-size: 12px;
+  background: transparent;
+  /* Let the table grow past the container so long lines scroll horizontally
+     instead of wrapping (the container .body has overflow-x: auto). */
+  table-layout: auto;
+  width: max-content;
+  min-width: 100%;
+}
+
+/* Don't wrap code lines — scroll horizontally instead. */
+.body :global(.diff-code) {
+  white-space: pre;
+  word-break: normal;
+  word-wrap: normal;
+  overflow-wrap: normal;
+}
+
+/* Compact line-number gutters (default is 7ch × 2 cols → big empty gap for
+   added files where the old-line gutter is blank). */
+.body :global(.diff-gutter-col) {
+  width: 3.2ch;
+}
+
+.body :global(.diff-gutter) {
+  padding: 0 6px;
+  color: var(--text-secondary);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.body :global(.diff-code) {
+  padding-left: 0.75em;
+}
+
+.body :global(.diff-code-insert),
+.body :global(.diff-gutter-insert) {
+  background: var(--diff-add-bg);
+}
+
+.body :global(.diff-code-delete),
+.body :global(.diff-gutter-delete) {
+  background: var(--diff-del-bg);
+}
+
+/* Prism token colors (react-diff-view ships none). GitHub-light-ish palette. */
+.body :global(.token.comment),
+.body :global(.token.prolog),
+.body :global(.token.doctype),
+.body :global(.token.cdata) {
+  color: #6a737d;
+}
+.body :global(.token.punctuation) {
+  color: #24292e;
+}
+.body :global(.token.keyword),
+.body :global(.token.operator),
+.body :global(.token.rule) {
+  color: #d73a49;
+}
+.body :global(.token.string),
+.body :global(.token.char),
+.body :global(.token.attr-value),
+.body :global(.token.url) {
+  color: #032f62;
+}
+.body :global(.token.function),
+.body :global(.token.class-name),
+.body :global(.token.title) {
+  color: #6f42c1;
+}
+.body :global(.token.number),
+.body :global(.token.boolean),
+.body :global(.token.constant),
+.body :global(.token.property),
+.body :global(.token.symbol) {
+  color: #005cc5;
+}
+.body :global(.token.tag),
+.body :global(.token.selector),
+.body :global(.token.inserted) {
+  color: #22863a;
+}
+.body :global(.token.attr-name),
+.body :global(.token.builtin) {
+  color: #6f42c1;
+}
+.body :global(.token.bold) {
+  font-weight: 600;
+}
+.body :global(.token.italic) {
+  font-style: italic;
+}

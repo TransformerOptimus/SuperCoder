@@ -88,6 +88,11 @@ async fn read_file_text(path: String) -> Result<Option<String>, String> {
         .map_err(|e| format!("Failed to read file: {e}"))
 }
 
+#[tauri::command]
+async fn read_file_bytes(path: String) -> Result<Vec<u8>, String> {
+    std::fs::read(&path).map_err(|e| format!("Failed to read file: {e}"))
+}
+
 /// Save raw bytes to a temp file and return the path.
 /// Used for clipboard-pasted images that need a local path for the agent.
 #[tauri::command]
@@ -492,6 +497,7 @@ pub fn run() {
             git_ls_files,
             fetch_url,
             read_file_text,
+            read_file_bytes,
             save_temp_file,
             download_file,
             git_branches,
@@ -504,6 +510,7 @@ pub fn run() {
             git_switch_branch,
             git_create_pr,
             agent_bridge::commands::agent_create_session,
+            agent_bridge::commands::agent_rename_session,
             agent_bridge::commands::agent_send_message,
             agent_bridge::commands::agent_start_coding_from_plan,
             agent_bridge::commands::agent_cancel_session,

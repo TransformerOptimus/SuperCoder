@@ -1,0 +1,50 @@
+.panel {
+  border-top: 1px solid var(--border-color-8);
+  display: flex;
+  flex-direction: column;
+  height: 280px;
+  flex-shrink: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.path {
+  font-size: 11px;
+  color: #888;
+  font-family: "Space Mono", monospace;
+}
+
+.close_btn {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.close_btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.terminal {
+  flex: 1;
+  background: #1e1e1e;
+  padding: 4px;
+}

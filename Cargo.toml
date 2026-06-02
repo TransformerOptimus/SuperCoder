@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/agent", "crates/git-ops"]
+members = ["crates/agent", "crates/git-ops", "apps/desktop/src-tauri"]
 
 [profile.dev]
 debug = 0

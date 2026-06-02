@@ -1,0 +1,14 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for SuperCoder",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "shell:allow-stdin-write",
+    "shell:allow-kill",
+    "pty:default",
+    "notification:default",
+    "dialog:default"
+  ]
+}

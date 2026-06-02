@@ -34,3 +34,6 @@ Thumbs.db
 # Env
 .env
 .envrc
+
+# Tauri generated
+apps/*/src-tauri/gen/

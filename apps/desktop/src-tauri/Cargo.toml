@@ -1,0 +1,49 @@
+[package]
+name = "supercoder-agent-desktop"
+version = "0.1.0"
+description = "SuperCoder"
+authors = []
+edition = "2021"
+rust-version = "1.70"
+
+[lib]
+name = "supercoder_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+dotenvy = "0.15"
+
+[dependencies]
+tauri = { version = "2.10", features = ["macos-private-api", "devtools"] }
+tauri-plugin-shell = "2.0"
+tauri-plugin-pty = "0.2"
+tauri-plugin-notification = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["json", "multipart", "stream"] }
+base64 = "0.22"
+tokio = { version = "1", features = ["fs", "rt", "time", "macros", "test-util"] }
+uuid = { version = "1", features = ["v4"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+parking_lot = "0.12"
+log = "0.4"
+dirs = "5"
+url = "2"
+env_logger = "0.11"
+git-ops = { path = "../../../crates/git-ops" }
+agent = { path = "../../../crates/agent" }
+dotenvy = "0.15"
+thiserror = "2"
+chrono = "0.4"
+async-trait = "0.1"
+tokio-util = "0.7"
+tempfile = "3"
+
+[dev-dependencies]
+wiremock = "0.6"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

@@ -327,7 +327,7 @@ export default function AgentThreadPanel() {
         const fileCount = thread.files_changed ?? new Set(thread.checkpoints?.flatMap((cp) => cp.files ?? []) ?? []).size;
         return (
           <div
-            className="mx-5 mb-1 flex items-center gap-2 px-3 py-1.5 border border-[var(--border-color-8)] rounded-lg bg-[var(--bg-secondary)] cursor-pointer transition-colors hover:border-[var(--text-secondary)] flex-shrink-0"
+            className={`${styles.diff_card} mb-1 flex items-center gap-2 px-3 py-1.5 border border-[var(--border-color-8)] rounded-lg bg-[var(--bg-secondary)] cursor-pointer transition-colors hover:border-[var(--text-secondary)] flex-shrink-0`}
             onClick={() => expandArtifactDiff(thread.id, `diff-full-${thread.id}`)}
           >
             <Code className="w-3.5 h-3.5 text-gray-500 shrink-0" />

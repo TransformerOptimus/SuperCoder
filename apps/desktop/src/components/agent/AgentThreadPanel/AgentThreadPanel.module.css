@@ -6,6 +6,9 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  /* Responsive side gap: scales with column width, capped at 96px so it
+     shrinks when the diff panel is open and the chat column is narrow. */
+  --side-gap: clamp(20px, 7%, 96px);
 }
 
 .messages {
@@ -14,7 +17,7 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 28px;
+  padding: 16px var(--side-gap);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -42,8 +45,14 @@
 }
 
 .input_area {
-  padding: 4px 0 0;
+  /* (side-gap - 20px) here + InputShell's own 20px padding = side-gap,
+     so the input box left edge lines up with the message text. */
+  padding: 4px calc(var(--side-gap) - 20px) 0;
   flex-shrink: 0;
+}
+
+.diff_card {
+  margin-inline: var(--side-gap);
 }
 
 .tool_indicator {

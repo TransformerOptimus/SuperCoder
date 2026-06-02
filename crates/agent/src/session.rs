@@ -416,11 +416,13 @@ mod tests {
     fn test_config() -> AgentConfig {
         let mut config = AgentConfig::new(
             LlmClientConfig {
+                provider: crate::llm::Provider::OpenAI,
                 base_url: "http://unused".into(),
                 model: "unused".into(),
+                api_key: String::new(),
                 temperature: None,
                 max_completion_tokens: None,
-                auth_headers: vec![],
+                extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
             },

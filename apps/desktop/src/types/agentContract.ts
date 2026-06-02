@@ -87,12 +87,6 @@ export interface AgentDiffResult {
   diff: string;
 }
 
-export interface LlmConfigResponse {
-  base_url: string;
-  api_key: string;
-  model: string;
-}
-
 export interface SessionListItem {
   id: string;
   status: string;

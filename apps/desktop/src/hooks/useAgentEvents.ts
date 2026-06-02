@@ -257,6 +257,13 @@ export function useAgentEvents() {
       }),
     );
 
+    // ── agent:session_title (auto-generated title is ready) ────────────
+    listeners.push(
+      listen<{ session_id: string; title: string }>("agent:session_title", () => {
+        useAppStore.getState().loadSessions();
+      }),
+    );
+
     // ── agent:question_asked ───────────────────────────────────────────
     listeners.push(
       listen<QuestionAskedPayload>("agent:question_asked", (event) => {

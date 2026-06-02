@@ -9,7 +9,7 @@ import { useAppStore } from './store';
 import { useAgentEvents } from './hooks/useAgentEvents';
 
 function App() {
-  const loadModels = useAppStore((s) => s.loadModels);
+  const loadProviders = useAppStore((s) => s.loadProviders);
   const initialized = useRef(false);
 
   // Listen for local agent events (Tauri → store), once.
@@ -18,8 +18,8 @@ function App() {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-    loadModels();
-  }, [loadModels]);
+    loadProviders();
+  }, [loadProviders]);
 
   return (
     <ThemeProvider>

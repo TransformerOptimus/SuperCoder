@@ -1,5 +1,19 @@
 use serde::{Deserialize, Serialize};
 
+// ── Provider ──
+
+/// Wire format the crate speaks to. Drives request-build + SSE-parse in `client.rs`.
+/// Internal config only — never serialized to the wire. Designed to grow (e.g. a
+/// future `OpenAIResponses` variant) without touching the existing two paths.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Provider {
+    /// OpenAI chat-completions (`/chat/completions`, `Authorization: Bearer`).
+    #[default]
+    OpenAI,
+    /// Anthropic Messages API (`/v1/messages`, `x-api-key` + `anthropic-version`).
+    Anthropic,
+}
+
 // ── Prompt caching ──
 
 /// Marks a block/tool/request as a prompt-cache breakpoint for Anthropic.

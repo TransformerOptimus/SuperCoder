@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { Empty, Spin, Tooltip } from "antd";
+import { Empty, Spin, Tooltip, Popconfirm } from "antd";
 import {
   Plus,
   MessageCircle,
   Map as MapIcon,
   Code,
   Pencil,
+  Trash2,
   ChevronDown,
   ChevronRight,
   Settings as SettingsIcon,
@@ -146,6 +147,20 @@ export default function SessionListSidebar() {
       console.error("[SessionListSidebar] rename failed:", err);
     }
   }, [editingId, editingText]);
+
+  // ── Delete (soft) ───────────────────────────────────────────────────────
+  const handleDelete = useCallback(async (s: SessionRow) => {
+    try {
+      await agentTauriService.deleteSession(s.id);
+      const store = useAppStore.getState();
+      store.removeSession(s.id);
+      if (store.activeAgentThreadId === s.id) store.closeAgentThread();
+      themedMessage.success("Session deleted");
+    } catch (err) {
+      console.error("[SessionListSidebar] delete failed:", err);
+      themedMessage.error(typeof err === "string" ? err : "Failed to delete session");
+    }
+  }, []);
 
   // ── Collapsed rail ──────────────────────────────────────────────────────
   if (collapsed) {
@@ -311,6 +326,24 @@ export default function SessionListSidebar() {
                                 <Pencil className="w-3 h-3" />
                               </button>
                             </Tooltip>
+                          )}
+                          {!isEditing && (
+                            <Popconfirm
+                              title="Delete this session?"
+                              description="It's hidden from the list; data is kept."
+                              okText="Delete"
+                              cancelText="Cancel"
+                              okButtonProps={{ danger: true }}
+                              onConfirm={() => handleDelete(s)}
+                            >
+                              <button
+                                onClick={(e) => e.stopPropagation()}
+                                title="Delete"
+                                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-red-600 transition-opacity"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </Popconfirm>
                           )}
                         </div>
                       );

@@ -21,11 +21,89 @@ const MAX_BUFFER_SIZE: usize = 1024 * 1024;
 const CHUNK_IDLE_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Accumulator for a single tool call being assembled from streaming chunks.
+/// Shared with the Anthropic parser, which assembles the same `LlmResponse`.
 #[derive(Debug)]
-struct ToolCallAccumulator {
-    id: String,
-    name: String,
-    arguments: String,
+pub(crate) struct ToolCallAccumulator {
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) arguments: String,
+}
+
+/// Shared SSE line reader: owns the byte stream + line buffer and yields one
+/// complete line at a time, applying the idle-timeout, cancellation, and
+/// buffer-overflow guards. Both the OpenAI (`parse_sse_stream`) and Anthropic
+/// (`anthropic::parse_anthropic_sse_stream`) parsers drive this so the network
+/// scaffolding lives in exactly one place; each parser keeps its own async
+/// event-emitting loop on top.
+pub(crate) struct SseLineReader<S> {
+    stream: S,
+    buffer: String,
+}
+
+impl<S> SseLineReader<S>
+where
+    S: futures::Stream<Item = Result<Bytes, reqwest::Error>> + Unpin,
+{
+    pub(crate) fn new(stream: S) -> Self {
+        Self { stream, buffer: String::new() }
+    }
+
+    /// Return the next complete line (CRLF/LF trimmed) or `None` when the stream
+    /// ends. A trailing partial line without a newline is dropped on stream end —
+    /// SSE data lines always terminate with a newline, so this never loses an event.
+    pub(crate) async fn next_line(
+        &mut self,
+        cancel_token: Option<&CancellationToken>,
+    ) -> Result<Option<String>, AgentError> {
+        loop {
+            // Emit any complete line already buffered before reading more bytes.
+            if let Some(newline_pos) = self.buffer.find('\n') {
+                let line = self.buffer[..newline_pos].trim_end_matches('\r').to_string();
+                self.buffer.replace_range(..=newline_pos, "");
+                return Ok(Some(line));
+            }
+
+            // Race the next SSE chunk against cancellation and an idle timeout.
+            // The idle timeout (CHUNK_IDLE_TIMEOUT) resets on each chunk, so active
+            // streams are never killed — only stalled ones.
+            let chunk_result = if let Some(token) = cancel_token {
+                tokio::select! {
+                    biased;  // check cancel first for faster response
+                    _ = token.cancelled() => {
+                        log::info!("[SSE] Stream cancelled by user");
+                        return Err(AgentError::Cancelled);
+                    }
+                    timed = timeout(CHUNK_IDLE_TIMEOUT, self.stream.next()) => match timed {
+                        Ok(Some(result)) => result,
+                        Ok(None) => return Ok(None), // stream ended
+                        Err(_) => {
+                            log::error!("[SSE] No chunk received for {}s — aborting", CHUNK_IDLE_TIMEOUT.as_secs());
+                            return Err(AgentError::ChunkTimeout(CHUNK_IDLE_TIMEOUT.as_secs()));
+                        }
+                    }
+                }
+            } else {
+                match timeout(CHUNK_IDLE_TIMEOUT, self.stream.next()).await {
+                    Ok(Some(result)) => result,
+                    Ok(None) => return Ok(None),
+                    Err(_) => {
+                        log::error!("[SSE] No chunk received for {}s — aborting", CHUNK_IDLE_TIMEOUT.as_secs());
+                        return Err(AgentError::ChunkTimeout(CHUNK_IDLE_TIMEOUT.as_secs()));
+                    }
+                }
+            };
+            let chunk_bytes = chunk_result.map_err(AgentError::HttpError)?;
+            self.buffer.push_str(&String::from_utf8_lossy(&chunk_bytes));
+
+            // Guard against unbounded buffer growth (malformed / adversarial stream)
+            if self.buffer.len() > MAX_BUFFER_SIZE {
+                return Err(AgentError::LlmParseError(format!(
+                    "SSE buffer exceeded {} bytes without a newline — aborting",
+                    MAX_BUFFER_SIZE
+                )));
+            }
+        }
+    }
 }
 
 /// Parse an SSE byte stream from the OpenAI chat completions API into an LlmResponse.
@@ -33,173 +111,127 @@ struct ToolCallAccumulator {
 /// Emits TextDelta and ThinkingDelta events as tokens arrive. Tool calls are accumulated
 /// internally and returned in the final LlmResponse.
 pub async fn parse_sse_stream(
-    mut stream: impl futures::Stream<Item = Result<Bytes, reqwest::Error>> + Unpin,
+    stream: impl futures::Stream<Item = Result<Bytes, reqwest::Error>> + Unpin,
     event_tx: &mpsc::Sender<AgentEvent>,
     session_id: &str,
     cancel_token: Option<&CancellationToken>,
 ) -> Result<LlmResponse, AgentError> {
-    let mut buffer = String::new();
+    let mut reader = SseLineReader::new(stream);
     let mut accumulated_text = String::new();
     let mut accumulated_thinking = String::new();
     let mut tool_accumulators: HashMap<u32, ToolCallAccumulator> = HashMap::new();
     let mut usage: Option<Usage> = None;
     let mut finish_reason: Option<String> = None;
 
-    loop {
-        // Race the next SSE chunk against cancellation and an idle timeout.
-        // The idle timeout (CHUNK_IDLE_TIMEOUT) resets on each chunk, so active
-        // streams are never killed — only stalled ones.
-        let chunk_result = if let Some(token) = cancel_token {
-            tokio::select! {
-                biased;  // check cancel first for faster response
-                _ = token.cancelled() => {
-                    log::info!("[SSE] Stream cancelled by user");
-                    return Err(AgentError::Cancelled);
-                }
-                timed = timeout(CHUNK_IDLE_TIMEOUT, stream.next()) => match timed {
-                    Ok(Some(result)) => result,
-                    Ok(None) => break, // stream ended
-                    Err(_) => {
-                        log::error!("[SSE] No chunk received for {}s — aborting", CHUNK_IDLE_TIMEOUT.as_secs());
-                        return Err(AgentError::ChunkTimeout(CHUNK_IDLE_TIMEOUT.as_secs()));
-                    }
-                }
-            }
-        } else {
-            match timeout(CHUNK_IDLE_TIMEOUT, stream.next()).await {
-                Ok(Some(result)) => result,
-                Ok(None) => break,
-                Err(_) => {
-                    log::error!("[SSE] No chunk received for {}s — aborting", CHUNK_IDLE_TIMEOUT.as_secs());
-                    return Err(AgentError::ChunkTimeout(CHUNK_IDLE_TIMEOUT.as_secs()));
-                }
-            }
-        };
-        let chunk_bytes = chunk_result.map_err(AgentError::HttpError)?;
-        buffer.push_str(&String::from_utf8_lossy(&chunk_bytes));
-
-        // Guard against unbounded buffer growth (malformed / adversarial stream)
-        if buffer.len() > MAX_BUFFER_SIZE {
-            return Err(AgentError::LlmParseError(format!(
-                "SSE buffer exceeded {} bytes without a newline — aborting",
-                MAX_BUFFER_SIZE
-            )));
+    while let Some(line) = reader.next_line(cancel_token).await? {
+        // Skip empty lines and SSE comments
+        if line.is_empty() || line.starts_with(':') {
+            continue;
         }
 
-        // Process complete lines from the buffer
-        while let Some(newline_pos) = buffer.find('\n') {
-            let line = buffer[..newline_pos].trim_end_matches('\r').to_string();
-            buffer.replace_range(..=newline_pos, "");
+        // Must be a data: line
+        let data = if let Some(data) = line.strip_prefix("data: ") {
+            data.trim()
+        } else if let Some(data) = line.strip_prefix("data:") {
+            data.trim()
+        } else {
+            continue;
+        };
 
-            // Skip empty lines and SSE comments
-            if line.is_empty() || line.starts_with(':') {
+        // End of stream
+        if data == "[DONE]" {
+            return Ok(build_response(
+                accumulated_text,
+                accumulated_thinking,
+                tool_accumulators,
+                usage,
+                finish_reason,
+            ));
+        }
+
+        // Parse the JSON chunk
+        let chunk: ChatCompletionChunk = match serde_json::from_str(data) {
+            Ok(c) => c,
+            Err(e) => {
+                log::warn!("Failed to parse SSE chunk: {e} — data: {data}");
                 continue;
             }
+        };
 
-            // Must be a data: line
-            let data = if let Some(data) = line.strip_prefix("data: ") {
-                data.trim()
-            } else if let Some(data) = line.strip_prefix("data:") {
-                data.trim()
-            } else {
-                continue;
-            };
-
-            // End of stream
-            if data == "[DONE]" {
-                return Ok(build_response(
-                    accumulated_text,
-                    accumulated_thinking,
-                    tool_accumulators,
-                    usage,
-                    finish_reason,
-                ));
-            }
-
-            // Parse the JSON chunk
-            let chunk: ChatCompletionChunk = match serde_json::from_str(data) {
-                Ok(c) => c,
-                Err(e) => {
-                    log::warn!("Failed to parse SSE chunk: {e} — data: {data}");
-                    continue;
-                }
-            };
-
-            // Handle usage-only final chunk (choices is empty)
-            if chunk.choices.is_empty() {
-                if chunk.usage.is_some() {
-                    usage = chunk.usage;
-                }
-                continue;
-            }
-
-            let choice = &chunk.choices[0];
-
-            // Capture finish_reason
-            if choice.finish_reason.is_some() {
-                finish_reason = choice.finish_reason.clone();
-            }
-
-            // Accumulate thinking text
-            if let Some(ref thinking) = choice.delta.thinking {
-                if !thinking.is_empty() {
-                    accumulated_thinking.push_str(thinking);
-                    let _ = event_tx
-                        .send(AgentEvent::ThinkingDelta {
-                            session_id: session_id.to_string(),
-                            delta: thinking.clone(),
-                        })
-                        .await;
-                }
-            }
-
-            // Accumulate text content
-            if let Some(ref content) = choice.delta.content {
-                if !content.is_empty() {
-                    accumulated_text.push_str(content);
-                    let _ = event_tx
-                        .send(AgentEvent::TextDelta {
-                            session_id: session_id.to_string(),
-                            delta: content.clone(),
-                        })
-                        .await;
-                }
-            }
-
-            // Accumulate tool calls
-            if let Some(ref tool_calls) = choice.delta.tool_calls {
-                for tc_chunk in tool_calls {
-                    let acc = tool_accumulators
-                        .entry(tc_chunk.index)
-                        .or_insert_with(|| ToolCallAccumulator {
-                            id: String::new(),
-                            name: String::new(),
-                            arguments: String::new(),
-                        });
-
-                    if let Some(ref id) = tc_chunk.id {
-                        if !id.is_empty() {
-                            acc.id = id.clone();
-                        }
-                    }
-
-                    if let Some(ref func) = tc_chunk.function {
-                        if let Some(ref name) = func.name {
-                            if !name.is_empty() {
-                                acc.name = name.clone();
-                            }
-                        }
-                        if let Some(ref args) = func.arguments {
-                            acc.arguments.push_str(args);
-                        }
-                    }
-                }
-            }
-
-            // Capture usage from chunks that also have choices
+        // Handle usage-only final chunk (choices is empty)
+        if chunk.choices.is_empty() {
             if chunk.usage.is_some() {
                 usage = chunk.usage;
             }
+            continue;
+        }
+
+        let choice = &chunk.choices[0];
+
+        // Capture finish_reason
+        if choice.finish_reason.is_some() {
+            finish_reason = choice.finish_reason.clone();
+        }
+
+        // Accumulate thinking text
+        if let Some(ref thinking) = choice.delta.thinking {
+            if !thinking.is_empty() {
+                accumulated_thinking.push_str(thinking);
+                let _ = event_tx
+                    .send(AgentEvent::ThinkingDelta {
+                        session_id: session_id.to_string(),
+                        delta: thinking.clone(),
+                    })
+                    .await;
+            }
+        }
+
+        // Accumulate text content
+        if let Some(ref content) = choice.delta.content {
+            if !content.is_empty() {
+                accumulated_text.push_str(content);
+                let _ = event_tx
+                    .send(AgentEvent::TextDelta {
+                        session_id: session_id.to_string(),
+                        delta: content.clone(),
+                    })
+                    .await;
+            }
+        }
+
+        // Accumulate tool calls
+        if let Some(ref tool_calls) = choice.delta.tool_calls {
+            for tc_chunk in tool_calls {
+                let acc = tool_accumulators
+                    .entry(tc_chunk.index)
+                    .or_insert_with(|| ToolCallAccumulator {
+                        id: String::new(),
+                        name: String::new(),
+                        arguments: String::new(),
+                    });
+
+                if let Some(ref id) = tc_chunk.id {
+                    if !id.is_empty() {
+                        acc.id = id.clone();
+                    }
+                }
+
+                if let Some(ref func) = tc_chunk.function {
+                    if let Some(ref name) = func.name {
+                        if !name.is_empty() {
+                            acc.name = name.clone();
+                        }
+                    }
+                    if let Some(ref args) = func.arguments {
+                        acc.arguments.push_str(args);
+                    }
+                }
+            }
+        }
+
+        // Capture usage from chunks that also have choices
+        if chunk.usage.is_some() {
+            usage = chunk.usage;
         }
     }
 
@@ -213,7 +245,7 @@ pub async fn parse_sse_stream(
     ))
 }
 
-fn build_response(
+pub(crate) fn build_response(
     accumulated_text: String,
     accumulated_thinking: String,
     tool_accumulators: HashMap<u32, ToolCallAccumulator>,

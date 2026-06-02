@@ -1,50 +1,62 @@
 import { useEffect, useMemo, useCallback } from "react";
 import { Bot, ChevronDown } from "lucide-react";
 import { useAppStore } from "@/store";
-import { agentTauriService } from "@/services/agentTauriService";
 import ActionChip from "@/components/common/ActionChip/ActionChip";
 import CustomDropdown from "@/components/common/CustomDropdown/CustomDropdown";
 import type { CustomDropdownItem } from "@/components/common/CustomDropdown/types";
+import type { ProviderConfig } from "@/types/agent";
 
+/** Display name for a provider group: kind label, or the host for OpenAI-compatible. */
+function providerName(p: ProviderConfig): string {
+  if (p.kind === "openai") return "OpenAI";
+  if (p.kind === "anthropic") return "Anthropic";
+  if (p.label?.trim()) return p.label.trim();
+  try {
+    return new URL(p.baseUrl).host || "OpenAI-compatible";
+  } catch {
+    return "OpenAI-compatible";
+  }
+}
+
+/** Picks the active coding model across all configured providers (grouped). New
+ * sessions snapshot the active model; manage providers/models in Settings. */
 export default function ModelPicker() {
-  const availableModels = useAppStore((s) => s.availableModels);
-  const selectedModelId = useAppStore((s) => s.selectedModelId);
-  const modelsLoaded = useAppStore((s) => s.modelsLoaded);
-  const loadModels = useAppStore((s) => s.loadModels);
-  const setSelectedModel = useAppStore((s) => s.setSelectedModel);
+  const providers = useAppStore((s) => s.providers);
+  const selection = useAppStore((s) => s.selection);
+  const providersLoaded = useAppStore((s) => s.providersLoaded);
+  const loadProviders = useAppStore((s) => s.loadProviders);
+  const setActiveModel = useAppStore((s) => s.setActiveModel);
 
   useEffect(() => {
-    if (!modelsLoaded) {
-      loadModels();
-    }
-  }, [modelsLoaded, loadModels]);
+    if (!providersLoaded) loadProviders();
+  }, [providersLoaded, loadProviders]);
 
-  const handleSelect = useCallback(async (modelId: string) => {
-    console.log("[ModelPicker] Selecting model:", modelId);
-    setSelectedModel(modelId);
-    try {
-      const config = await agentTauriService.getLlmConfig();
-      console.log("[ModelPicker] Current config:", config);
-      await agentTauriService.saveLlmConfig({ ...config, model: modelId });
-      console.log("[ModelPicker] Saved model:", modelId);
-    } catch (e) {
-      console.error("[ModelPicker] Failed to save model:", e);
-    }
-  }, [setSelectedModel]);
-
-  const dropdownItems: CustomDropdownItem[] = useMemo(
-    () =>
-      availableModels.map((m) => ({
-        key: m.id,
-        label: m.display_name,
-        icon: <Bot className="w-4 h-4 text-gray-500" />,
-        onClick: () => handleSelect(m.id),
-      })),
-    [availableModels, handleSelect],
+  const handleSelect = useCallback(
+    (providerId: string, model: string) => {
+      setActiveModel(providerId, model);
+    },
+    [setActiveModel],
   );
 
-  const selected = availableModels.find((m) => m.id === selectedModelId);
-  const displayLabel = selected?.display_name ?? selectedModelId ?? "Select model";
+  // Flatten providers → models as grouped dropdown items (header + model rows).
+  const dropdownItems: CustomDropdownItem[] = useMemo(() => {
+    const items: CustomDropdownItem[] = [];
+    for (const p of providers) {
+      if (p.models.length === 0) continue;
+      items.push({ key: `hdr-${p.id}`, label: providerName(p), disabled: true });
+      for (const m of p.models) {
+        items.push({
+          key: `${p.id}::${m}`,
+          label: m,
+          icon: <Bot className="w-4 h-4 text-gray-500" />,
+          onClick: () => handleSelect(p.id, m),
+        });
+      }
+    }
+    return items;
+  }, [providers, handleSelect]);
+
+  const displayLabel = selection.active?.model ?? "Select model";
 
   return (
     <CustomDropdown

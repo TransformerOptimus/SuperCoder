@@ -1,15 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
-  LlmConfig,
   AgentDisplayMessage,
   CheckpointSummary,
-  ModelProfile,
+  ProviderConfig,
+  ProvidersResponse,
+  SelectionRole,
   SessionRow,
 } from '../types/agent';
 import type { Attachment } from '../types/chat';
 import type {
   SendMessageResponse,
-  LlmConfigResponse,
   AgentDiffResult,
   PermissionConfig,
   SkillListEntry,
@@ -27,12 +27,21 @@ interface CheckpointInfo {
 
 export const agentTauriService = {
   // ── Sessions ───────────────────────────────────────────────────────────
-  /** Create a session on a folder. Mode is switchable later, per message. */
-  async createSession(folder: string, title?: string, mode?: string): Promise<SessionRow> {
+  /** Create a session on a folder. Mode is switchable later, per message.
+   * provider/model default to the active selection when omitted. */
+  async createSession(
+    folder: string,
+    title?: string,
+    mode?: string,
+    providerId?: string,
+    model?: string,
+  ): Promise<SessionRow> {
     return invoke<SessionRow>('agent_create_session', {
       folder,
       title: title ?? null,
       mode: mode ?? null,
+      providerId: providerId ?? null,
+      model: model ?? null,
     });
   },
 
@@ -42,6 +51,11 @@ export const agentTauriService = {
 
   async renameSession(sessionId: string, title: string): Promise<void> {
     return invoke<void>('agent_rename_session', { sessionId, title });
+  },
+
+  /** Soft-delete a session (hidden from the list; data preserved). */
+  async deleteSession(sessionId: string): Promise<void> {
+    return invoke<void>('agent_delete_session', { sessionId });
   },
 
   /** Send a message. `mode` ("ask"|"plan"|"coding") can change on any message. */
@@ -149,22 +163,36 @@ export const agentTauriService = {
     return invoke<SubagentsPaths>('agent_get_subagents_paths', { workingDir: workingDir ?? null });
   },
 
-  // ── LLM config / models ────────────────────────────────────────────────
-  async fetchModels(): Promise<ModelProfile[]> {
-    return invoke<ModelProfile[]>('agent_fetch_models');
+  // ── LLM providers (multi-provider config) ──────────────────────────────
+  async listProviders(): Promise<ProvidersResponse> {
+    return invoke<ProvidersResponse>('agent_list_providers');
   },
 
-  async saveLlmConfig(config: LlmConfig): Promise<void> {
-    return invoke<void>('agent_save_llm_config', {
-      baseUrl: config.baseUrl,
-      apiKey: config.apiKey,
-      model: config.model,
-    });
+  async addProvider(provider: ProviderConfig): Promise<ProviderConfig> {
+    return invoke<ProviderConfig>('agent_add_provider', { provider });
   },
 
-  async getLlmConfig(): Promise<LlmConfig> {
-    const res = await invoke<LlmConfigResponse>('agent_get_llm_config');
-    return { baseUrl: res.base_url, apiKey: res.api_key, model: res.model };
+  async updateProvider(provider: ProviderConfig): Promise<void> {
+    return invoke<void>('agent_update_provider', { provider });
+  },
+
+  async deleteProvider(id: string): Promise<void> {
+    return invoke<void>('agent_delete_provider', { id });
+  },
+
+  /** Set a global model selection: role ∈ "active" | "compaction" | "title". */
+  async setModelSelection(role: SelectionRole, providerId: string, model: string): Promise<void> {
+    return invoke<void>('agent_set_model_selection', { role, providerId, model });
+  },
+
+  /** Query the provider's models endpoint (uses the draft's base_url/api_key/kind). */
+  async fetchProviderModels(provider: ProviderConfig): Promise<string[]> {
+    return invoke<string[]>('agent_fetch_provider_models', { provider });
+  },
+
+  /** Verify the provider's API key. Rejects (throws) only on a clear 401/403. */
+  async verifyProvider(provider: ProviderConfig): Promise<void> {
+    return invoke<void>('agent_verify_provider', { provider });
   },
 
   // ── Checkpoints (snapshot-backed) ──────────────────────────────────────

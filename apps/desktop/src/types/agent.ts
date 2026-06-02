@@ -187,6 +187,7 @@ export interface SessionRow {
   created_at: string;
   updated_at: string;
   status: string;
+  providerId?: string | null;
 }
 
 // --- Thread Summary (from SQLite via Tauri) ---
@@ -211,17 +212,46 @@ export interface AgentToolCallState {
 
 export type AgentSessionStatus = 'idle' | 'streaming' | 'tool_running' | 'done' | 'error';
 
-export interface LlmConfig {
-  baseUrl: string;
-  apiKey: string;
-  model: string;
-}
-
 export interface ModelProfile {
   id: string;
   display_name: string;
   provider: string;
   context_window: number;
+}
+
+/** UI provider kind → backend wire format. "openai_compatible" takes a custom base_url. */
+export type ProviderKind = 'openai' | 'openai_compatible' | 'anthropic';
+
+/** A saved LLM provider = an endpoint (no model bundled). Mirrors Rust `ProviderConfig`. */
+export interface ProviderConfig {
+  id: string;
+  kind: ProviderKind;
+  /** Display name — shown for openai_compatible providers; built-ins use their kind name. */
+  label: string;
+  baseUrl: string;
+  apiKey: string;
+  /** Available model ids (populated by "Fetch models" or typed). Feeds the pickers. */
+  models: string[];
+}
+
+/** A model on a specific provider. */
+export interface ModelRef {
+  providerId: string;
+  model: string;
+}
+
+/** Global model selections — each picks a model from across configured providers. */
+export interface ModelSelection {
+  active: ModelRef | null;
+  compaction: ModelRef | null;
+  title: ModelRef | null;
+}
+
+export type SelectionRole = 'active' | 'compaction' | 'title';
+
+export interface ProvidersResponse {
+  providers: ProviderConfig[];
+  selection: ModelSelection;
 }
 
 // --- Agent List API ---

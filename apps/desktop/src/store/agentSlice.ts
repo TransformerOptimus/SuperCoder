@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { AgentToolCallState, ModelProfile } from '../types/agent';
+import type { AgentToolCallState, ProviderConfig, ModelSelection } from '../types/agent';
 import type { PendingApproval, TodoItem } from '../types/agentContract';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -46,10 +46,10 @@ export interface AgentSlice {
   /** Transient: plan data waiting for coding session confirmation after Implement click. */
   pendingPlanForCoding: { text: string; projectPath: string; planPath: string } | null;
 
-  // ── Model state ─────────────────────────────────────────────────────
-  availableModels: ModelProfile[];
-  selectedModelId: string | null;
-  modelsLoaded: boolean;
+  // ── Provider state ──────────────────────────────────────────────────
+  providers: ProviderConfig[];
+  selection: ModelSelection;
+  providersLoaded: boolean;
 
   // ── Actions ─────────────────────────────────────────────────────────
   setAgentFolderPath: (path: string | null) => void;
@@ -82,8 +82,8 @@ export interface AgentSlice {
   setActivePlanProjectPath: (path: string | null) => void;
   setPendingPlanForCoding: (plan: { text: string; projectPath: string; planPath: string } | null) => void;
 
-  loadModels: () => Promise<void>;
-  setSelectedModel: (modelId: string) => void;
+  loadProviders: () => Promise<void>;
+  setActiveModel: (providerId: string, model: string) => Promise<void>;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -140,9 +140,9 @@ export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (s
   completedPlans: {},
   activePlanProjectPath: null,
   pendingPlanForCoding: null,
-  availableModels: [],
-  selectedModelId: null,
-  modelsLoaded: false,
+  providers: [],
+  selection: { active: null, compaction: null, title: null },
+  providersLoaded: false,
 
   setAgentFolderPath: (path) => set({ agentFolderPath: path }),
   setAgentBranch: (branch) => set({ agentBranch: branch }),
@@ -262,23 +262,23 @@ export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (s
   setActivePlanProjectPath: (path) => set({ activePlanProjectPath: path }),
   setPendingPlanForCoding: (plan) => set({ pendingPlanForCoding: plan }),
 
-  loadModels: async () => {
+  loadProviders: async () => {
     try {
       const { agentTauriService } = await import('../services/agentTauriService');
-      const models = await agentTauriService.fetchModels();
-      const config = await agentTauriService.getLlmConfig();
-
-      let selectedModel = config.model;
-      if (models.length > 0 && !models.some((m) => m.id === selectedModel)) {
-        selectedModel = models[0].id;
-        agentTauriService.saveLlmConfig({ ...config, model: selectedModel }).catch(() => {});
-      }
-
-      set({ availableModels: models, selectedModelId: selectedModel, modelsLoaded: true });
+      const { providers, selection } = await agentTauriService.listProviders();
+      set({ providers, selection, providersLoaded: true });
     } catch (e) {
-      console.error('[agentSlice] Failed to load models:', e);
+      console.error('[agentSlice] Failed to load providers:', e);
     }
   },
 
-  setSelectedModel: (modelId) => set({ selectedModelId: modelId }),
+  setActiveModel: async (providerId, model) => {
+    set((s) => ({ selection: { ...s.selection, active: { providerId, model } } }));
+    try {
+      const { agentTauriService } = await import('../services/agentTauriService');
+      await agentTauriService.setModelSelection('active', providerId, model);
+    } catch (e) {
+      console.error('[agentSlice] Failed to set active model:', e);
+    }
+  },
 });

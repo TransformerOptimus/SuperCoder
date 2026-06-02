@@ -2,12 +2,12 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::RwLock;
 
 use agent::agent::config::AgentConfig;
-use agent::llm::{ChatMessage, LlmClient, LlmClientConfig};
+use agent::llm::{ChatMessage, LlmClient, LlmClientConfig, Provider};
 use agent::persistence::MessagePersister;
 use agent::session::SessionManager;
 use agent::tool::ToolMode;
@@ -129,98 +129,187 @@ async fn build_user_message(text: &str, attachments: Option<Vec<AttachmentPayloa
     ChatMessage::user_with_images(blocks)
 }
 
-// ── LLM settings / config ──────────────────────────────────────────────────
+// ── Providers (endpoints) + model selections ────────────────────────────────
 
-#[derive(Clone)]
-pub struct LlmSettings {
+/// A saved LLM provider = an *endpoint* (no model bundled). Persisted as a JSON
+/// array under `llm_providers`. `kind` maps to a wire format:
+/// openai/openai_compatible → OpenAI; anthropic → Anthropic. OpenAI and Anthropic
+/// are built-in singletons (ids "openai"/"anthropic"); openai_compatible can be added.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderConfig {
+    pub id: String,
+    pub kind: String,
+    /// Display name (shown for openai_compatible providers; built-ins use their kind name).
+    #[serde(default)]
+    pub label: String,
     pub base_url: String,
+    #[serde(default)]
     pub api_key: String,
+    /// Available model ids (populated by "Fetch models" or typed). Feeds the pickers.
+    #[serde(default)]
+    pub models: Vec<String>,
+}
+
+impl ProviderConfig {
+    fn provider(&self) -> Provider {
+        match self.kind.as_str() {
+            "anthropic" => Provider::Anthropic,
+            _ => Provider::OpenAI,
+        }
+    }
+
+    fn is_builtin(&self) -> bool {
+        self.kind == "openai" || self.kind == "anthropic"
+    }
+}
+
+/// A reference to a specific model on a specific provider. Used for the global
+/// active/compaction/title selections and recorded on each session.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelRef {
+    pub provider_id: String,
     pub model: String,
 }
 
-/// The LLM gateway base URL. Configurable via `SUPERCODER_GATEWAY_URL`; defaults
-/// to the local gateway. This is the default endpoint the app talks to when the
-/// user hasn't set a custom base URL in Settings.
-pub fn gateway_url() -> String {
-    std::env::var("SUPERCODER_GATEWAY_URL")
-        .ok()
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "http://localhost:8080/api/v1".to_string())
+/// Global, outer-level model selections — each picks a model from across the
+/// configured providers. `active` = main coding model for new sessions.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelSelection {
+    #[serde(default)]
+    pub active: Option<ModelRef>,
+    #[serde(default)]
+    pub compaction: Option<ModelRef>,
+    #[serde(default)]
+    pub title: Option<ModelRef>,
 }
 
-fn read_llm_settings(app_state: &AppState) -> Result<LlmSettings, String> {
-    let base_url = std::env::var("LLM_BASE_URL")
-        .ok()
-        .or_else(|| app_state.db.get_setting("llm_base_url").ok().flatten())
-        .or_else(|| option_env!("LLM_BASE_URL").map(String::from))
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(gateway_url);
+const PROVIDERS_KEY: &str = "llm_providers";
+const SELECTION_KEY: &str = "llm_selection";
 
-    let api_key = std::env::var("LLM_API_KEY")
-        .ok()
-        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-        .or_else(|| app_state.db.get_setting("llm_api_key").ok().flatten())
-        .unwrap_or_default();
-
-    let model = std::env::var("LLM_MODEL")
-        .ok()
-        .or_else(|| app_state.db.get_setting("llm_model").ok().flatten())
-        .unwrap_or_else(|| "gpt-4o-mini".to_string());
-
-    Ok(LlmSettings { base_url, api_key, model })
+fn default_providers() -> Vec<ProviderConfig> {
+    vec![
+        ProviderConfig {
+            id: "openai".to_string(),
+            kind: "openai".to_string(),
+            label: String::new(),
+            base_url: "https://api.openai.com/v1".to_string(),
+            api_key: String::new(),
+            models: Vec::new(),
+        },
+        ProviderConfig {
+            id: "anthropic".to_string(),
+            kind: "anthropic".to_string(),
+            label: String::new(),
+            base_url: "https://api.anthropic.com".to_string(),
+            api_key: String::new(),
+            models: Vec::new(),
+        },
+    ]
 }
 
-/// The host:port authority of a URL (everything between `://` and the first `/`).
-fn authority(url: &str) -> Option<&str> {
-    let after = url.split("://").nth(1)?;
-    Some(after.split('/').next().unwrap_or(after))
-}
-
-/// A URL is treated as a gateway (OpenAI→Anthropic translation + tenancy
-/// headers) when its host:port matches the configured gateway, or it points at
-/// a known SuperAGI gateway host.
-fn is_gateway_url(url: &str) -> bool {
-    if url.contains("superagi.com") {
-        return true;
-    }
-    let gw = gateway_url();
-    match (authority(url), authority(&gw)) {
-        (Some(a), Some(b)) => a == b,
-        _ => false,
-    }
-}
-
-/// Local machine/user id headers for gateway tenancy (no accounts in v1).
-fn gateway_headers(app_state: &AppState) -> Vec<(String, String)> {
-    let machine_id = app_state
+/// Read saved providers. Always guarantees the built-in OpenAI + Anthropic rows
+/// exist (self-heals older stores that predate one of them), keeping built-ins
+/// first in a stable order, then user-added OpenAI-compatible providers.
+fn read_providers(app_state: &AppState) -> Vec<ProviderConfig> {
+    let stored: Vec<ProviderConfig> = app_state
         .db
-        .get_setting("machine_id")
+        .get_setting(PROVIDERS_KEY)
         .ok()
         .flatten()
-        .unwrap_or_else(|| {
-            let id = uuid::Uuid::new_v4().to_string();
-            let _ = app_state.db.set_setting("machine_id", &id);
-            id
-        });
-    vec![("X-Machine-Id".to_string(), machine_id)]
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .unwrap_or_default();
+
+    let mut list: Vec<ProviderConfig> = Vec::new();
+    let mut changed = false;
+    for builtin in default_providers() {
+        match stored.iter().find(|p| p.id == builtin.id) {
+            Some(existing) => list.push(existing.clone()),
+            None => {
+                list.push(builtin);
+                changed = true;
+            }
+        }
+    }
+    for p in &stored {
+        if !p.is_builtin() && !list.iter().any(|x| x.id == p.id) {
+            list.push(p.clone());
+        }
+    }
+    if changed {
+        let _ = write_providers(app_state, &list);
+    }
+    list
 }
 
-pub fn build_llm_config(settings: &LlmSettings, gateway_auth: &[(String, String)]) -> LlmClientConfig {
-    let mut auth_headers = Vec::new();
-    if is_gateway_url(&settings.base_url) {
-        auth_headers.extend(gateway_auth.iter().cloned());
-        if !settings.api_key.is_empty() {
-            auth_headers.push(("X-Auth-Token".to_string(), settings.api_key.clone()));
+fn write_providers(app_state: &AppState, providers: &[ProviderConfig]) -> Result<(), String> {
+    let raw = serde_json::to_string(providers).map_err(|e| e.to_string())?;
+    app_state.db.set_setting(PROVIDERS_KEY, &raw)
+}
+
+fn read_selection(app_state: &AppState) -> ModelSelection {
+    app_state
+        .db
+        .get_setting(SELECTION_KEY)
+        .ok()
+        .flatten()
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .unwrap_or_default()
+}
+
+fn write_selection(app_state: &AppState, sel: &ModelSelection) -> Result<(), String> {
+    let raw = serde_json::to_string(sel).map_err(|e| e.to_string())?;
+    app_state.db.set_setting(SELECTION_KEY, &raw)
+}
+
+fn provider_by_id(app_state: &AppState, id: &str) -> Option<ProviderConfig> {
+    read_providers(app_state).into_iter().find(|p| p.id == id)
+}
+
+/// Resolve a `ModelRef` to its provider + model id.
+fn resolve_ref(app_state: &AppState, r: &ModelRef) -> Option<(ProviderConfig, String)> {
+    provider_by_id(app_state, &r.provider_id).map(|p| (p, r.model.clone()))
+}
+
+/// The main (provider, model) a NEW session should use: the active selection,
+/// else the first provider that has at least one model.
+fn default_session_model(app_state: &AppState) -> Option<ModelRef> {
+    let sel = read_selection(app_state);
+    if let Some(ref a) = sel.active {
+        if provider_by_id(app_state, &a.provider_id).is_some() {
+            return sel.active;
         }
-    } else if !settings.api_key.is_empty() {
-        auth_headers.push(("Authorization".to_string(), format!("Bearer {}", settings.api_key)));
     }
+    read_providers(app_state)
+        .into_iter()
+        .find(|p| !p.models.is_empty())
+        .map(|p| ModelRef { provider_id: p.id, model: p.models[0].clone() })
+}
+
+/// Resolve the (provider, model) a session runs with: what it was created with
+/// (`provider_id` + `model`), falling back to the active selection.
+fn session_model(app_state: &AppState, session: &SessionRow) -> Result<(ProviderConfig, String), String> {
+    if let (Some(pid), Some(model)) = (session.provider_id.as_ref(), session.model.as_ref()) {
+        if let Some(p) = provider_by_id(app_state, pid) {
+            return Ok((p, model.clone()));
+        }
+    }
+    default_session_model(app_state)
+        .and_then(|r| resolve_ref(app_state, &r))
+        .ok_or_else(|| "No model selected. Pick one in Settings / the model picker.".to_string())
+}
+
+pub fn provider_to_llm_config(p: &ProviderConfig, model: &str) -> LlmClientConfig {
     LlmClientConfig {
-        base_url: settings.base_url.clone(),
-        model: settings.model.clone(),
+        provider: p.provider(),
+        base_url: p.base_url.clone(),
+        model: model.to_string(),
+        api_key: p.api_key.clone(),
         temperature: None,
         max_completion_tokens: None,
-        auth_headers,
+        extra_headers: vec![],
         thinking: None,
         disable_cache_control: false,
     }
@@ -228,8 +317,9 @@ pub fn build_llm_config(settings: &LlmSettings, gateway_auth: &[(String, String)
 
 #[allow(clippy::too_many_arguments)]
 fn build_agent_config(
-    settings: &LlmSettings,
-    gateway_auth: &[(String, String)],
+    main_provider: &ProviderConfig,
+    main_model: &str,
+    compaction: Option<(&ProviderConfig, &str)>,
     working_dir: PathBuf,
     mode: ToolMode,
     context_window: usize,
@@ -238,16 +328,19 @@ fn build_agent_config(
     skills: Option<Arc<agent::skills::SkillRegistry>>,
     subagents: Option<Arc<agent::subagents::SubagentRegistry>>,
 ) -> AgentConfig {
-    let mut config = AgentConfig::new(build_llm_config(settings, gateway_auth), working_dir);
+    let mut config = AgentConfig::new(provider_to_llm_config(main_provider, main_model), working_dir);
     config.mode = mode;
     config.compaction_config.context_limit = context_window;
     config.skills = skills;
     config.subagents = subagents;
     config.checkpoint_dir = Some(checkpoint_dir);
 
-    // Compaction summarization runs on a cheaper model regardless of the main model.
-    let compaction_settings = LlmSettings { model: "claude-sonnet-4-6".to_string(), ..settings.clone() };
-    let mut compaction_llm = build_llm_config(&compaction_settings, gateway_auth);
+    // Compaction runs on the globally-selected compaction model (any provider),
+    // falling back to the session's own model when none is set.
+    let mut compaction_llm = match compaction {
+        Some((p, m)) => provider_to_llm_config(p, m),
+        None => provider_to_llm_config(main_provider, main_model),
+    };
     compaction_llm.disable_cache_control = true;
     config.compaction_llm = Some(compaction_llm);
 
@@ -260,6 +353,92 @@ fn build_agent_config(
         config.subagents.as_deref(),
     ));
     config
+}
+
+/// Generate a concise session title from the first message using the configured
+/// title model, off the turn's hot path. Updates the DB and emits
+/// `agent:session_title` so the sidebar refreshes. Best-effort: any failure (bad
+/// key, empty reply) silently leaves the substring fallback in place.
+fn spawn_title_generation(
+    app_handle: AppHandle,
+    db: Arc<AgentDb>,
+    session_id: String,
+    first_message: String,
+    provider: ProviderConfig,
+    model: String,
+) {
+    tokio::spawn(async move {
+        let mut cfg = provider_to_llm_config(&provider, &model);
+        cfg.max_completion_tokens = Some(32);
+        cfg.disable_cache_control = true;
+        let client = LlmClient::new(cfg);
+        // Few-shot: a labeling function, not a chat. The examples lock the model
+        // into emitting a bare Title-Case title (3–6 words) even for vague input,
+        // and demonstrate that it must never ask a question.
+        let msgs = vec![
+            ChatMessage::system(
+                "You are a function that turns a developer's first message into a short coding-session \
+                 title. Output ONLY the title: 3–6 words, Title Case, no quotes, no punctuation, no \
+                 preamble. Never ask a question or request clarification — if the message is vague, \
+                 title it literally from its words.",
+            ),
+            ChatMessage::user("fix the flaky auth test and add retries"),
+            ChatMessage::assistant(Some("Fix Flaky Auth Test".to_string()), None, None),
+            ChatMessage::user("add a dark mode toggle to the settings page"),
+            ChatMessage::assistant(Some("Add Dark Mode Toggle".to_string()), None, None),
+            ChatMessage::user("why is my build failing with a linker error"),
+            ChatMessage::assistant(Some("Debug Linker Build Error".to_string()), None, None),
+            ChatMessage::user("hey"),
+            ChatMessage::assistant(Some("New Coding Session".to_string()), None, None),
+            ChatMessage::user(first_message),
+        ];
+        let (tx, _rx) = tokio::sync::mpsc::channel(8);
+        let probe_sid = format!("title-{}", uuid::Uuid::new_v4());
+        let Ok(resp) = client.chat_completion(&msgs, &[], &tx, &probe_sid, None).await else {
+            return;
+        };
+        // Reject refusals/questions/sentences — keep the substring fallback in that case.
+        let Some(title) = resp.content.as_deref().and_then(clean_title) else { return };
+        let title_db = title.clone();
+        let sid_db = session_id.clone();
+        let _ = tokio::task::spawn_blocking(move || db.set_session_title(&sid_db, &title_db)).await;
+        let _ = app_handle.emit(
+            "agent:session_title",
+            serde_json::json!({ "session_id": session_id, "title": title }),
+        );
+    });
+}
+
+/// Sanitize an LLM title reply; returns `None` if it looks like a refusal,
+/// a question, or a full sentence rather than a title.
+fn clean_title(raw: &str) -> Option<String> {
+    let mut t = raw.trim().trim_matches('"').trim();
+    t = t.lines().next().unwrap_or("").trim();
+    for prefix in ["Title:", "title:", "Title -", "Session:"] {
+        if let Some(rest) = t.strip_prefix(prefix) {
+            t = rest.trim();
+        }
+    }
+    t = t.trim_matches('"').trim();
+    if t.is_empty() {
+        return None;
+    }
+    let lower = t.to_lowercase();
+    let looks_bad = t.ends_with('?')
+        || t.split_whitespace().count() > 10
+        || lower.starts_with("i ")
+        || lower.starts_with("i'm")
+        || lower.starts_with("i need")
+        || lower.starts_with("sorry")
+        || lower.starts_with("could you")
+        || lower.starts_with("can you")
+        || lower.starts_with("please")
+        || lower.contains("more context")
+        || lower.contains("provide more");
+    if looks_bad {
+        return None;
+    }
+    Some(t.chars().take(60).collect())
 }
 
 fn load_permission_config(app_state: &AppState, project_path: Option<&str>) -> PermissionConfig {
@@ -384,13 +563,6 @@ pub struct SendMessageResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct LlmConfigResponse {
-    pub base_url: String,
-    pub api_key: String,
-    pub model: String,
-}
-
-#[derive(Debug, Serialize)]
 pub struct ToolChip {
     pub name: String,
     pub summary: String,
@@ -504,6 +676,9 @@ pub async fn agent_create_session(
     folder: String,
     title: Option<String>,
     mode: Option<String>,
+    provider_id: Option<String>,
+    model: Option<String>,
+    app_state: State<'_, AppState>,
     agent_state: State<'_, AgentState>,
 ) -> Result<SessionRow, String> {
     let id = uuid::Uuid::new_v4().to_string();
@@ -512,8 +687,21 @@ pub async fn agent_create_session(
     // Mode is just the session's initial mode; it can be switched per message.
     let mode_c = mode.unwrap_or_else(|| "coding".to_string());
     let title_c = title.clone();
+    // Record the (provider, model) the session is created with: explicit pick,
+    // else the active selection. Resume then uses the same one.
+    let default = default_session_model(&app_state);
+    let provider_c = provider_id.or_else(|| default.as_ref().map(|r| r.provider_id.clone()));
+    let model_c = model.or_else(|| default.as_ref().map(|r| r.model.clone()));
     tokio::task::spawn_blocking(move || {
-        db.create_session(&id, &folder_c, &mode_c, title_c.as_deref(), None)?;
+        db.create_session(
+            &id,
+            &folder_c,
+            &mode_c,
+            title_c.as_deref(),
+            None,
+            provider_c.as_deref(),
+            model_c.as_deref(),
+        )?;
         db.get_session(&id)
     })
     .await
@@ -534,6 +722,31 @@ pub async fn agent_rename_session(
         .await
         .map_err(|e| format!("join error: {e}"))?
         .map_err(|e| format!("Failed to rename session: {e}"))
+}
+
+/// Soft-delete a session (hidden from the sidebar; data preserved on disk).
+/// Rejected while its folder has a running loop — stop that first.
+#[tauri::command]
+pub async fn agent_delete_session(
+    session_id: String,
+    agent_state: State<'_, AgentState>,
+) -> Result<(), String> {
+    let db = Arc::clone(&agent_state.db);
+    let sid = session_id.clone();
+    let session = tokio::task::spawn_blocking(move || db.get_session(&sid))
+        .await
+        .map_err(|e| format!("join error: {e}"))?
+        .map_err(|e| format!("Failed to load session: {e}"))?;
+    if let Some(s) = &session {
+        if agent_state.running_folders.read().await.contains(&s.folder) {
+            return Err("Stop the running session in this folder before deleting.".to_string());
+        }
+    }
+    let db = Arc::clone(&agent_state.db);
+    tokio::task::spawn_blocking(move || db.delete_session(&session_id))
+        .await
+        .map_err(|e| format!("join error: {e}"))?
+        .map_err(|e| format!("Failed to delete session: {e}"))
 }
 
 /// List all sessions for the sidebar, most recent first.
@@ -626,7 +839,12 @@ pub async fn agent_start_coding_from_plan(
         let id = session_id.clone();
         let folder = project_path.clone();
         let title = title.unwrap_or_else(|| "Implement plan".to_string());
-        tokio::task::spawn_blocking(move || db.create_session(&id, &folder, "coding", Some(&title), None))
+        let default = default_session_model(&app_state);
+        let provider_c = default.as_ref().map(|r| r.provider_id.clone());
+        let model_c = default.as_ref().map(|r| r.model.clone());
+        tokio::task::spawn_blocking(move || {
+            db.create_session(&id, &folder, "coding", Some(&title), None, provider_c.as_deref(), model_c.as_deref())
+        })
             .await
             .map_err(|e| format!("join error: {e}"))?
             .map_err(|e| format!("Failed to create session: {e}"))?;
@@ -703,9 +921,16 @@ async fn run_agent_turn(
         return Err(format!("Folder does not exist: {folder}"));
     }
 
-    let llm_settings = read_llm_settings(app_state)?;
-    let gw = gateway_headers(app_state);
-    let context_window = agent_state.model_registry.read().await.context_window_for(&llm_settings.model);
+    let (provider, model) = match session_model(app_state, &session) {
+        Ok(pm) => pm,
+        Err(e) => {
+            release(folder.clone());
+            return Err(e);
+        }
+    };
+    // Global compaction model (any provider), resolved once for this turn.
+    let compaction = read_selection(app_state).compaction.and_then(|r| resolve_ref(app_state, &r));
+    let context_window = agent_state.model_registry.read().await.context_window_for(&model);
 
     // Plan-mode note: surface existing plan files so the agent reuses edit_plan.
     let project_note = if mode == ToolMode::Plan {
@@ -737,8 +962,9 @@ async fn run_agent_turn(
     let subagent_registry = crate::agent_bridge::subagents::build_registry_for_agent(&agent_state.db, &work_dir);
 
     let mut config = build_agent_config(
-        &llm_settings,
-        &gw,
+        &provider,
+        &model,
+        compaction.as_ref().map(|(p, m)| (p, m.as_str())),
         work_dir.clone(),
         mode,
         context_window,
@@ -829,19 +1055,38 @@ async fn run_agent_turn(
         format!("Failed to start session: {e}")
     })?;
 
-    // Mark active + set title from first message if unset.
+    // Mark active + set a title from the first message if unset.
     {
         let db = Arc::clone(&agent_state.db);
         let sid = session_id.clone();
         let needs_title = session.title.as_deref().unwrap_or("").is_empty();
-        let title: String = message.chars().take(60).collect();
+        // Substring fallback so the sidebar has a label immediately.
+        let fallback: String = message.chars().take(60).collect();
         let _ = tokio::task::spawn_blocking(move || {
             let _ = db.set_session_status(&sid, "active");
-            if needs_title && !title.trim().is_empty() {
-                let _ = db.set_session_title(&sid, title.trim());
+            if needs_title && !fallback.trim().is_empty() {
+                let _ = db.set_session_title(&sid, fallback.trim());
             }
         })
         .await;
+
+        // Then refine it asynchronously: use the configured title model, else fall
+        // back to the session's own model. (If that LLM call fails, the substring
+        // title set above stays — i.e. "user message only".)
+        if needs_title && !message.trim().is_empty() {
+            let (title_provider, title_model) = read_selection(app_state)
+                .title
+                .and_then(|r| resolve_ref(app_state, &r))
+                .unwrap_or_else(|| (provider.clone(), model.clone()));
+            spawn_title_generation(
+                app_handle.clone(),
+                Arc::clone(&agent_state.db),
+                session_id.clone(),
+                message.clone(),
+                title_provider,
+                title_model,
+            );
+        }
     }
 
     let relay_handle = spawn_event_relay(
@@ -977,9 +1222,15 @@ pub async fn agent_get_context_usage(
     app_state: State<'_, AppState>,
 ) -> Result<Option<ContextUsageResponse>, String> {
     let db = Arc::clone(&agent_state.db);
-    let llm_settings = read_llm_settings(&app_state)?;
+    let model = db
+        .get_session(&session_id)
+        .ok()
+        .flatten()
+        .and_then(|s| session_model(&app_state, &s).ok())
+        .map(|(_, m)| m)
+        .unwrap_or_default();
     let current_limit =
-        agent_state.model_registry.read().await.context_window_for(&llm_settings.model) as u32;
+        agent_state.model_registry.read().await.context_window_for(&model) as u32;
     let sid = session_id.clone();
     let usage = tokio::task::spawn_blocking(move || db.get_context_usage(&sid))
         .await
@@ -1039,9 +1290,21 @@ pub async fn agent_compact_context(
         ChatMessage::user(prompt),
     ];
 
-    let llm_settings = read_llm_settings(&app_state)?;
-    let gw = gateway_headers(&app_state);
-    let client = LlmClient::new(build_llm_config(&llm_settings, &gw));
+    // Prefer the global compaction selection; else fall back to the session's own model.
+    let (provider, comp_model) = read_selection(&app_state)
+        .compaction
+        .and_then(|r| resolve_ref(&app_state, &r))
+        .map(Ok)
+        .unwrap_or_else(|| {
+            db.get_session(&session_id)
+                .ok()
+                .flatten()
+                .map(|s| session_model(&app_state, &s))
+                .unwrap_or_else(|| Err("No model selected. Pick one in Settings.".to_string()))
+        })?;
+    let mut compaction_cfg = provider_to_llm_config(&provider, &comp_model);
+    compaction_cfg.disable_cache_control = true;
+    let client = LlmClient::new(compaction_cfg);
     let (silent_tx, _rx) = tokio::sync::mpsc::channel(1);
     let compact_sid = format!("compact-{}", uuid::Uuid::new_v4());
 
@@ -1118,75 +1381,200 @@ pub async fn agent_get_working_diff(
     })
 }
 
-// ── LLM config ─────────────────────────────────────────────────────────────
+// ── Providers (endpoints) + model selections ────────────────────────────────
 
-#[tauri::command]
-pub async fn agent_save_llm_config(
-    base_url: String,
-    api_key: String,
-    model: String,
-    app_state: State<'_, AppState>,
-) -> Result<(), String> {
-    app_state.db.set_setting("llm_base_url", &base_url)?;
-    app_state.db.set_setting("llm_api_key", &api_key)?;
-    app_state.db.set_setting("llm_model", &model)?;
-    Ok(())
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProvidersResponse {
+    pub providers: Vec<ProviderConfig>,
+    pub selection: ModelSelection,
 }
 
 #[tauri::command]
-pub async fn agent_get_llm_config(app_state: State<'_, AppState>) -> Result<LlmConfigResponse, String> {
-    let settings = read_llm_settings(&app_state)?;
-    Ok(LlmConfigResponse {
-        base_url: settings.base_url,
-        api_key: settings.api_key,
-        model: settings.model,
+pub async fn agent_list_providers(app_state: State<'_, AppState>) -> Result<ProvidersResponse, String> {
+    Ok(ProvidersResponse {
+        providers: read_providers(&app_state),
+        selection: read_selection(&app_state),
     })
 }
 
+/// Add an OpenAI-compatible provider (the built-in OpenAI/Anthropic rows already exist).
 #[tauri::command]
-pub async fn agent_fetch_models(
+pub async fn agent_add_provider(
+    provider: ProviderConfig,
     app_state: State<'_, AppState>,
-    agent_state: State<'_, AgentState>,
-) -> Result<Vec<agent::agent::model_profile::ModelProfile>, String> {
-    let settings = read_llm_settings(&app_state)?;
-    let url = format!("{}/models", settings.base_url.trim_end_matches('/'));
+) -> Result<ProviderConfig, String> {
+    let mut providers = read_providers(&app_state);
+    let mut provider = provider;
+    if provider.id.trim().is_empty() {
+        provider.id = uuid::Uuid::new_v4().to_string();
+    }
+    if provider.is_builtin() {
+        return Err("Built-in providers already exist; add an OpenAI-compatible one".to_string());
+    }
+    providers.push(provider.clone());
+    write_providers(&app_state, &providers)?;
+    Ok(provider)
+}
+
+#[tauri::command]
+pub async fn agent_update_provider(
+    provider: ProviderConfig,
+    app_state: State<'_, AppState>,
+) -> Result<(), String> {
+    let mut providers = read_providers(&app_state);
+    match providers.iter_mut().find(|p| p.id == provider.id) {
+        Some(slot) => *slot = provider,
+        None => return Err(format!("Provider not found: {}", provider.id)),
+    }
+    write_providers(&app_state, &providers)
+}
+
+#[tauri::command]
+pub async fn agent_delete_provider(id: String, app_state: State<'_, AppState>) -> Result<(), String> {
+    let mut providers = read_providers(&app_state);
+    if providers.iter().any(|p| p.id == id && p.is_builtin()) {
+        return Err("Built-in providers can't be deleted".to_string());
+    }
+    providers.retain(|p| p.id != id);
+    write_providers(&app_state, &providers)?;
+    // Clear any selections that pointed at the removed provider.
+    let mut sel = read_selection(&app_state);
+    let clear = |r: &mut Option<ModelRef>| {
+        if r.as_ref().map(|x| x.provider_id == id).unwrap_or(false) {
+            *r = None;
+        }
+    };
+    clear(&mut sel.active);
+    clear(&mut sel.compaction);
+    clear(&mut sel.title);
+    write_selection(&app_state, &sel)
+}
+
+/// Set one of the global model selections. `role` ∈ "active" | "compaction" | "title".
+#[tauri::command]
+pub async fn agent_set_model_selection(
+    role: String,
+    provider_id: String,
+    model: String,
+    app_state: State<'_, AppState>,
+) -> Result<(), String> {
+    if provider_by_id(&app_state, &provider_id).is_none() {
+        return Err(format!("Provider not found: {provider_id}"));
+    }
+    let mut sel = read_selection(&app_state);
+    let r = Some(ModelRef { provider_id, model });
+    match role.as_str() {
+        "active" => sel.active = r,
+        "compaction" => sel.compaction = r,
+        "title" => sel.title = r,
+        other => return Err(format!("Unknown selection role: {other}")),
+    }
+    write_selection(&app_state, &sel)
+}
+
+/// Both OpenAI (`/models`) and Anthropic (`/v1/models`) return `{ "data": [ { "id": .. } ] }`.
+#[derive(Deserialize)]
+struct ModelsListResponse {
+    #[serde(default)]
+    data: Vec<ModelEntry>,
+}
+
+#[derive(Deserialize)]
+struct ModelEntry {
+    id: String,
+}
+
+/// Build the GET request to a provider's models endpoint (URL + auth headers).
+fn models_request(provider: &ProviderConfig) -> Result<reqwest::RequestBuilder, String> {
+    use reqwest::header::{HeaderMap, AUTHORIZATION, HeaderValue};
+
+    let base = provider.base_url.trim_end_matches('/');
+    let mut headers = HeaderMap::new();
+    let url = match provider.provider() {
+        Provider::Anthropic => {
+            if !provider.api_key.is_empty() {
+                if let Ok(v) = HeaderValue::from_str(&provider.api_key) {
+                    headers.insert("x-api-key", v);
+                }
+            }
+            headers.insert(
+                "anthropic-version",
+                HeaderValue::from_static(agent::llm::anthropic::ANTHROPIC_VERSION),
+            );
+            format!("{base}/v1/models")
+        }
+        Provider::OpenAI => {
+            if !provider.api_key.is_empty() {
+                if let Ok(v) = HeaderValue::from_str(&format!("Bearer {}", provider.api_key)) {
+                    headers.insert(AUTHORIZATION, v);
+                }
+            }
+            format!("{base}/models")
+        }
+    };
 
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(5))
+        .timeout(std::time::Duration::from_secs(8))
         .build()
         .map_err(|e| format!("HTTP client error: {e}"))?;
+    Ok(client.get(&url).headers(headers))
+}
 
-    let mut headers = reqwest::header::HeaderMap::new();
-    if is_gateway_url(&settings.base_url) {
-        for (key, value) in gateway_headers(&app_state) {
-            if let (Ok(name), Ok(val)) = (
-                key.parse::<reqwest::header::HeaderName>(),
-                value.parse::<reqwest::header::HeaderValue>(),
-            ) {
-                headers.insert(name, val);
-            }
-        }
+/// Query the provider's models endpoint and return the advertised model ids.
+/// Uses the draft's base_url + api_key + kind (so it works before saving).
+#[tauri::command]
+pub async fn agent_fetch_provider_models(provider: ProviderConfig) -> Result<Vec<String>, String> {
+    let resp = models_request(&provider)?
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("Models endpoint returned {}", resp.status()));
     }
-    if !settings.api_key.is_empty() {
-        if let Ok(val) = format!("Bearer {}", settings.api_key).parse::<reqwest::header::HeaderValue>() {
-            headers.insert(reqwest::header::AUTHORIZATION, val);
-        }
-    }
+    let body = resp.text().await.map_err(|e| format!("Failed to read response: {e}"))?;
+    let parsed: ModelsListResponse =
+        serde_json::from_str(&body).map_err(|_| "Unexpected models response shape".to_string())?;
+    Ok(parsed.data.into_iter().map(|m| m.id).collect())
+}
 
-    // No hardcoded fallback list: return exactly what the endpoint advertises.
-    // If it returns nothing (or fails), the UI lets the user type a model id.
-    match client.get(&url).headers(headers).send().await {
-        Ok(resp) if resp.status().is_success() => {
-            let body_text = resp.text().await.map_err(|e| format!("Failed to read response: {e}"))?;
-            match serde_json::from_str::<agent::agent::model_profile::ModelsResponse>(&body_text) {
-                Ok(body) if !body.models.is_empty() => {
-                    agent_state.model_registry.write().await.merge(body.models.clone());
-                    Ok(body.models)
-                }
-                _ => Ok(Vec::new()),
+/// Key check used before saving. Sends a minimal "hi" (max 16 tokens) through the
+/// SAME native path the agent uses (`/chat/completions` or `/v1/messages`), so it
+/// validates the key + that the model actually responds. Rejects ONLY on a clear
+/// auth failure (401/403); other errors (bad model, network, no models picked yet)
+/// are inconclusive → allowed, so saving is never blocked spuriously.
+#[tauri::command]
+pub async fn agent_verify_provider(provider: ProviderConfig) -> Result<(), String> {
+    if provider.api_key.is_empty() {
+        return Ok(()); // nothing to verify
+    }
+    // Probe the first configured model; if none picked yet, fall back to a
+    // models-endpoint key check so we can still catch a bad key.
+    let Some(probe_model) = provider.models.first().cloned() else {
+        return match models_request(&provider)?.send().await {
+            Ok(resp) if resp.status() == reqwest::StatusCode::UNAUTHORIZED
+                || resp.status() == reqwest::StatusCode::FORBIDDEN =>
+            {
+                Err(format!("API key rejected ({})", resp.status().as_u16()))
             }
+            _ => Ok(()),
+        };
+    };
+
+    let mut cfg = provider_to_llm_config(&provider, &probe_model);
+    cfg.max_completion_tokens = Some(16);
+    let client = LlmClient::new(cfg);
+    let (tx, _rx) = tokio::sync::mpsc::channel(8);
+    let sid = format!("verify-{}", uuid::Uuid::new_v4());
+    match client
+        .chat_completion(&[ChatMessage::user("hi")], &[], &tx, &sid, None)
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(agent::error::AgentError::LlmApiError { status, .. }) if status == 401 || status == 403 => {
+            Err(format!("API key rejected ({status})"))
         }
-        _ => Ok(Vec::new()),
+        Err(_) => Ok(()), // bad model / network — inconclusive, don't block saving
     }
 }
 

@@ -84,7 +84,7 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
   const [selectedCommandIdx, setSelectedCommandIdx] = useState(0);
   const commandDropdownRef = useRef<HTMLDivElement>(null);
 
-  const selectedModelId = useAppStore((s) => s.selectedModelId);
+  const activeModel = useAppStore((s) => s.selection.active?.model ?? null);
   const tokenUsage = useAppStore((s) => s.tokenUsage[sessionId]);
 
   // Load git-tracked files for @ picker.
@@ -206,7 +206,7 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
         if (usage) useAppStore.getState().setTokenUsage(sessionId, usage.total_tokens, usage.context_limit);
       })
       .catch(() => {});
-  }, [sessionId, selectedModelId]);
+  }, [sessionId, activeModel]);
 
   useEffect(() => {
     if (!showCommandPicker) return;

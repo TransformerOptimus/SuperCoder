@@ -10,7 +10,7 @@ use tempfile::tempdir;
 use agent::agent::config::{AgentConfig, CompactionConfig, RetryConfig};
 use agent::agent::loop_::AgentLoop;
 use agent::agent::spawn_agent;
-use agent::llm::LlmClientConfig;
+use agent::llm::{LlmClientConfig, Provider};
 use agent::persistence::MockPersister;
 use agent::tool::{ToolMode, ToolRegistry};
 use agent::types::{AgentEvent, AgentResult};
@@ -86,8 +86,6 @@ fn sys(text: impl Into<String>) -> Vec<agent::agent::prompt::SystemBlock> {
 }
 
 fn make_config(api_key: &str, working_dir: PathBuf) -> AgentConfig {
-    let base_url = std::env::var("LLM_BASE_URL")
-        .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
     let model = std::env::var("LLM_MODEL")
         .unwrap_or_else(|_| "gpt-4o-mini".to_string());
     // GPT-5.x / o1 / o3 / o4 reasoning models reject `temperature=0.0`. Drop the
@@ -97,26 +95,46 @@ fn make_config(api_key: &str, working_dir: PathBuf) -> AgentConfig {
     } else {
         None
     };
-    // Support custom auth headers via env vars: LLM_AUTH_TOKEN + LLM_USER_ID + LLM_WORKSPACE_ID
-    let auth_headers = if let Ok(token) = std::env::var("LLM_AUTH_TOKEN") {
+    // Gateway mode: when LLM_AUTH_TOKEN is set we speak OpenAI wire to a translating
+    // gateway and forward tenancy headers verbatim. Otherwise we hit a provider
+    // natively — Anthropic for claude-* models, OpenAI for everything else.
+    let gateway_mode = std::env::var("LLM_AUTH_TOKEN").is_ok();
+    let provider = if gateway_mode || !model.starts_with("claude-") {
+        Provider::OpenAI
+    } else {
+        Provider::Anthropic
+    };
+    let base_url = std::env::var("LLM_BASE_URL").unwrap_or_else(|_| match provider {
+        Provider::Anthropic => "https://api.anthropic.com".to_string(),
+        Provider::OpenAI => "https://api.openai.com/v1".to_string(),
+    });
+    // In gateway mode the crate sends no auth header; tenancy headers ride in
+    // extra_headers. In native mode the crate builds the auth header from api_key.
+    let (config_api_key, extra_headers) = if gateway_mode {
+        let token = std::env::var("LLM_AUTH_TOKEN").unwrap();
         let user_id = std::env::var("LLM_USER_ID").expect("LLM_AUTH_TOKEN set but LLM_USER_ID missing");
         let workspace_id = std::env::var("LLM_WORKSPACE_ID").expect("LLM_AUTH_TOKEN set but LLM_WORKSPACE_ID missing");
-        vec![
-            ("X-Auth-Token".to_string(), token),
-            ("X-USER-ID".to_string(), user_id),
-            ("X-Workspace-ID".to_string(), workspace_id),
-        ]
+        (
+            String::new(),
+            vec![
+                ("X-Auth-Token".to_string(), token),
+                ("X-USER-ID".to_string(), user_id),
+                ("X-Workspace-ID".to_string(), workspace_id),
+            ],
+        )
     } else {
-        vec![("Authorization".to_string(), format!("Bearer {}", api_key))]
+        (api_key.to_string(), vec![])
     };
 
     AgentConfig {
         llm: LlmClientConfig {
+            provider,
             base_url,
             model,
+            api_key: config_api_key,
             temperature,
             max_completion_tokens: Some(1024),
-            auth_headers,
+            extra_headers,
             thinking: None,
             disable_cache_control: false,
         },
@@ -237,7 +255,12 @@ async fn run_agent_full(config: AgentConfig, message: &str) -> FullRunResult {
 }
 
 fn api_key() -> String {
-    std::env::var("OPENAI_API_KEY").unwrap_or_else(|_| "unused".to_string())
+    // Native Anthropic runs (LLM_MODEL=claude-*) read ANTHROPIC_API_KEY/LLM_API_KEY;
+    // OpenAI runs keep using OPENAI_API_KEY.
+    std::env::var("LLM_API_KEY")
+        .or_else(|_| std::env::var("ANTHROPIC_API_KEY"))
+        .or_else(|_| std::env::var("OPENAI_API_KEY"))
+        .unwrap_or_else(|_| "unused".to_string())
 }
 
 fn read_file(dir: &Path, name: &str) -> String {

@@ -36,6 +36,10 @@ pub struct SessionRow {
     pub updated_at: String,
     /// "active" | "idle" | "error"
     pub status: String,
+    /// Provider + model this session was created with (resume uses the same one).
+    /// `None` for legacy sessions → falls back to the active selection.
+    pub provider_id: Option<String>,
+    pub model: Option<String>,
 }
 
 /// Raw row from the `agent_messages` table.
@@ -101,7 +105,10 @@ impl AgentDb {
                  parent_session_id TEXT,
                  created_at        TEXT NOT NULL,
                  updated_at        TEXT NOT NULL,
-                 status            TEXT NOT NULL DEFAULT 'active'
+                 status            TEXT NOT NULL DEFAULT 'active',
+                 provider_id       TEXT,
+                 model             TEXT,
+                 deleted_at        TEXT
              );
              CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at DESC);
              CREATE INDEX IF NOT EXISTS idx_sessions_folder  ON sessions(folder);
@@ -138,6 +145,16 @@ impl AgentDb {
              PRAGMA user_version = 1;",
         )?;
 
+        // Idempotent migrations: add `provider_id` + `model` to sessions tables
+        // created before multi-provider support. Ignore "duplicate column".
+        for col in ["provider_id", "model", "deleted_at"] {
+            if let Err(e) = conn.execute(&format!("ALTER TABLE sessions ADD COLUMN {col} TEXT"), []) {
+                if !e.to_string().contains("duplicate column") {
+                    return Err(e.into());
+                }
+            }
+        }
+
         Ok(Self {
             conn: Mutex::new(conn),
         })
@@ -152,6 +169,7 @@ impl AgentDb {
     // ── Sessions ─────────────────────────────────────────────────────────
 
     /// Insert a new session row. `created_at`/`updated_at` are set to now.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_session(
         &self,
         id: &str,
@@ -159,13 +177,15 @@ impl AgentDb {
         mode: &str,
         title: Option<&str>,
         parent_session_id: Option<&str>,
+        provider_id: Option<&str>,
+        model: Option<&str>,
     ) -> Result<(), AgentDbError> {
         let conn = self.conn.lock();
         let now = now_iso();
         conn.execute(
-            "INSERT INTO sessions (id, folder, mode, title, parent_session_id, created_at, updated_at, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'idle')",
-            rusqlite::params![id, folder, mode, title, parent_session_id, now, now],
+            "INSERT INTO sessions (id, folder, mode, title, parent_session_id, created_at, updated_at, status, provider_id, model)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'idle', ?, ?)",
+            rusqlite::params![id, folder, mode, title, parent_session_id, now, now, provider_id, model],
         )?;
         Ok(())
     }
@@ -174,7 +194,7 @@ impl AgentDb {
     pub fn get_session(&self, id: &str) -> Result<Option<SessionRow>, AgentDbError> {
         let conn = self.conn.lock();
         let result = conn.query_row(
-            "SELECT id, folder, mode, title, parent_session_id, created_at, updated_at, status
+            "SELECT id, folder, mode, title, parent_session_id, created_at, updated_at, status, provider_id, model
              FROM sessions WHERE id = ?",
             [id],
             map_session_row,
@@ -190,8 +210,8 @@ impl AgentDb {
     pub fn list_sessions(&self) -> Result<Vec<SessionRow>, AgentDbError> {
         let conn = self.conn.lock();
         let mut stmt = conn.prepare(
-            "SELECT id, folder, mode, title, parent_session_id, created_at, updated_at, status
-             FROM sessions ORDER BY updated_at DESC",
+            "SELECT id, folder, mode, title, parent_session_id, created_at, updated_at, status, provider_id, model
+             FROM sessions WHERE deleted_at IS NULL ORDER BY updated_at DESC",
         )?;
         let rows = stmt.query_map([], map_session_row)?;
         let mut out = Vec::new();
@@ -207,6 +227,17 @@ impl AgentDb {
         conn.execute(
             "UPDATE sessions SET status = ?, updated_at = ? WHERE id = ?",
             rusqlite::params![status, now_iso(), id],
+        )?;
+        Ok(())
+    }
+
+    /// Soft-delete a session: stamp `deleted_at` so it drops out of the sidebar
+    /// list while its messages + checkpoints stay on disk (recoverable).
+    pub fn delete_session(&self, id: &str) -> Result<(), AgentDbError> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "UPDATE sessions SET deleted_at = ?, updated_at = ? WHERE id = ?",
+            rusqlite::params![now_iso(), now_iso(), id],
         )?;
         Ok(())
     }
@@ -246,7 +277,7 @@ impl AgentDb {
     pub fn active_session_for_folder(&self, folder: &str) -> Result<Option<String>, AgentDbError> {
         let conn = self.conn.lock();
         let result = conn.query_row(
-            "SELECT id FROM sessions WHERE folder = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1",
+            "SELECT id FROM sessions WHERE folder = ? AND status = 'active' AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 1",
             [folder],
             |row| row.get::<_, String>(0),
         );
@@ -632,6 +663,8 @@ fn map_session_row(row: &rusqlite::Row) -> rusqlite::Result<SessionRow> {
         created_at: row.get(5)?,
         updated_at: row.get(6)?,
         status: row.get(7)?,
+        provider_id: row.get(8)?,
+        model: row.get(9)?,
     })
 }
 
@@ -855,7 +888,7 @@ mod tests {
     #[test]
     fn test_session_crud() {
         let (_d, db) = make_db();
-        db.create_session("s1", "/proj", "coding", Some("Fix bug"), None).unwrap();
+        db.create_session("s1", "/proj", "coding", Some("Fix bug"), None, None, None).unwrap();
         let s = db.get_session("s1").unwrap().unwrap();
         assert_eq!(s.folder, "/proj");
         assert_eq!(s.mode, "coding");

@@ -73,7 +73,7 @@ impl Tool for CodebaseGraphTool {
             ));
         }
 
-        let _ = ctx; // ToolContext not needed for graph queries (no worktree overlay)
+        let _ = ctx; // ToolContext not needed for graph queries (no working-copy overlay)
 
         log::info!(
             "[codebase_graph] query={:?}, function_name={:?}, file_path={:?}, query_type={:?}",

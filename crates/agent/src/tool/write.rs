@@ -58,6 +58,9 @@ impl Tool for WriteTool {
                 .map_err(|e| ToolError(format!("Failed to create parent directories: {e}")))?;
         }
 
+        // Back up the file's prior contents before overwriting (per-turn undo).
+        ctx.checkpoint(&path).await;
+
         let byte_count = content.len();
         tokio::fs::write(&path, content)
             .await
@@ -71,6 +74,49 @@ impl Tool for WriteTool {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+    use tokio::sync::mpsc;
+    use tokio_util::sync::CancellationToken;
+
+    /// End-to-end: a `write` then `edit` through the real tool path with a checkpoint
+    /// dir set must back up prior contents so `restore_to` reverts the agent's edits.
+    #[tokio::test]
+    async fn test_write_edit_then_restore_roundtrip() {
+        let proj = tempdir().unwrap();
+        let ckpt = tempdir().unwrap();
+        let file = proj.path().join("src/lib.rs");
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(&file, "original\n").unwrap();
+
+        let (tx, _rx) = mpsc::channel(32);
+        let ctx = ToolContext {
+            working_dir: proj.path().to_path_buf(),
+            cancel_token: CancellationToken::new(),
+            event_tx: tx,
+            session_id: "sess".into(),
+            tool_call_id: "tc_1".into(),
+            checkpoint_dir: Some(ckpt.path().to_path_buf()),
+            checkpoint_turn: 1,
+        };
+
+        // write overwrites the file (backs up "original\n") ...
+        WriteTool
+            .execute(json!({ "filePath": "src/lib.rs", "content": "rewritten\n" }), &ctx)
+            .await
+            .unwrap();
+        // ... and edit mutates it again within the same turn (no-op backup; first wins).
+        crate::tool::edit::EditTool
+            .execute(
+                json!({ "filePath": "src/lib.rs", "oldString": "rewritten", "newString": "edited" }),
+                &ctx,
+            )
+            .await
+            .unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "edited\n");
+
+        // Restore to before turn 1 -> back to the turn's starting contents.
+        git_ops::restore_to(ckpt.path(), "sess", 0).await.unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "original\n");
+    }
 
     #[tokio::test]
     async fn test_write_new_file() {

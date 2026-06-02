@@ -33,8 +33,8 @@ pub struct AgentConfig {
     pub compaction_llm: Option<LlmClientConfig>,
     /// Optional context engine. When set, codebase_search and codebase_graph are registered.
     pub context_engine: Option<Arc<dyn ContextEngineApi>>,
-    /// Canonical repo path for context engine (main checkout, not worktree).
-    /// Required when context_engine is Some.
+    /// Canonical repo path the context-engine index was built from.
+    /// Required when context_engine is Some; defaults to working_dir if unset.
     pub context_engine_repo_path: Option<PathBuf>,
     /// Optional skill registry. When set, the skills list is injected into the
     /// system prompt and the `skill` tool is registered in all modes.
@@ -47,6 +47,11 @@ pub struct AgentConfig {
     /// factory, write-lock registry, etc.). Required at parent-turn
     /// registration time when `subagents` is Some.
     pub subagent_inheritance: Option<Arc<SubagentInheritance>>,
+    /// App-managed directory for file-snapshot checkpoints, stored OUTSIDE the
+    /// project. When set, file-mutating tools back up a file's prior contents
+    /// before editing it (keyed by `(session_id, turn)`), enabling per-turn undo.
+    /// `None` disables checkpoint capture (bench/tests).
+    pub checkpoint_dir: Option<PathBuf>,
 }
 
 impl AgentConfig {
@@ -65,6 +70,7 @@ impl AgentConfig {
             skills: None,
             subagents: None,
             subagent_inheritance: None,
+            checkpoint_dir: None,
         }
     }
 

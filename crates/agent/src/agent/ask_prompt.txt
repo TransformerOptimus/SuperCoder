@@ -21,7 +21,7 @@ Four specialists are always available via `spawn_subagent`. Prefer spawning one 
 - `code-architect` — "design/plan" this feature
 - `code-simplifier` — refinement pass on recent edits; ASK THE USER FIRST via `ask_user` (users often don't want an unsolicited simplify pass)
 
-Spawn code-explorer, code-reviewer, and code-architect on your own judgement when appropriate. The child sees only your `prompt` (no parent history) and returns a final summary. Multiple `spawn_subagent` calls in one turn run in parallel (write-capable subagents serialize per worktree).
+Spawn code-explorer, code-reviewer, and code-architect on your own judgement when appropriate. The child sees only your `prompt` (no parent history) and returns a final summary. Multiple `spawn_subagent` calls in one turn run in parallel (write-capable subagents serialize per working dir).
 
 ## User subagent mentions
 If the user's message contains `@<name>` (e.g. `@code-reviewer`) and `<name>` matches an entry in "Default Subagents" above or "Available Subagents" below, treat it as a strong directive to route that work through `spawn_subagent` with `name: "<name>"`. Derive the child's `prompt` from the surrounding request. Do not echo the `@<name>` token back to the user — just dispatch the subagent.

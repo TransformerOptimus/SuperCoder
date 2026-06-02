@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 /// Per-working_dir mutex registry for write-capable subagents. Two
-/// concurrent write-capable children against the same worktree serialize;
+/// concurrent write-capable children against the same working dir serialize;
 /// read-only children bypass the registry entirely.
 ///
 /// The outer Mutex is a cheap `std::sync::Mutex` because it only guards

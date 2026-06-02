@@ -58,7 +58,7 @@ pub struct ContextEngineConfig {
     pub workspace_id: u64,
     /// Machine ID (UUID from SQLite)
     pub machine_id: String,
-    /// Canonical repo path (main checkout, NOT worktree)
+    /// Canonical repo path the index was built from (the user's project checkout)
     pub repo_path: String,
     /// Auth token (X-Auth-Token header). Empty = no auth.
     pub auth_token: String,

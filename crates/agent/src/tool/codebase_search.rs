@@ -12,7 +12,8 @@ use super::{Tool, ToolContext, ToolResult};
 
 pub struct CodebaseSearchTool {
     context_engine: Arc<dyn ContextEngineApi>,
-    /// Canonical repo path (main checkout) — used for overlay detection.
+    /// Canonical repo path the context-engine index was built from (for logging /
+    /// index identity). The agent edits this same dir in place.
     repo_path: PathBuf,
 }
 
@@ -116,15 +117,16 @@ impl Tool for CodebaseSearchTool {
 
         let mut results = response.results;
 
-        // Apply worktree overlay when running in a worktree (working_dir != repo_path)
-        if ctx.working_dir != self.repo_path {
-            log::info!("[codebase_search] Worktree detected (working_dir={:?}, repo_path={:?}), applying overlay",
-                ctx.working_dir, self.repo_path);
-            if let Err(e) = apply_worktree_overlay(&mut results, &ctx.working_dir).await {
-                log::warn!("[codebase_search] Worktree overlay failed, skipping: {e}");
-            }
-        } else {
-            log::info!("[codebase_search] No worktree (working_dir == repo_path), skipping overlay");
+        // Reconcile results against the user's live working copy. The context-engine
+        // index is built from the canonical repo (`self.repo_path`) and lags the
+        // agent's in-place edits, so we always overlay `git diff HEAD` from the
+        // working dir to drop deleted files and flag stale (modified) ones.
+        log::info!(
+            "[codebase_search] applying local overlay (working_dir={:?}, index_repo={:?})",
+            ctx.working_dir, self.repo_path
+        );
+        if let Err(e) = apply_local_overlay(&mut results, &ctx.working_dir).await {
+            log::warn!("[codebase_search] local overlay failed, skipping: {e}");
         }
 
         let mut output = format!("Found {} results for \"{}\":\n\n", results.len(), query);
@@ -144,18 +146,18 @@ impl Tool for CodebaseSearchTool {
     }
 }
 
-/// Overlay search results with worktree state.
+/// Overlay search results with the live working-copy state.
 /// Modified files: annotated (chunk content may be stale; no line-range data to re-extract).
 /// Deleted files: drop from results.
 /// New files: NOT added (not in index to match against).
-async fn apply_worktree_overlay(
+async fn apply_local_overlay(
     results: &mut Vec<SearchResultItem>,
-    worktree_path: &Path,
+    working_dir: &Path,
 ) -> Result<(), ToolError> {
     // 1. Get all modified + added files
     let mut cmd = Command::new("git");
     cmd.args(["diff", "--name-only", "HEAD"])
-        .current_dir(worktree_path);
+        .current_dir(working_dir);
     git_ops::no_window::no_window_tokio(&mut cmd);
     let output = cmd
         .output()
@@ -175,7 +177,7 @@ async fn apply_worktree_overlay(
     // 2. Get deleted files specifically
     let mut cmd = Command::new("git");
     cmd.args(["diff", "--name-only", "--diff-filter=D", "HEAD"])
-        .current_dir(worktree_path);
+        .current_dir(working_dir);
     git_ops::no_window::no_window_tokio(&mut cmd);
     let del_output = cmd
         .output()
@@ -212,7 +214,7 @@ async fn apply_worktree_overlay(
             log::info!("[codebase_search] overlay: annotating stale file {}", result.file_path);
             annotated += 1;
             result.content = format!(
-                "/* NOTE: This file has local modifications in the worktree. \
+                "/* NOTE: This file has local modifications in the working copy. \
                  Content below is from the index and may be stale. \
                  Use the read tool to see current content. */\n{}",
                 result.content

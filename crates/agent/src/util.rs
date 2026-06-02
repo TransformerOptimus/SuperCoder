@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 
 /// Ensure the `.agent/` directory exists and is excluded from git via `info/exclude`.
 /// Called by any tool that writes to `.agent/` (save_plan, todo_write, truncate_and_persist).
-/// Works in both the main repo and worktrees.
 pub(crate) async fn ensure_agent_dir(working_dir: &Path) -> PathBuf {
     let agent_dir = working_dir.join(".agent");
     let _ = tokio::fs::create_dir_all(&agent_dir).await;

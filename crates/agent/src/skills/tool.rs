@@ -130,6 +130,8 @@ mod tests {
             event_tx: tx,
             session_id: "sess".into(),
             tool_call_id: "tc_1".into(),
+            checkpoint_dir: None,
+            checkpoint_turn: 0,
         };
         let result = tool
             .execute(json!({"name": "nope"}), &ctx)
@@ -150,6 +152,8 @@ mod tests {
             event_tx: tx,
             session_id: "sess".into(),
             tool_call_id: "tc_1".into(),
+            checkpoint_dir: None,
+            checkpoint_turn: 0,
         };
         let result = tool
             .execute(json!({"name": "hello"}), &ctx)
@@ -189,6 +193,8 @@ mod tests {
             event_tx: tx,
             session_id: "sess".into(),
             tool_call_id: "tc_1".into(),
+            checkpoint_dir: None,
+            checkpoint_turn: 0,
         };
         let result = tool
             .execute(json!({"name": "meta"}), &ctx)
@@ -211,6 +217,8 @@ mod tests {
             event_tx: tx,
             session_id: "sess".into(),
             tool_call_id: "tc_1".into(),
+            checkpoint_dir: None,
+            checkpoint_turn: 0,
         };
         let err = tool.execute(json!({}), &ctx).await.unwrap_err();
         assert!(err.0.contains("Missing"));

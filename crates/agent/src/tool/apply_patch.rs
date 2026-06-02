@@ -106,6 +106,10 @@ impl Tool for ApplyPatchTool {
 
         // ── Phase 2: Apply all validated changes to disk ──
         for (path, name, _op, action) in &staged {
+            // Back up each file's prior state before mutating it (per-turn undo).
+            // backup_file records the did-not-exist sentinel for created files.
+            ctx.checkpoint(path).await;
+
             match action {
                 Staged::Delete => {
                     if path.exists() {

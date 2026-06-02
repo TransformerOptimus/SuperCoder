@@ -2,7 +2,6 @@ pub mod config;
 pub mod loop_;
 pub mod prompt;
 pub mod compaction;
-pub mod worktree;
 pub mod model_profile;
 
 use std::sync::Arc;
@@ -45,10 +44,7 @@ pub fn spawn_agent(
 
     let context_engine_arg = config.context_engine.as_ref().map(|engine| {
         let repo_path = config.context_engine_repo_path.clone().unwrap_or_else(|| {
-            log::warn!(
-                "context_engine_repo_path not set; falling back to working_dir. \
-                 Worktree overlay will be disabled."
-            );
+            log::warn!("context_engine_repo_path not set; falling back to working_dir.");
             config.working_dir.clone()
         });
         (engine.clone(), repo_path)

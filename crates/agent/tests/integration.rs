@@ -136,6 +136,7 @@ fn make_config(api_key: &str, working_dir: PathBuf) -> AgentConfig {
         skills: None,
         subagents: None,
         subagent_inheritance: None,
+        checkpoint_dir: None,
     }
 }
 

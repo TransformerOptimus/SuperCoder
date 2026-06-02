@@ -108,7 +108,6 @@ impl SessionManager {
         session_id: SessionId,
         config: AgentConfig,
         message: ChatMessage,
-        worktree_path: Option<PathBuf>,
         branch: Option<String>,
         initial_context: Option<Vec<ChatMessage>>,
         persist_session_id: Option<String>,
@@ -118,12 +117,15 @@ impl SessionManager {
         is_resume: bool,
         persister_override: Option<Arc<dyn MessagePersister>>,
     ) -> Result<mpsc::Receiver<AgentEvent>, AgentError> {
+        // The agent edits the project in place, so the session's project path IS
+        // its working directory (no separate worktree).
+        let project_path = Some(config.working_dir.clone());
         self.start_session_inner(
             session_id,
             config,
             message,
             ToolMode::Coding,
-            worktree_path,
+            project_path,
             branch,
             initial_context,
             None,
@@ -160,10 +162,7 @@ impl SessionManager {
         let cancel_token = CancellationToken::new();
         let context_engine_arg = config.context_engine.as_ref().map(|engine| {
             let repo_path = config.context_engine_repo_path.clone().unwrap_or_else(|| {
-                log::warn!(
-                    "context_engine_repo_path not set; falling back to working_dir. \
-                     Worktree overlay will be disabled."
-                );
+                log::warn!("context_engine_repo_path not set; falling back to working_dir.");
                 config.working_dir.clone()
             });
             (engine.clone(), repo_path)

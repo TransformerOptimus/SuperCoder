@@ -43,6 +43,8 @@ pub struct SubagentInheritance {
     pub approval_handler_factory: Option<Arc<dyn ApprovalHandlerFactory>>,
     pub parent_session_id: Option<String>,
     pub write_lock_registry: Arc<WriteLockRegistry>,
+    /// Inherited file-snapshot checkpoint dir so child edits are captured too.
+    pub checkpoint_dir: Option<PathBuf>,
 }
 
 pub struct SpawnSubagentTool {
@@ -52,7 +54,7 @@ pub struct SpawnSubagentTool {
 }
 
 /// Tools that make a subagent "write-capable" and thus force it to
-/// serialize on the per-worktree mutex. Mirrors Coding-mode's mutating set
+/// serialize on the per-working-dir mutex. Mirrors Coding-mode's mutating set
 /// from `tool::mod::ToolRegistry::for_mode`.
 const WRITE_CAPABLE_TOOLS: &[&str] = &[
     "write",
@@ -81,7 +83,7 @@ fn build_description(registry: &SubagentRegistry) -> String {
          summary as this tool's result. Child shares the parent's working \
          directory. Multiple calls in one assistant turn run concurrently \
          unless the subagent is write-capable (write-capable children serialize \
-         per worktree).\n\nAvailable subagents:\n",
+         per working dir).\n\nAvailable subagents:\n",
     );
     for (name, description) in registry.list_for_prompt() {
         s.push_str(&format!("- {name}: {description}\n"));
@@ -242,6 +244,7 @@ impl Tool for SpawnSubagentTool {
             skills: None,
             subagents: None,
             subagent_inheritance: None, // depth-1 enforced
+            checkpoint_dir: self.inherit.checkpoint_dir.clone(),
         };
 
         // Child event channel + drain. Per DEC-1 (in docs/subagent-bugs-and-fixes.md),

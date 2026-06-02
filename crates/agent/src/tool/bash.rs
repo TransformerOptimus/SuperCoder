@@ -229,6 +229,8 @@ mod tests {
             event_tx: tx,
             session_id: "test".into(),
             tool_call_id: "tc_1".into(),
+            checkpoint_dir: None,
+            checkpoint_turn: 0,
         };
 
         let tool = BashTool;

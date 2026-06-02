@@ -73,6 +73,27 @@ pub struct ToolContext {
     pub event_tx: mpsc::Sender<AgentEvent>,
     pub session_id: String,
     pub tool_call_id: String,
+    /// App-managed directory for file-snapshot checkpoints (outside the project).
+    /// `None` disables capture (bench/tests). File-mutating tools call
+    /// `git_ops::backup_file` here before mutating, keyed to `(session_id, checkpoint_turn)`.
+    pub checkpoint_dir: Option<PathBuf>,
+    /// Current turn number, used as the checkpoint key alongside `session_id`.
+    pub checkpoint_turn: u32,
+}
+
+impl ToolContext {
+    /// Best-effort: back up `path`'s prior contents BEFORE a mutating tool edits it,
+    /// so the turn can be undone. No-op when checkpointing is disabled. Failures are
+    /// logged, not propagated — a missing backup must never block the edit itself.
+    pub(crate) async fn checkpoint(&self, path: &std::path::Path) {
+        if let Some(dir) = &self.checkpoint_dir {
+            if let Err(e) =
+                git_ops::backup_file(dir, &self.session_id, self.checkpoint_turn, path).await
+            {
+                log::warn!("checkpoint backup_file failed for {}: {e}", path.display());
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -85,6 +106,8 @@ impl ToolContext {
             event_tx: tx,
             session_id: "test".into(),
             tool_call_id: "tc_1".into(),
+            checkpoint_dir: None,
+            checkpoint_turn: 0,
         }
     }
 }

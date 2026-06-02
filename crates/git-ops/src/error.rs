@@ -22,6 +22,15 @@ pub enum GitOpsError {
     #[error("invalid remote URL: {0}")]
     InvalidRemoteUrl(String),
 
+    #[error("checkpoint path must be absolute: {0}")]
+    NonAbsolutePath(String),
+
+    #[error("checkpoint not found: session {session_id} turn {turn}")]
+    CheckpointNotFound { session_id: String, turn: u32 },
+
+    #[error("corrupt checkpoint manifest at {path}: {reason}")]
+    CorruptManifest { path: String, reason: String },
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 

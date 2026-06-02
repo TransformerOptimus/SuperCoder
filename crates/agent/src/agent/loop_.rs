@@ -459,6 +459,8 @@ impl AgentLoop {
                 let tool_name = tool_call.function.name.clone();
                 let arguments_json = tool_call.function.arguments.clone();
                 let approval_ref = self.approval_handler.clone();
+                let checkpoint_dir = self.config.checkpoint_dir.clone();
+                let checkpoint_turn = iteration + self.iteration_offset;
 
                 join_set.spawn(async move {
                     let result = execute_tool_call_impl(
@@ -471,6 +473,8 @@ impl AgentLoop {
                         &event_tx,
                         &session_id,
                         approval_ref.as_deref(),
+                        checkpoint_dir,
+                        checkpoint_turn,
                     )
                     .await;
                     (idx, tool_call_id, result)
@@ -1009,6 +1013,8 @@ async fn execute_tool_call_impl(
     event_tx: &mpsc::Sender<AgentEvent>,
     session_id: &str,
     approval_handler: Option<&dyn ApprovalHandler>,
+    checkpoint_dir: Option<std::path::PathBuf>,
+    checkpoint_turn: u32,
 ) -> ToolResult {
     // Parse arguments first — if this fails, emit a basic ToolStart before the error ToolEnd
     let args: serde_json::Value = match serde_json::from_str(arguments_json) {
@@ -1176,6 +1182,8 @@ async fn execute_tool_call_impl(
         event_tx: event_tx.clone(),
         session_id: session_id.to_string(),
         tool_call_id: tool_call_id.to_string(),
+        checkpoint_dir,
+        checkpoint_turn,
     };
 
     let mut result = match tool.execute(args, &ctx).await {
@@ -1230,7 +1238,7 @@ async fn execute_tool_call_impl(
 /// If the path is outside working_dir, show it as-is.
 fn shorten_path(path: &str, working_dir: &std::path::Path) -> String {
     let wd = working_dir.to_string_lossy();
-    // Strip worktree prefix (e.g., /project/.agent-worktrees/session-id/foo.rs → foo.rs)
+    // Strip the project dir prefix (e.g., /Users/me/project/src/foo.rs → src/foo.rs)
     if let Some(rel) = path.strip_prefix(wd.as_ref()) {
         let rel = rel.strip_prefix('/').unwrap_or(rel);
         if rel.is_empty() { ".".to_string() } else { rel.to_string() }

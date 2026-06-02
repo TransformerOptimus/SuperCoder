@@ -84,6 +84,9 @@ impl Tool for EditTool {
 
         match replace(&raw_content, old_string, new_string, replace_all) {
             Ok(new_content) => {
+                // Back up the file's prior contents before editing (per-turn undo).
+                ctx.checkpoint(&path).await;
+
                 // Preserve original line ending style
                 tokio::fs::write(&path, &new_content)
                     .await

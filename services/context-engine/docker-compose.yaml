@@ -1,0 +1,126 @@
+name: supercoder-context-engine
+
+# Shared env for the server + worker. Defaults in default_config_provider.go
+# already target these hostnames; we set them explicitly for clarity. The
+# embedding API key comes from .env (never baked into the image).
+x-engine-env: &engine-env
+  SUPERCODER_INDEXER_ENABLED: "true"
+  SUPERCODER_INDEXER_STREAMING_ENABLED: "true"
+  SUPERCODER_DB_HOST: postgres
+  SUPERCODER_DB_PORT: "5432"
+  SUPERCODER_DB_USER: superagi
+  SUPERCODER_DB_PASSWORD: superagi
+  SUPERCODER_DB_NAME: supercoder
+  SUPERCODER_REDIS_HOST: redis
+  SUPERCODER_REDIS_PORT: "6379"
+  SUPERCODER_QDRANT_HOST: qdrant
+  SUPERCODER_QDRANT_PORT: "6334"
+  SUPERCODER_FALKORDB_HOST: falkordb
+  SUPERCODER_FALKORDB_PORT: "6379"
+  # Merkle trees persist to a shared volume (local-disk CAS; no S3/MinIO).
+  SUPERCODER_MERKLE_DIR: /data/merkle
+  SUPERCODER_OPENAI_API_KEY: ${SUPERCODER_OPENAI_API_KEY:-}
+  SUPERCODER_OPENAI_EMBEDDING_MODEL: ${SUPERCODER_OPENAI_EMBEDDING_MODEL:-text-embedding-3-large}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: superagi
+      POSTGRES_PASSWORD: superagi
+      POSTGRES_DB: supercoder
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superagi -d supercoder"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    # 6333 = REST, 6334 = gRPC (the Go client uses gRPC). No healthcheck: the
+    # image ships no shell/curl, and the engine's qdrant client tolerates a
+    # slightly-late server (warns, retries).
+    ports: ["6333:6333", "6334:6334"]
+    volumes: ["qdrantdata:/qdrant/storage"]
+
+  falkordb:
+    image: falkordb/falkordb:latest
+    # Redis-module instance for the code graph. Mapped to host 6380 to avoid
+    # colliding with the redis service's 6379 on the host.
+    ports: ["6380:6379"]
+    volumes: ["falkordata:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # Applies the Atlas versioned migrations (bundled into the image), then
+  # exits. Server/worker wait for this so the schema (incl. streaming tables)
+  # exists first.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    image: supercoder/context-engine-migrate:local
+    command: >
+      migrate apply
+      --dir file:///migrations
+      --url "postgres://superagi:superagi@postgres:5432/supercoder?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  context-engine-server:
+    build:
+      context: ../..
+      dockerfile: services/context-engine/Dockerfile
+    image: supercoder/context-engine:local
+    command: ["/app/server"]
+    environment: *engine-env
+    ports: ["8106:8106"]
+    volumes: ["merkle:/data/merkle"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      falkordb: {condition: service_healthy}
+      qdrant: {condition: service_started}
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8106/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  context-engine-worker:
+    # Reuses the server image (built once); runs the asynq worker entrypoint.
+    image: supercoder/context-engine:local
+    command: ["/app/worker"]
+    environment: *engine-env
+    # Same merkle volume as the server — the finalizer writes the tree the
+    # server's /diff reads (flock CAS coordinates across both containers).
+    volumes: ["merkle:/data/merkle"]
+    depends_on:
+      context-engine-server: {condition: service_started}
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      falkordb: {condition: service_healthy}
+      qdrant: {condition: service_started}
+      migrate: {condition: service_completed_successfully}
+
+volumes:
+  pgdata:
+  qdrantdata:
+  falkordata:
+  merkle:

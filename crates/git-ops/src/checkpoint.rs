@@ -184,6 +184,7 @@ pub async fn restore_to(
     checkpoint_dir: &Path,
     session_id: &str,
     target_turn: u32,
+    project_root: &Path,
 ) -> Result<usize, GitOpsError> {
     let root = session_root(checkpoint_dir, session_id);
     if tokio::fs::metadata(&root).await.is_err() {
@@ -204,6 +205,15 @@ pub async fn restore_to(
         };
         for entry in &manifest.entries {
             let path = PathBuf::from(&entry.path);
+            // Manifests live in an app-managed dir; if one were tampered with, an
+            // entry path could escape the project. Refuse to write/delete outside.
+            if !is_within_root(project_root, &path) {
+                log::warn!(
+                    "checkpoint restore: skipping out-of-project path {}",
+                    entry.path
+                );
+                continue;
+            }
             if !entry.existed_before {
                 // Agent created this file in turn t -> remove it.
                 match tokio::fs::remove_file(&path).await {
@@ -229,6 +239,26 @@ pub async fn restore_to(
     }
 
     Ok(changed)
+}
+
+/// True if `candidate` stays within `root` after lexically resolving `.`/`..`
+/// (no filesystem access, so it works for not-yet-existing paths). Defends
+/// `restore_to` against tampered-manifest path traversal and absolute escapes.
+fn is_within_root(root: &Path, candidate: &Path) -> bool {
+    use std::path::Component;
+    let mut normalized = PathBuf::new();
+    for comp in candidate.components() {
+        match comp {
+            Component::ParentDir => {
+                if !normalized.pop() {
+                    return false;
+                }
+            }
+            Component::CurDir => {}
+            other => normalized.push(other.as_os_str()),
+        }
+    }
+    normalized.starts_with(root)
 }
 
 /// Human-readable diff (prior vs current on-disk) for a single turn.
@@ -437,7 +467,7 @@ mod tests {
         backup_file(ckpt.path(), "s1", 1, &f).await.unwrap();
         write(&f, "v2");
 
-        let changed = restore_to(ckpt.path(), "s1", 0).await.unwrap();
+        let changed = restore_to(ckpt.path(), "s1", 0, proj.path()).await.unwrap();
         assert_eq!(changed, 1);
         assert_eq!(read(&f), "v1");
     }
@@ -451,7 +481,7 @@ mod tests {
         write(&f, "created by agent");
         assert!(f.exists());
 
-        restore_to(ckpt.path(), "s1", 0).await.unwrap();
+        restore_to(ckpt.path(), "s1", 0, proj.path()).await.unwrap();
         assert!(!f.exists(), "agent-created file should be removed on restore");
     }
 
@@ -465,7 +495,7 @@ mod tests {
         std::fs::remove_file(&f).unwrap();
         assert!(!f.exists());
 
-        restore_to(ckpt.path(), "s1", 0).await.unwrap();
+        restore_to(ckpt.path(), "s1", 0, proj.path()).await.unwrap();
         assert!(f.exists());
         assert_eq!(read(&f), "orig");
     }
@@ -482,7 +512,7 @@ mod tests {
         backup_file(ckpt.path(), "s1", 1, &f).await.unwrap();
         write(&f, "C");
 
-        restore_to(ckpt.path(), "s1", 0).await.unwrap();
+        restore_to(ckpt.path(), "s1", 0, proj.path()).await.unwrap();
         assert_eq!(read(&f), "A");
     }
 
@@ -501,7 +531,7 @@ mod tests {
         assert_eq!(turns[0].file_count, 1);
 
         // The single blob holds the turn-start content.
-        restore_to(ckpt.path(), "s1", 0).await.unwrap();
+        restore_to(ckpt.path(), "s1", 0, proj.path()).await.unwrap();
         assert_eq!(read(&f), "start");
     }
 
@@ -517,7 +547,7 @@ mod tests {
         // A change made WITHOUT going through backup_file (simulating bash).
         write(&untracked, "bash-made");
 
-        restore_to(ckpt.path(), "s1", 0).await.unwrap();
+        restore_to(ckpt.path(), "s1", 0, proj.path()).await.unwrap();
         // tracked reverts; the bash-made file is untouched.
         assert_eq!(read(&tracked), "t0");
         assert_eq!(read(&untracked), "bash-made");
@@ -536,7 +566,7 @@ mod tests {
         write(&f, "D");
 
         // Restoring to turn 2 undoes only turn 3 -> back to "C".
-        restore_to(ckpt.path(), "s1", 2).await.unwrap();
+        restore_to(ckpt.path(), "s1", 2, proj.path()).await.unwrap();
         assert_eq!(read(&f), "C");
     }
 
@@ -549,7 +579,7 @@ mod tests {
         write(&f, "B"); // change made during turn 1
 
         // restore_to(1) keeps turn 1's edit (only undoes turn > 1).
-        let changed = restore_to(ckpt.path(), "s1", 1).await.unwrap();
+        let changed = restore_to(ckpt.path(), "s1", 1, proj.path()).await.unwrap();
         assert_eq!(changed, 0);
         assert_eq!(read(&f), "B");
     }
@@ -566,7 +596,7 @@ mod tests {
         write(&f, "v2");
 
         // Restoring to turn 0: newest-first => turn 2 rewrites "v1", then turn 1 deletes.
-        restore_to(ckpt.path(), "s1", 0).await.unwrap();
+        restore_to(ckpt.path(), "s1", 0, proj.path()).await.unwrap();
         assert!(!f.exists(), "file created then edited should end up absent");
     }
 
@@ -640,7 +670,7 @@ mod tests {
     #[tokio::test]
     async fn test_restore_nonexistent_session_is_noop() {
         let (_proj, ckpt) = dirs();
-        let changed = restore_to(ckpt.path(), "never", 0).await.unwrap();
+        let changed = restore_to(ckpt.path(), "never", 0, _proj.path()).await.unwrap();
         assert_eq!(changed, 0);
         assert!(list(ckpt.path(), "never").await.unwrap().is_empty());
     }
@@ -655,7 +685,7 @@ mod tests {
         backup_file(ckpt.path(), "s1", 1, &f).await.unwrap();
         std::fs::write(&f, [9u8, 9, 9]).unwrap();
 
-        restore_to(ckpt.path(), "s1", 0).await.unwrap();
+        restore_to(ckpt.path(), "s1", 0, proj.path()).await.unwrap();
         assert_eq!(std::fs::read(&f).unwrap(), original);
     }
 

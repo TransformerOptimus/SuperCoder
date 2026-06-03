@@ -29,10 +29,6 @@ func AllowSpecificOrigins() cors.Config {
 			if strings.HasPrefix(origin, "https://") && strings.HasSuffix(origin, ".ngrok-free.app") {
 				return true
 			}
-			// Allow SuperAGI subdomains (HTTPS only)
-			if strings.HasPrefix(origin, "https://") && strings.HasSuffix(origin, ".superagi.com") {
-				return true
-			}
 			return false
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},

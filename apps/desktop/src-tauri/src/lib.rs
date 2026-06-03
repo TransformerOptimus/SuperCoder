@@ -159,11 +159,50 @@ async fn download_file(url: String, file_name: String) -> Result<String, String>
 /// Fetch a URL and return the body as a string (bypasses browser CORS).
 #[tauri::command]
 async fn fetch_url(url: String) -> Result<String, String> {
-    let resp = reqwest::get(&url).await.map_err(|e| format!("fetch failed: {e}"))?;
+    // SSRF guard: only http(s), and refuse loopback/private/link-local hosts so
+    // webview- or content-supplied URLs can't probe internal services or read
+    // file:// resources.
+    let parsed = reqwest::Url::parse(&url).map_err(|e| format!("invalid url: {e}"))?;
+    match parsed.scheme() {
+        "http" | "https" => {}
+        other => return Err(format!("unsupported url scheme: {other}")),
+    }
+    match parsed.host_str() {
+        Some(h) if !is_blocked_fetch_host(h) => {}
+        Some(_) => return Err("refusing to fetch loopback/private/link-local address".into()),
+        None => return Err("url has no host".into()),
+    }
+    let resp = reqwest::get(parsed).await.map_err(|e| format!("fetch failed: {e}"))?;
     if !resp.status().is_success() {
         return Err(format!("HTTP {}", resp.status()));
     }
     resp.text().await.map_err(|e| format!("read body failed: {e}"))
+}
+
+/// Defense-in-depth SSRF filter for `fetch_url`. Blocks localhost names and
+/// literal loopback/private/link-local IPs. Does NOT resolve DNS names to IPs —
+/// full protection would require a custom connector; this covers the common cases.
+fn is_blocked_fetch_host(host: &str) -> bool {
+    let h = host
+        .trim_start_matches('[')
+        .trim_end_matches(']')
+        .to_ascii_lowercase();
+    if h == "localhost" || h.ends_with(".localhost") || h.ends_with(".local") {
+        return true;
+    }
+    match h.parse::<std::net::IpAddr>() {
+        Ok(std::net::IpAddr::V4(v4)) => {
+            v4.is_loopback() || v4.is_private() || v4.is_link_local() || v4.is_unspecified()
+        }
+        Ok(std::net::IpAddr::V6(v6)) => {
+            let s = v6.segments();
+            v6.is_loopback()
+                || v6.is_unspecified()
+                || (s[0] & 0xfe00) == 0xfc00 // unique-local fc00::/7
+                || (s[0] & 0xffc0) == 0xfe80 // link-local fe80::/10
+        }
+        Err(_) => false,
+    }
 }
 
 // ── OS integration ────────────────────────────────────────────────────────────
@@ -205,15 +244,21 @@ async fn open_in_terminal(path: String) -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
+        // Set the working dir instead of interpolating `path` into a shell
+        // string, so a folder name with shell metacharacters can't inject.
         std::process::Command::new("cmd")
-            .args(["/c", "start", "cmd", "/k", &format!("cd /d {}", path)])
+            .args(["/c", "start", "cmd"])
+            .current_dir(&path)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
     #[cfg(target_os = "linux")]
     {
+        // Set the working dir instead of interpolating `path` into the shell
+        // string passed to `xterm -e`, so the path can't inject commands.
         std::process::Command::new("xterm")
-            .args(["-e", &format!("cd {} && bash", path)])
+            .args(["-e", "bash"])
+            .current_dir(&path)
             .spawn()
             .map_err(|e| e.to_string())?;
     }

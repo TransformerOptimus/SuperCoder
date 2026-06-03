@@ -114,7 +114,7 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "edited\n");
 
         // Restore to before turn 1 -> back to the turn's starting contents.
-        git_ops::restore_to(ckpt.path(), "sess", 0).await.unwrap();
+        git_ops::restore_to(ckpt.path(), "sess", 0, proj.path()).await.unwrap();
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "original\n");
     }
 

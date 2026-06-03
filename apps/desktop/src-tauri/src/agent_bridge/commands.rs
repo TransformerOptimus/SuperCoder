@@ -2192,9 +2192,25 @@ pub async fn agent_restore_checkpoint(
     agent_state.approval_handlers.write().await.remove(&session_id);
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-    git_ops::checkpoint::restore_to(&agent_state.checkpoint_root, &session_id, turn)
-        .await
-        .map_err(|e| format!("Failed to restore checkpoint: {e}"))?;
+    let folder = {
+        let db = Arc::clone(&agent_state.db);
+        let sid = session_id.clone();
+        tokio::task::spawn_blocking(move || db.get_session(&sid))
+            .await
+            .ok()
+            .and_then(Result::ok)
+            .flatten()
+            .map(|s| s.folder)
+            .unwrap_or_default()
+    };
+    git_ops::checkpoint::restore_to(
+        &agent_state.checkpoint_root,
+        &session_id,
+        turn,
+        std::path::Path::new(&folder),
+    )
+    .await
+    .map_err(|e| format!("Failed to restore checkpoint: {e}"))?;
     let _ = git_ops::checkpoint::delete_from(&agent_state.checkpoint_root, &session_id, turn + 1).await;
 
     // Drop messages from undone turns so the conversation matches the files.
@@ -2248,13 +2264,6 @@ pub async fn agent_rewind_to_message(
         let _ = tokio::task::spawn_blocking(move || db.rewind_messages(&sid, target.id)).await;
     }
 
-    if restore_code {
-        let target_turn = target.turn_count.unwrap_or(1);
-        let restore_turn = target_turn.saturating_sub(1);
-        let _ = git_ops::checkpoint::restore_to(&agent_state.checkpoint_root, &session_id, restore_turn).await;
-        let _ = git_ops::checkpoint::delete_from(&agent_state.checkpoint_root, &session_id, target_turn).await;
-    }
-
     let session = {
         let db = Arc::clone(&agent_state.db);
         let sid = session_id.clone();
@@ -2264,6 +2273,19 @@ pub async fn agent_rewind_to_message(
             .map_err(|e| format!("db error: {e}"))?
             .ok_or("Session not found")?
     };
+
+    if restore_code {
+        let target_turn = target.turn_count.unwrap_or(1);
+        let restore_turn = target_turn.saturating_sub(1);
+        let _ = git_ops::checkpoint::restore_to(
+            &agent_state.checkpoint_root,
+            &session_id,
+            restore_turn,
+            std::path::Path::new(&session.folder),
+        )
+        .await;
+        let _ = git_ops::checkpoint::delete_from(&agent_state.checkpoint_root, &session_id, target_turn).await;
+    }
 
     run_agent_turn(app, &app_state, &agent_state, session, new_text, attachments, None).await?;
     Ok(SendMessageResponse { session_id })

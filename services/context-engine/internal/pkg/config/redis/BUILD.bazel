@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "redis",
+    srcs = ["redis.go"],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/internal/pkg/config/redis",
+    visibility = ["//services/context-engine:__subpackages__"],
+    deps = ["@com_github_knadh_koanf_v2//:koanf"],
+)

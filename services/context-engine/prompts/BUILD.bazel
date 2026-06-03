@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "prompts",
+    srcs = ["prompts.go"],
+    embedsrcs = [
+        "audit.txt",
+        "max_turns.txt",
+        "system_review.txt",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/prompts",
+    visibility = ["//visibility:public"],
+)

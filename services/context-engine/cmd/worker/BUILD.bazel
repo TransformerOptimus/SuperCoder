@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "worker_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/cmd/worker",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//services/context-engine/injection",
+        "//services/context-engine/internal/pkg/config/logging",
+        "@com_github_hibiken_asynq//:asynq",
+        "@org_uber_go_zap//:zap",
+    ],
+)
+
+go_binary(
+    name = "worker",
+    embed = [":worker_lib"],
+    visibility = ["//visibility:public"],
+)

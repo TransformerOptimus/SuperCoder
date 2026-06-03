@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "consumers",
+    srcs = [
+        "classify_exhaustion.go",
+        "finalize_sync_consumer.go",
+        "finalizer_trigger.go",
+        "mark_batch_helpers.go",
+        "stream_batch_consumer.go",
+        "stream_batch_decode.go",
+        "tasks.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/consumers",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//services/context-engine/models/db/postgres",
+        "//services/context-engine/repositories",
+        "//services/context-engine/services",
+        "@com_github_hibiken_asynq//:asynq",
+        "@com_github_redis_go_redis_v9//:go-redis",
+        "@io_gorm_gorm//:gorm",
+        "@org_uber_go_zap//:zap",
+    ],
+)

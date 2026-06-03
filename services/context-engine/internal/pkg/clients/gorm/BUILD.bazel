@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "gorm",
+    srcs = ["gorm_logger.go"],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/internal/pkg/clients/gorm",
+    visibility = ["//services/context-engine:__subpackages__"],
+    deps = [
+        "@io_gorm_gorm//logger",
+        "@org_uber_go_zap//:zap",
+    ],
+)

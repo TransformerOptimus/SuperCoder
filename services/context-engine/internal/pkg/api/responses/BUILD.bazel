@@ -1,0 +1,8 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "responses",
+    srcs = ["error_response.go"],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/internal/pkg/api/responses",
+    visibility = ["//services/context-engine:__subpackages__"],
+)

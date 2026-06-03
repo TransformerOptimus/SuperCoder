@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "core",
+    srcs = [
+        "config.go",
+        "env.go",
+        "service_config.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/internal/pkg/config/core",
+    visibility = ["//services/context-engine:__subpackages__"],
+    deps = [
+        "@com_github_knadh_koanf_parsers_dotenv//:dotenv",
+        "@com_github_knadh_koanf_providers_confmap//:confmap",
+        "@com_github_knadh_koanf_providers_env//:env",
+        "@com_github_knadh_koanf_providers_file//:file",
+        "@com_github_knadh_koanf_v2//:koanf",
+        "@org_uber_go_zap//:zap",
+    ],
+)

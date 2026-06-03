@@ -1,0 +1,9 @@
+Review this entire codebase for issues. Use search_codebase and get_function_context to explore.
+
+Focus on:
+1. Logic errors: Race conditions, unhandled states, incorrect calculations
+2. Code quality: Duplication, dead code, poor error handling
+3. Safety: Panics, nil pointer dereferences, resource leaks
+4. Architecture: Synchronization issues, coupling problems
+
+Report findings with file locations and suggested fixes. Be concise.

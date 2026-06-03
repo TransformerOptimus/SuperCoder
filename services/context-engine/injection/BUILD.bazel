@@ -1,0 +1,38 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "injection",
+    srcs = [
+        "base_container.go",
+        "default_config_provider.go",
+        "postgres_dsn_provider.go",
+        "prompt_provider.go",
+        "redis_stream_content_provider.go",
+        "server_container.go",
+        "worker_container.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/injection",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//services/context-engine/config",
+        "//services/context-engine/consumers",
+        "//services/context-engine/controllers",
+        "//services/context-engine/internal/pkg/api/crossorigin",
+        "//services/context-engine/internal/pkg/clients/asynq",
+        "//services/context-engine/internal/pkg/clients/cacher",
+        "//services/context-engine/internal/pkg/clients/gorm",
+        "//services/context-engine/internal/pkg/clients/postgres",
+        "//services/context-engine/internal/pkg/config/asynq",
+        "//services/context-engine/internal/pkg/config/core",
+        "//services/context-engine/internal/pkg/config/db",
+        "//services/context-engine/internal/pkg/config/redis",
+        "//services/context-engine/producers",
+        "//services/context-engine/repositories/impl",
+        "//services/context-engine/services",
+        "//services/context-engine/services/impl",
+        "@com_github_hibiken_asynq//:asynq",
+        "@com_github_redis_go_redis_v9//:go-redis",
+        "@org_uber_go_dig//:dig",
+        "@org_uber_go_zap//:zap",
+    ],
+)

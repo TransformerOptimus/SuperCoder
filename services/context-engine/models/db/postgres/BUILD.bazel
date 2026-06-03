@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "postgres",
+    srcs = [
+        "repo.go",
+        "shard_assignment.go",
+        "sync_batch.go",
+        "sync_outbox.go",
+        "sync_session.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/models/db/postgres",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@io_gorm_datatypes//:datatypes",
+        "@io_gorm_gorm//:gorm",
+    ],
+)

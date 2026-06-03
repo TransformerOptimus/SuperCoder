@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "producers",
+    srcs = ["index_producer.go"],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/producers",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//services/context-engine/consumers",
+        "@com_github_hibiken_asynq//:asynq",
+        "@org_uber_go_zap//:zap",
+    ],
+)

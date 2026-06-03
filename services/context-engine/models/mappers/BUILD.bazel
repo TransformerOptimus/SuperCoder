@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "mappers",
+    srcs = ["review_mapper.go"],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/models/mappers",
+    visibility = ["//visibility:public"],
+    deps = ["//services/context-engine/models/dto"],
+)

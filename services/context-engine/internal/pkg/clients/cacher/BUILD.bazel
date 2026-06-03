@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "cacher",
+    srcs = ["cacher.go"],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/internal/pkg/clients/cacher",
+    visibility = ["//services/context-engine:__subpackages__"],
+    deps = [
+        "//services/context-engine/internal/pkg/config/redis",
+        "@com_github_go_gorm_caches_v4//:caches",
+        "@com_github_redis_go_redis_v9//:go-redis",
+        "@io_opentelemetry_go_otel//:otel",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel_trace//:trace",
+    ],
+)

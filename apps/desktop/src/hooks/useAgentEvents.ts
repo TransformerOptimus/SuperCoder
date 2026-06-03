@@ -336,6 +336,22 @@ export function useAgentEvents() {
       }),
     );
 
+    // ── context-watcher-status (file-watcher index lifecycle) ──────────
+    // Payload is the flattened IndexWatcherStatus: { repo_path, status, file_count?, reason? }.
+    listeners.push(
+      listen<{ repo_path: string; status: string; file_count?: number | null; reason?: string | null }>(
+        "context-watcher-status",
+        (event) => {
+          const { repo_path, status, file_count, reason } = event.payload;
+          useAppStore.getState().setContextWatcherStatus(repo_path, {
+            status,
+            fileCount: file_count ?? null,
+            reason: reason ?? null,
+          });
+        },
+      ),
+    );
+
     return () => {
       if (deltaFlushTimer) {
         clearTimeout(deltaFlushTimer);

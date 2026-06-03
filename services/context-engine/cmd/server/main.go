@@ -88,6 +88,7 @@ func initialiseServer(p serverParams) {
 				api.POST("/graph/query", apicontext.WithApiContext(p.IndexRetrievalController.GraphQuery))
 				api.POST("/context", apicontext.WithApiContext(p.IndexRetrievalController.GetContext))
 				api.GET("/index/status", apicontext.WithApiContext(p.IndexRetrievalController.GetIndexStatus))
+				api.DELETE("/index", apicontext.WithApiContext(p.IndexRetrievalController.DeleteIndex))
 
 				// v3 streaming sync endpoints, gated behind indexer.streaming.enabled.
 				if p.IndexerConfig.StreamingEnabled() &&

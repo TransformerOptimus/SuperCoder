@@ -3,6 +3,9 @@ import type {
   AgentDisplayMessage,
   CheckpointSummary,
   ContextEngineSettings,
+  ContextEngineStatus,
+  ContextWatcherStatus,
+  IndexedRepo,
   CuratedModel,
   FetchedModel,
   ModelCapability,
@@ -221,6 +224,36 @@ export const agentTauriService = {
 
   async setContextEngine(settings: ContextEngineSettings): Promise<void> {
     return invoke<void>('agent_set_context_engine', { settings });
+  },
+
+  /** Probe a backend URL (hits /api/health). Does not change saved settings. */
+  async contextEngineStatus(baseUrl: string): Promise<ContextEngineStatus> {
+    return invoke<ContextEngineStatus>('agent_context_engine_status', { baseUrl });
+  },
+
+  /** List known repos (session folders) + their index state on the backend. */
+  async contextEngineRepos(): Promise<IndexedRepo[]> {
+    return invoke<IndexedRepo[]>('agent_context_engine_repos');
+  },
+
+  /** Delete a repo's index (vectors + graph + merkle) on the backend. */
+  async deleteContextEngineRepo(path: string): Promise<void> {
+    return invoke<void>('agent_context_engine_delete_repo', { path });
+  },
+
+  /** Start the live file-watcher for a repo (idempotent: full sync + incremental). */
+  async contextWatcherStart(repoPath: string): Promise<void> {
+    return invoke<void>('context_watcher_start', { repoPath });
+  },
+
+  /** Stop the live file-watcher for a repo. */
+  async contextWatcherStop(repoPath: string): Promise<void> {
+    return invoke<void>('context_watcher_stop', { repoPath });
+  },
+
+  /** Query the current watcher status for a repo (null if not watched). */
+  async contextWatcherStatus(repoPath: string): Promise<ContextWatcherStatus | null> {
+    return invoke<ContextWatcherStatus | null>('context_watcher_status', { repoPath });
   },
 
   // ── Checkpoints (snapshot-backed) ──────────────────────────────────────

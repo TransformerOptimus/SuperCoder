@@ -23,6 +23,26 @@ function cleanArgsSummary(toolName: string, raw: string): string {
     return "";
   }
   const trimmed = raw.trim();
+
+  // Context-engine tools: the chip label already says "Semantic search" /
+  // "Querying graph", so never echo the bare tool name. Pull a human summary
+  // from the args — a search/graph query, else a graph lookup target
+  // (function_name, qualified by query_type), else a file path. When there's
+  // nothing useful (or args are just the tool name), show only the label.
+  if (toolName === "codebase_search" || toolName === "codebase_graph") {
+    const q = trimmed.match(/"query"\s*:\s*"([^"]+)"/);
+    if (q) return q[1];
+    const fn = trimmed.match(/"function_name"\s*:\s*"([^"]+)"/);
+    if (fn) {
+      const qt = trimmed.match(/"query_type"\s*:\s*"([^"]+)"/);
+      return qt ? `${qt[1].replace(/_/g, " ")} of ${fn[1]}` : fn[1];
+    }
+    const fp = trimmed.match(/"file_path"\s*:\s*"([^"]+)"/);
+    if (fp) return fp[1];
+    // Bare tool name or unparseable JSON args → label only.
+    return raw === toolName || trimmed.startsWith("{") ? "" : raw;
+  }
+
   if (trimmed.startsWith("{") || trimmed.startsWith("[") || trimmed.startsWith('"')) {
     // TodoWrite — extract first todo content via regex (JSON is often truncated)
     if (toolName === "TodoWrite" || trimmed.includes('"todos"')) {
@@ -31,11 +51,6 @@ function cleanArgsSummary(toolName: string, raw: string): string {
       return "Updating todos";
     }
     if (toolName === "TodoRead") return "Reading todos";
-    // codebase_search / codebase_graph — extract "query" from JSON args
-    if (toolName === "codebase_search" || toolName === "codebase_graph") {
-      const match = trimmed.match(/"query"\s*:\s*"([^"]+)"/);
-      if (match) return match[1];
-    }
     return toolName.startsWith("{") ? "Processing..." : toolName;
   }
   return raw;

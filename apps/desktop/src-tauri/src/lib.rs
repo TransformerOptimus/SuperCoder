@@ -6,6 +6,7 @@ use std::sync::Arc;
 use tauri::Manager;
 
 pub mod agent_bridge;
+pub mod context_watcher;
 
 /// Local application data directory: `<data_local_dir>/.supercoder`.
 /// Holds the settings DB, the agent DB, skills/subagents, and the checkpoint root.
@@ -72,7 +73,7 @@ impl Database {
 // ── AppState ────────────────────────────────────────────────────────────────
 
 pub struct AppState {
-    pub db: Database,
+    pub db: Arc<Database>,
 }
 
 // ── File I/O ──────────────────────────────────────────────────────────────────
@@ -446,13 +447,51 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            let db = Database::new().expect("Failed to create database");
+            let db = Arc::new(Database::new().expect("Failed to create database"));
 
-            // Ensure permissions table exists in settings DB
+            // Ensure the settings-DB tables the backend owns exist.
             {
                 let conn = db.conn.lock();
                 agent_bridge::permissions::ensure_permissions_table(&conn)
                     .expect("Failed to create agent_permissions table");
+                context_watcher::db::ensure_watched_repos_table(&conn)
+                    .expect("Failed to create watched_repos table");
+            }
+
+            // Resolve the stable machine_id once (same value `commands::machine_id`
+            // resolves) so the watcher and the search client share a collection key.
+            let machine_id = {
+                let existing = db
+                    .get_setting("machine_id")
+                    .ok()
+                    .flatten()
+                    .filter(|s| !s.is_empty());
+                match existing {
+                    Some(id) => id,
+                    None => {
+                        let id = uuid::Uuid::new_v4().to_string();
+                        let _ = db.set_setting("machine_id", &id);
+                        id
+                    }
+                }
+            };
+
+            // File-watcher subsystem: keeps the context-engine index live as the
+            // user edits. Always built (reads `enabled` live from settings, so the
+            // Settings toggle can start/stop it at runtime).
+            let watcher_manager = Arc::new(context_watcher::WatcherManager::new(
+                machine_id,
+                Arc::clone(&db),
+                app.handle().clone(),
+            ));
+            app.manage(Arc::clone(&watcher_manager));
+
+            // Re-watch repos used in the last 7 days (only if the feature is on).
+            {
+                let wm = Arc::clone(&watcher_manager);
+                tauri::async_runtime::spawn(async move {
+                    wm.auto_start().await;
+                });
             }
 
             let state = AppState { db };
@@ -486,6 +525,17 @@ pub fn run() {
                 let _ = window.set_position(tauri::LogicalPosition::new(x, y));
             }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Shut watchers down cleanly on quit (~1s/repo grace, concurrent).
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if let Some(wm) =
+                    window.try_state::<Arc<context_watcher::WatcherManager>>()
+                {
+                    let wm = wm.inner().clone();
+                    tauri::async_runtime::block_on(async move { wm.stop_all().await });
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             open_in_vscode,
@@ -535,6 +585,12 @@ pub fn run() {
             agent_bridge::commands::agent_list_models,
             agent_bridge::commands::agent_get_context_engine,
             agent_bridge::commands::agent_set_context_engine,
+            agent_bridge::commands::agent_context_engine_status,
+            agent_bridge::commands::agent_context_engine_repos,
+            agent_bridge::commands::agent_context_engine_delete_repo,
+            context_watcher::commands::context_watcher_start,
+            context_watcher::commands::context_watcher_stop,
+            context_watcher::commands::context_watcher_status,
             agent_bridge::commands::agent_get_permissions,
             agent_bridge::commands::agent_set_permission,
             agent_bridge::commands::agent_list_skills,

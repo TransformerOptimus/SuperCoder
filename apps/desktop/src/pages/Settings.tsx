@@ -8,6 +8,8 @@ import { themedMessage } from "@/providers/AntDThemeProvider";
 import { useTheme, type ThemeMode } from "@/context/ThemeContext";
 import type {
   ContextEngineSettings,
+  ContextEngineStatus,
+  IndexedRepo,
   CuratedModel,
   ModelRef,
   ModelSelection,
@@ -49,8 +51,10 @@ const parseValue = (v: string): ModelRef => {
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { mode: themeMode, setMode: setThemeMode } = useTheme();
+  const { mode: themeMode, setMode: setThemeMode, dark } = useTheme();
   const loadProviders = useAppStore((s) => s.loadProviders);
+  // Live file-watcher status per repo path, refreshed by context-watcher-status events.
+  const contextWatcherStatus = useAppStore((s) => s.contextWatcherStatus);
 
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
   const [selection, setSelection] = useState<ModelSelection>({ active: null, compaction: null, title: null });
@@ -60,7 +64,14 @@ export default function Settings() {
   const [draft, setDraft] = useState<ProviderConfig | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
-  const [contextEngine, setContextEngine] = useState<ContextEngineSettings>({ enabled: false, port: 8106 });
+  const [contextEngine, setContextEngine] = useState<ContextEngineSettings>({
+    enabled: false,
+    base_url: "http://127.0.0.1:8106",
+  });
+  const [ceStatus, setCeStatus] = useState<ContextEngineStatus | null>(null);
+  const [ceConnecting, setCeConnecting] = useState(false);
+  const [ceRepos, setCeRepos] = useState<IndexedRepo[]>([]);
+  const [ceReposLoading, setCeReposLoading] = useState(false);
   // Built-in model registry (context window + vision), fetched from the backend.
   const [curatedModels, setCuratedModels] = useState<CuratedModel[]>([]);
 
@@ -75,8 +86,18 @@ export default function Settings() {
     (async () => {
       try {
         await refresh();
-        setContextEngine(await agentTauriService.getContextEngine());
+        const ce = await agentTauriService.getContextEngine();
+        setContextEngine(ce);
         setCuratedModels(await agentTauriService.listModels());
+        // Probe the saved backend in the background so the panel opens with
+        // live status + the indexed-repo list already populated.
+        agentTauriService
+          .contextEngineStatus(ce.base_url)
+          .then(async (status) => {
+            setCeStatus(status);
+            if (status.connected) await loadCeRepos();
+          })
+          .catch(() => setCeStatus({ connected: false, error: "unreachable" }));
       } catch (err) {
         console.error("[Settings] Failed to load providers:", err);
       } finally {
@@ -94,6 +115,61 @@ export default function Settings() {
       console.error("[Settings] Failed to save context engine settings:", err);
       themedMessage.error("Failed to save context engine settings");
     }
+  };
+
+  const loadCeRepos = async () => {
+    setCeReposLoading(true);
+    try {
+      setCeRepos(await agentTauriService.contextEngineRepos());
+    } catch (err) {
+      console.error("[Settings] Failed to list indexed repos:", err);
+    } finally {
+      setCeReposLoading(false);
+    }
+  };
+
+  const deleteIndexedRepo = async (path: string) => {
+    try {
+      await agentTauriService.deleteContextEngineRepo(path);
+      themedMessage.success("Index deleted");
+      await loadCeRepos();
+    } catch (err) {
+      console.error("[Settings] Failed to delete index:", err);
+      themedMessage.error("Failed to delete index");
+    }
+  };
+
+  // Probe a backend URL + load its repo list. Does NOT persist settings.
+  const probeBackend = async (baseUrl: string) => {
+    setCeConnecting(true);
+    try {
+      const status = await agentTauriService.contextEngineStatus(baseUrl);
+      setCeStatus(status);
+      if (status.connected) await loadCeRepos();
+      else setCeRepos([]);
+    } catch (err) {
+      setCeStatus({ connected: false, error: String(err) });
+    } finally {
+      setCeConnecting(false);
+    }
+  };
+
+  // Master toggle. Persist the new `enabled` and probe when turning on. Note:
+  // we probe with `next` (not via connect) so we never re-save stale state.
+  const toggleContextEngine = async (enabled: boolean) => {
+    const next = { ...contextEngine, enabled };
+    await saveContextEngine(next);
+    if (enabled) await probeBackend(next.base_url);
+    else {
+      setCeStatus(null);
+      setCeRepos([]);
+    }
+  };
+
+  // Connect button: persist the current settings (incl. edited URL), then probe.
+  const connectContextEngine = async () => {
+    await saveContextEngine(contextEngine);
+    await probeBackend(contextEngine.base_url);
   };
 
   // Grouped (provider, model) options for the compaction/title pickers.
@@ -426,51 +502,124 @@ export default function Settings() {
             </div>
 
             {/* Context engine (opt-in semantic + graph search) */}
-            <h2 className="text-base font-semibold text-[var(--text-primary)] mt-8 mb-1">
-              Context engine (semantic search)
-            </h2>
+            <div className="flex items-center justify-between mt-8 mb-1">
+              <h2 className="text-base font-semibold text-[var(--text-primary)]">
+                Context engine (semantic search)
+              </h2>
+              <Switch checked={contextEngine.enabled} onChange={toggleContextEngine} />
+            </div>
             <p className="text-sm text-[var(--text-secondary)] mb-4">
-              Optional. Runs a local Docker stack that indexes the open repo for semantic + graph code
-              search (the agent's <code>codebase_search</code> / <code>codebase_graph</code> tools). The
-              app stays zero-backend when off.
+              Give the agent semantic + graph code search (<code>codebase_search</code> /{" "}
+              <code>codebase_graph</code>) via a running context-engine backend. Start it with{" "}
+              <code>docker compose up -d</code> in <code>services/context-engine</code>. Off = zero-backend.
             </p>
-            <div className="flex flex-col gap-4 border border-[var(--border)] rounded-lg p-5 mb-8">
-              <div className="flex items-center justify-between">
+
+            {contextEngine.enabled && (
+              <div className="flex flex-col gap-5 border border-[var(--border)] rounded-lg p-5 mb-8">
+                {/* Connection */}
                 <div>
-                  <div className="text-sm font-medium text-[var(--text-primary)]">Enable context engine</div>
-                  <div className="text-xs text-[var(--text-secondary)]">
-                    Streams the open repo for indexing on session start.
+                  <label className="block text-xs text-[var(--text-secondary)] mb-1">Backend URL</label>
+                  <div className="flex gap-2">
+                    <Input
+                      className="flex-1"
+                      placeholder="http://127.0.0.1:8106"
+                      value={contextEngine.base_url}
+                      onChange={(e) => {
+                        setContextEngine({ ...contextEngine, base_url: e.target.value });
+                        setCeStatus(null);
+                      }}
+                      onPressEnter={connectContextEngine}
+                    />
+                    <Button
+                      type="primary"
+                      onClick={connectContextEngine}
+                      loading={ceConnecting}
+                      style={dark ? { background: "#fff", color: "#131315", borderColor: "#fff" } : undefined}
+                    >
+                      Connect
+                    </Button>
+                  </div>
+                  <div className="mt-2 text-xs flex items-center gap-1.5">
+                    {ceStatus === null ? (
+                      <span className="text-[var(--text-secondary)]">○ Not checked</span>
+                    ) : ceStatus.connected ? (
+                      <span className="text-green-500">● Connected</span>
+                    ) : (
+                      <span className="text-red-500">
+                        ● Not connected{ceStatus.error ? ` — ${ceStatus.error}` : ""}
+                      </span>
+                    )}
                   </div>
                 </div>
-                <Switch
-                  checked={contextEngine.enabled}
-                  onChange={(v) => saveContextEngine({ ...contextEngine, enabled: v })}
-                />
+
+                {/* Indexed repositories */}
+                <div className="border-t border-[var(--border)] pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-[var(--text-primary)]">Indexed repositories</div>
+                    <Button size="small" onClick={loadCeRepos} loading={ceReposLoading} disabled={!ceStatus?.connected}>
+                      Refresh
+                    </Button>
+                  </div>
+                  {!ceStatus?.connected ? (
+                    <div className="text-xs text-[var(--text-secondary)]">Connect to a backend to see indexed repos.</div>
+                  ) : ceRepos.length === 0 ? (
+                    <div className="text-xs text-[var(--text-secondary)]">
+                      {ceReposLoading ? "Loading…" : "No repositories indexed yet."}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto">
+                      {ceRepos.map((r) => {
+                        // Prefer the live watcher status; fall back to the fetched /index/status.
+                        const live = contextWatcherStatus[r.path];
+                        const tag = live?.status ?? r.status ?? null;
+                        const fileCount = live?.fileCount ?? r.file_count ?? null;
+                        const indexed = tag === "indexed" || (r.exists && !r.empty);
+                        const empty = r.exists && r.empty;
+                        return (
+                          <div
+                            key={r.path}
+                            className="flex items-center gap-2 border border-[var(--border)] rounded-md px-3 py-2"
+                          >
+                            <span className="flex-1 text-xs text-[var(--text-primary)] truncate" title={r.path}>
+                              {r.path}
+                            </span>
+                            <span className="text-[11px] whitespace-nowrap">
+                              {tag === "indexing" ? (
+                                <span className="text-[var(--text-secondary)]">
+                                  <Spin size="small" className="mr-1" />Indexing…
+                                </span>
+                              ) : tag && tag.startsWith("error") ? (
+                                <span className="text-red-500" title={live?.reason ?? undefined}>⚠ Error</span>
+                              ) : indexed ? (
+                                <span className="text-green-500">
+                                  ✓ Indexed
+                                  {fileCount != null ? ` · ${fileCount} files` : ""}
+                                </span>
+                              ) : empty ? (
+                                <span className="text-amber-500">○ Empty</span>
+                              ) : (
+                                <span className="text-[var(--text-secondary)]">○ Not indexed</span>
+                              )}
+                            </span>
+                            {r.exists && (
+                              <Popconfirm
+                                title="Delete this index?"
+                                description="Removes the indexed vectors + graph for this repo."
+                                okText="Delete"
+                                okButtonProps={{ danger: true }}
+                                onConfirm={() => deleteIndexedRepo(r.path)}
+                              >
+                                <Button type="text" size="small" danger icon={<Trash2 className="w-3.5 h-3.5" />} />
+                              </Popconfirm>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
-              {contextEngine.enabled && (
-                <>
-                  <div>
-                    <label className="block text-xs text-[var(--text-secondary)] mb-1">Port</label>
-                    <Input
-                      className="w-32"
-                      type="number"
-                      value={contextEngine.port}
-                      onChange={(e) =>
-                        setContextEngine({ ...contextEngine, port: Number(e.target.value) || 8106 })
-                      }
-                      onBlur={() => saveContextEngine(contextEngine)}
-                    />
-                  </div>
-                  <div className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                    Setup — run the stack from <code>services/context-engine</code>:
-                    <pre className="mt-1 p-2 rounded bg-[var(--border)] text-[var(--text-primary)] overflow-x-auto">
-cp .env.example .env   # set SUPERAGI_OPENAI_API_KEY
-docker compose up -d --build</pre>
-                    The app connects to <code>http://127.0.0.1:{contextEngine.port}</code>.
-                  </div>
-                </>
-              )}
-            </div>
+            )}
           </>
         )}
       </div>

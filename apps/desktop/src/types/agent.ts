@@ -295,10 +295,36 @@ export interface ProvidersResponse {
   selection: ModelSelection;
 }
 
-/** Opt-in context engine (semantic + graph code search) settings. */
+/** Opt-in context engine (semantic + graph code search) connection. */
 export interface ContextEngineSettings {
   enabled: boolean;
-  port: number;
+  base_url: string;
+}
+
+/** Live connection probe result for the Settings panel. */
+export interface ContextEngineStatus {
+  connected: boolean;
+  error: string | null;
+}
+
+/** A repo the app knows about + its index state on the backend. */
+export interface IndexedRepo {
+  path: string;
+  exists: boolean;
+  empty: boolean;
+  repo_id: number | null;
+  /** Live watcher status tag: "not_indexed" | "indexing" | "indexed" | "error:<reason>", or null if unwatched. */
+  status: string | null;
+  /** File count from the last full sync, when known. */
+  file_count: number | null;
+}
+
+/** Live file-watcher status for a repo, mirrored from `context-watcher-status` events. */
+export interface ContextWatcherStatus {
+  /** "not_indexed" | "indexing" | "indexed" | "error" */
+  status: string;
+  fileCount?: number | null;
+  reason?: string | null;
 }
 
 // --- Agent List API ---

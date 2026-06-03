@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { AgentToolCallState, ProviderConfig, ModelSelection, ModelCapability } from '../types/agent';
+import type { AgentToolCallState, ProviderConfig, ModelSelection, ModelCapability, ContextWatcherStatus } from '../types/agent';
 import type { PendingApproval, TodoItem } from '../types/agentContract';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -37,6 +37,8 @@ export interface AgentSlice {
   agentTodos: Record<string, TodoItem[]>;
   /** Per-session token usage (persists after streaming clears). */
   tokenUsage: Record<string, { totalTokens: number; contextLimit: number | null; cacheReadTokens?: number; cacheCreationTokens?: number }>;
+  /** Live file-watcher status per repo path, fed by `context-watcher-status` events. */
+  contextWatcherStatus: Record<string, ContextWatcherStatus>;
 
   // ── Plan-mode flow ──────────────────────────────────────────────────
   /** Per-project completed plans from plan-mode sessions. Key = projectPath. */
@@ -65,6 +67,7 @@ export interface AgentSlice {
   setStreamingError: (sessionId: string, error: string | null) => void;
   setTokenUsage: (sessionId: string, totalTokens: number, contextLimit: number | null, cacheReadTokens?: number, cacheCreationTokens?: number) => void;
   clearTokenUsage: (sessionId: string) => void;
+  setContextWatcherStatus: (repoPath: string, status: ContextWatcherStatus) => void;
   clearAgentStreaming: (sessionId: string) => void;
   softClearAgentStreaming: (sessionId: string) => void;
 
@@ -141,6 +144,7 @@ export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (s
   pendingQuestions: {},
   agentTodos: {},
   tokenUsage: {},
+  contextWatcherStatus: {},
   completedPlans: {},
   activePlanProjectPath: null,
   pendingPlanForCoding: null,
@@ -202,6 +206,11 @@ export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (s
       const { [sessionId]: _, ...rest } = s.tokenUsage;
       return { tokenUsage: rest };
     }),
+
+  setContextWatcherStatus: (repoPath, status) =>
+    set((s) => ({
+      contextWatcherStatus: { ...s.contextWatcherStatus, [repoPath]: status },
+    })),
 
   clearAgentStreaming: (sessionId) =>
     set((s) => {

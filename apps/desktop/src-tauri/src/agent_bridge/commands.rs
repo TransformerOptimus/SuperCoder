@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::RwLock;
 
 use agent::agent::config::AgentConfig;
@@ -19,7 +19,6 @@ use crate::agent_bridge::events::{
     spawn_event_relay, PermissionAwareApprovalHandler, TauriApprovalHandler,
     TauriApprovalHandlerFactory,
 };
-use crate::agent_bridge::index_sync;
 use crate::agent_bridge::permissions::PermissionConfig;
 use crate::agent_bridge::traits::{EventEmitter, TauriEventEmitter};
 use crate::AppState;
@@ -38,9 +37,6 @@ pub struct AgentState {
     pub(crate) approval_handlers: RwLock<std::collections::HashMap<String, Arc<TauriApprovalHandler>>>,
     pub(crate) model_registry: RwLock<agent::agent::model_profile::ModelRegistry>,
     pub(crate) write_lock_registry: Arc<agent::subagents::WriteLockRegistry>,
-    /// Repo paths already streamed to the context engine this app run — gates
-    /// the background sync to once per repo per run (re-syncs on later opens).
-    pub(crate) indexed_repos: Arc<RwLock<HashSet<String>>>,
 }
 
 impl AgentState {
@@ -53,7 +49,6 @@ impl AgentState {
             approval_handlers: RwLock::new(std::collections::HashMap::new()),
             model_registry: RwLock::new(agent::agent::model_profile::ModelRegistry::with_defaults()),
             write_lock_registry: Arc::new(agent::subagents::WriteLockRegistry::new()),
-            indexed_repos: Arc::new(RwLock::new(HashSet::new())),
         }
     }
 
@@ -299,29 +294,82 @@ fn write_selection(app_state: &AppState, sel: &ModelSelection) -> Result<(), Str
 const CONTEXT_ENGINE_KEY: &str = "context_engine";
 const MACHINE_ID_KEY: &str = "machine_id";
 
-/// Persisted `{enabled, port}` toggle for the optional context engine. When
-/// enabled, the app wires the search/graph tools and streams the repo up for
-/// indexing on session start.
+/// Persisted context-engine connection. `base_url` points at a user-managed
+/// backend (the docker-compose stack); `enabled` gates whether coding sessions
+/// register the search/graph tools and stream the repo up on open.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContextEngineSettings {
     pub enabled: bool,
-    pub port: u16,
+    pub base_url: String,
 }
 
 impl Default for ContextEngineSettings {
     fn default() -> Self {
-        Self { enabled: false, port: 8106 }
+        Self { enabled: false, base_url: "http://127.0.0.1:8106".to_string() }
     }
 }
 
-fn read_context_engine(app_state: &AppState) -> ContextEngineSettings {
-    app_state
-        .db
-        .get_setting(CONTEXT_ENGINE_KEY)
+/// Live connection probe result for the Settings panel.
+#[derive(Debug, Clone, Serialize)]
+pub struct ContextEngineStatus {
+    pub connected: bool,
+    pub error: Option<String>,
+}
+
+/// One repository known to the app and its index state on the backend.
+#[derive(Debug, Clone, Serialize)]
+pub struct IndexedRepo {
+    pub path: String,
+    pub exists: bool,
+    pub empty: bool,
+    pub repo_id: Option<u64>,
+    /// Live watcher status tag (`not_indexed`/`indexing`/`indexed`/`error:<reason>`),
+    /// or `None` if this repo isn't currently being watched.
+    pub status: Option<String>,
+    /// File count from the last full sync, when known.
+    pub file_count: Option<u64>,
+}
+
+/// Flatten an `IndexWatcherStatus` into the `(status tag, file_count)` pair the
+/// Settings list renders.
+fn watcher_status_parts(
+    s: &crate::context_watcher::IndexWatcherStatus,
+) -> (Option<String>, Option<u64>) {
+    use crate::context_watcher::IndexWatcherStatus as S;
+    match s {
+        S::NotIndexed => (Some("not_indexed".to_string()), None),
+        S::Indexing => (Some("indexing".to_string()), None),
+        S::Indexed { file_count } => (Some("indexed".to_string()), *file_count),
+        S::Error { reason, .. } => (Some(format!("error:{reason}")), None),
+    }
+}
+
+#[derive(Deserialize)]
+struct IndexStatusResponse {
+    #[serde(default)]
+    exists: bool,
+    #[serde(default)]
+    empty: bool,
+    #[serde(default)]
+    repo_id: Option<u64>,
+}
+
+pub(crate) fn normalize_base_url(raw: &str) -> String {
+    raw.trim().trim_end_matches('/').to_string()
+}
+
+/// Read the context-engine settings straight off the settings DB. Used by the
+/// watcher (which holds an `Arc<Database>`, not an `AppState`).
+pub(crate) fn read_context_engine_db(db: &crate::Database) -> ContextEngineSettings {
+    db.get_setting(CONTEXT_ENGINE_KEY)
         .ok()
         .flatten()
         .and_then(|raw| serde_json::from_str(&raw).ok())
         .unwrap_or_default()
+}
+
+fn read_context_engine(app_state: &AppState) -> ContextEngineSettings {
+    read_context_engine_db(&app_state.db)
 }
 
 /// Stable per-machine UUID for context-engine tenancy headers. Generated and
@@ -348,9 +396,142 @@ pub async fn agent_get_context_engine(
 pub async fn agent_set_context_engine(
     settings: ContextEngineSettings,
     app_state: State<'_, AppState>,
+    watcher: State<'_, Arc<crate::context_watcher::WatcherManager>>,
 ) -> Result<(), String> {
     let raw = serde_json::to_string(&settings).map_err(|e| e.to_string())?;
-    app_state.db.set_setting(CONTEXT_ENGINE_KEY, &raw)
+    app_state.db.set_setting(CONTEXT_ENGINE_KEY, &raw)?;
+
+    // Toggling the feature starts/stops the live watchers.
+    if settings.enabled {
+        let wm = watcher.inner().clone();
+        tokio::spawn(async move { wm.auto_start().await });
+    } else {
+        watcher.stop_all().await;
+    }
+    Ok(())
+}
+
+/// Probe a backend URL by hitting /api/health. Used by the Settings "Connect"
+/// button — does not change saved settings.
+#[tauri::command]
+pub async fn agent_context_engine_status(base_url: String) -> Result<ContextEngineStatus, String> {
+    let url = format!("{}/api/health", normalize_base_url(&base_url));
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .map_err(|e| e.to_string())?;
+    match client.get(&url).send().await {
+        Ok(resp) if resp.status().is_success() => Ok(ContextEngineStatus { connected: true, error: None }),
+        Ok(resp) => Ok(ContextEngineStatus {
+            connected: false,
+            error: Some(format!("HTTP {}", resp.status().as_u16())),
+        }),
+        Err(e) => Ok(ContextEngineStatus { connected: false, error: Some(e.to_string()) }),
+    }
+}
+
+/// List watched repos (from the `watched_repos` table) annotated with the
+/// watcher's live in-memory status and a one-shot `/index/status` probe for
+/// exists/empty/repo_id. Backends that can't be reached are reported not-indexed.
+#[tauri::command]
+pub async fn agent_context_engine_repos(
+    app_state: State<'_, AppState>,
+    watcher: State<'_, Arc<crate::context_watcher::WatcherManager>>,
+) -> Result<Vec<IndexedRepo>, String> {
+    let base_url = normalize_base_url(&read_context_engine(&app_state).base_url);
+    let mid = machine_id(&app_state);
+
+    // Watched repos, most-recently-used first.
+    let folders: Vec<String> = {
+        let conn = app_state.db.conn.lock();
+        let mut stmt = conn
+            .prepare("SELECT repo_path FROM watched_repos ORDER BY last_used_at DESC")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |r| r.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        rows.filter_map(|r| r.ok()).collect()
+    };
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut out = Vec::with_capacity(folders.len());
+    for folder in folders {
+        let (status, watcher_file_count) = match watcher.get_status(&folder).await {
+            Some(s) => watcher_status_parts(&s),
+            None => (None, None),
+        };
+        let resp = client
+            .get(format!("{base_url}/api/v1/index/status"))
+            .query(&[
+                ("repo_path", folder.as_str()),
+                ("user_id", "local"),
+                ("workspace_id", "0"),
+                ("machine_id", mid.as_str()),
+            ])
+            .send()
+            .await;
+        let (exists, empty, repo_id) = match resp {
+            Ok(r) if r.status().is_success() => match r.json::<IndexStatusResponse>().await {
+                Ok(s) => (s.exists, s.empty, s.repo_id),
+                Err(_) => (false, true, None),
+            },
+            _ => (false, true, None),
+        };
+        out.push(IndexedRepo {
+            path: folder,
+            exists,
+            empty,
+            repo_id,
+            status,
+            file_count: watcher_file_count,
+        });
+    }
+    Ok(out)
+}
+
+/// Delete a repo's index (vectors + graph + merkle tree) on the backend. Stops
+/// the live watcher and forgets the `watched_repos` row first.
+#[tauri::command]
+pub async fn agent_context_engine_delete_repo(
+    path: String,
+    app_state: State<'_, AppState>,
+    watcher: State<'_, Arc<crate::context_watcher::WatcherManager>>,
+) -> Result<(), String> {
+    watcher.stop_watching(&path).await;
+    {
+        let conn = app_state.db.conn.lock();
+        let _ = conn.execute(
+            "DELETE FROM watched_repos WHERE repo_path = ?1",
+            [path.as_str()],
+        );
+    }
+
+    let base_url = normalize_base_url(&read_context_engine(&app_state).base_url);
+    let mid = machine_id(&app_state);
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .delete(format!("{base_url}/api/v1/index"))
+        .json(&serde_json::json!({
+            "repo_path": path,
+            "user_id": "local",
+            "workspace_id": 0,
+            "machine_id": mid,
+        }))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if resp.status().is_success() {
+        Ok(())
+    } else {
+        Err(format!("HTTP {}: {}", resp.status().as_u16(), resp.text().await.unwrap_or_default()))
+    }
 }
 
 fn provider_by_id(app_state: &AppState, id: &str) -> Option<ProviderConfig> {
@@ -1181,7 +1362,7 @@ async fn run_agent_turn(
     let ce_settings = read_context_engine(app_state);
     let ce_config = if ce_settings.enabled {
         Some(agent::context_engine::ContextEngineConfig {
-            base_url: format!("http://127.0.0.1:{}", ce_settings.port),
+            base_url: normalize_base_url(&ce_settings.base_url),
             user_id: "local".to_string(),
             workspace_id: 0,
             machine_id: machine_id(app_state),
@@ -1203,28 +1384,25 @@ async fn run_agent_turn(
         agent_state.checkpoint_dir(),
         skill_registry,
         subagent_registry,
-        ce_config.clone(),
+        ce_config,
     );
 
     let emitter: Arc<dyn EventEmitter> = Arc::new(TauriEventEmitter::new(app_handle.clone()));
 
-    // Stream the repo to the context engine once per repo per app run.
-    if let Some(cfg) = ce_config {
-        let newly = agent_state.indexed_repos.write().await.insert(cfg.repo_path.clone());
-        if newly {
-            let identity = index_sync::SyncIdentity {
-                user_id: cfg.user_id,
-                workspace_id: cfg.workspace_id,
-                machine_id: cfg.machine_id,
-                repo_path: cfg.repo_path,
-            };
-            let base_url = cfg.base_url;
-            let sync_emitter = emitter.clone();
-            let sid = session_id.clone();
-            tokio::spawn(async move {
-                index_sync::sync_repo(base_url, identity, sync_emitter, sid).await;
-            });
-        }
+    // Keep the context-engine index live for this repo. `start_watching` is
+    // idempotent — it bumps `last_used_at`, runs a fresh full_sync to catch
+    // offline edits, and starts the fs-watcher for incremental syncs.
+    if ce_settings.enabled {
+        let wm = app_handle
+            .state::<Arc<crate::context_watcher::WatcherManager>>()
+            .inner()
+            .clone();
+        let folder_owned = folder.clone();
+        tokio::spawn(async move {
+            if let Err(e) = wm.start_watching(&folder_owned).await {
+                log::warn!("[ContextWatcher] start_watching failed for {folder_owned}: {e}");
+            }
+        });
     }
     let perm_config = load_permission_config(app_state, Some(&folder));
     let approval_handler = create_approval_handler(agent_state, emitter.clone(), &session_id, perm_config).await;

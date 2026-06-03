@@ -81,8 +81,8 @@ func NewMerkleService(cfg config.IndexerConfig, envCfg *coreconfig.EnvConfig, lo
 		var cfgOpts []func(*awsconfig.LoadOptions) error
 		cfgOpts = append(cfgOpts, awsconfig.WithRegion(region))
 
-		// Use explicit credentials from config when available (SUPERAGI_S3_ACCESS_KEY /
-		// SUPERAGI_S3_SECRET_KEY). Falls back to the default AWS SDK chain (IRSA,
+		// Use explicit credentials from config when available (SUPERCODER_S3_ACCESS_KEY /
+		// SUPERCODER_S3_SECRET_KEY). Falls back to the default AWS SDK chain (IRSA,
 		// instance profile) when not set.
 		if ak, sk := cfg.S3AccessKey(), cfg.S3SecretKey(); ak != "" && sk != "" {
 			cfgOpts = append(cfgOpts, awsconfig.WithCredentialsProvider(

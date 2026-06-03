@@ -20,7 +20,7 @@ type DefaultConfig struct {
 
 func NewConfig(logger *zap.Logger, defaults *DefaultConfig) (config *koanf.Koanf, err error) {
 	config = koanf.New(".")
-	PREFIX := "SUPERAGI_"
+	PREFIX := "SUPERCODER_"
 
 	envKeyTransform := func(s string) string {
 		return strings.Replace(

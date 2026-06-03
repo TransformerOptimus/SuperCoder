@@ -120,7 +120,7 @@ func (c *indexerConfigImpl) LocalAllowedRoot() string {
 // across the whole process. Tuned to stay under OpenAI rate limits while
 // keeping the streaming pipeline saturated on typical repos. Default (5)
 // is set in injection/default_config_provider.go; prod can tune via
-// SUPERAGI_INDEXER_EMBEDDING_CONCURRENCY without a redeploy.
+// SUPERCODER_INDEXER_EMBEDDING_CONCURRENCY without a redeploy.
 func (c *indexerConfigImpl) EmbeddingConcurrency() int {
 	v := c.config.Int("indexer.embedding.concurrency")
 	if v <= 0 {

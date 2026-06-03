@@ -9,7 +9,7 @@ import (
 )
 
 func getLogLevel() zapcore.Level {
-	env := os.Getenv("SUPERAGI_ENV")
+	env := os.Getenv("SUPERCODER_ENV")
 	logLevel := zap.DebugLevel
 	if env == "development" || env == "staging" {
 		logLevel = zap.DebugLevel
@@ -18,7 +18,7 @@ func getLogLevel() zapcore.Level {
 		logLevel = zap.InfoLevel
 	}
 
-	logLevelStr := strings.ToLower(os.Getenv("SUPERAGI_LOG_LEVEL"))
+	logLevelStr := strings.ToLower(os.Getenv("SUPERCODER_LOG_LEVEL"))
 	if logLevelStr != "" {
 		switch logLevelStr {
 		case "debug":
@@ -37,7 +37,7 @@ func getLogLevel() zapcore.Level {
 }
 
 func NewLogger() (logger *zap.Logger, err error) {
-	env := os.Getenv("SUPERAGI_ENV")
+	env := os.Getenv("SUPERCODER_ENV")
 	logLevel := getLogLevel()
 	var config zap.Config
 	if env == "staging" || env == "production" {

@@ -74,7 +74,9 @@ func (ctrl *IndexDiffController) Diff(c *apicontext.Context) {
 		return
 	}
 
-	if req.UserID == "" || req.WorkspaceID == 0 || req.MachineID == "" || req.RepoPath == "" {
+	// workspace_id 0 is a valid identity in local single-user mode; only the
+	// string fields are genuinely required.
+	if req.UserID == "" || req.MachineID == "" || req.RepoPath == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing_identity_or_repo_path"})
 		return
 	}

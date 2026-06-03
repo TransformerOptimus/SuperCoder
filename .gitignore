@@ -17,11 +17,17 @@ dist/
 vendor/
 go.work
 
+# Compiled context-engine binaries built at repo root
+/server
+/worker
+/migrations
+
 # Bazel
 bazel-*
 
 # IDE / editor
 .idea/
+.vscode/
 *.swp
 *.swo
 *.swn

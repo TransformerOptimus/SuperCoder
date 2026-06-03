@@ -504,14 +504,16 @@ export default function Settings() {
             {/* Context engine (opt-in semantic + graph search) */}
             <div className="flex items-center justify-between mt-8 mb-1">
               <h2 className="text-base font-semibold text-[var(--text-primary)]">
-                Context engine (semantic search)
+                Semantic search
               </h2>
               <Switch checked={contextEngine.enabled} onChange={toggleContextEngine} />
             </div>
-            <p className="text-sm text-[var(--text-secondary)] mb-4">
-              Give the agent semantic + graph code search (<code>codebase_search</code> /{" "}
-              <code>codebase_graph</code>) via a running context-engine backend. Start it with{" "}
-              <code>docker compose up -d</code> in <code>services/context-engine</code>. Off = zero-backend.
+            <p className="text-sm text-[var(--text-secondary)] mb-4 leading-relaxed">
+            Lets the agent search your code by meaning and relationships, not just keywords.
+            </p>
+            <p className="text-sm text-[var(--text-secondary)] mb-4 leading-relaxed">
+            Requires a local
+            backend — run <code>docker compose up -d</code> in <code>services/context-engine</code>.
             </p>
 
             {contextEngine.enabled && (
@@ -564,7 +566,7 @@ export default function Settings() {
                     <div className="text-xs text-[var(--text-secondary)]">Connect to a backend to see indexed repos.</div>
                   ) : ceRepos.length === 0 ? (
                     <div className="text-xs text-[var(--text-secondary)]">
-                      {ceReposLoading ? "Loading…" : "No repositories indexed yet."}
+                      {ceReposLoading ? "Loading…" : "No repositories indexed yet — open a session in a repo to index it."}
                     </div>
                   ) : (
                     <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto">

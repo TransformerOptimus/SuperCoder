@@ -5,7 +5,7 @@ import {
   Plus,
   MessageCircle,
   Map as MapIcon,
-  Code,
+  SquareCode,
   Pencil,
   Trash2,
   ChevronDown,
@@ -25,7 +25,7 @@ import type { SessionRow } from "@/types/agent";
 const MODE_ICON: Record<string, typeof MessageCircle> = {
   ask: MessageCircle,
   plan: MapIcon,
-  coding: Code,
+  coding: SquareCode,
 };
 
 function folderName(path: string): string {

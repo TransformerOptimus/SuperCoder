@@ -21,6 +21,10 @@ export interface AgentChatSlice {
   removeSession: (sessionId: string) => void;
   setSessionMode: (sessionId: string, mode: string) => void;
   setSessionTitle: (sessionId: string, title: string) => void;
+  /** Re-pin an open session's model (picker switch); refreshes capability + context bar. */
+  setSessionModel: (sessionId: string, providerId: string, model: string) => Promise<void>;
+  /** Sync the in-memory active model + capability to a session's pinned model on open. */
+  syncPickerToSession: (sessionId: string) => void;
   loadSessions: () => Promise<void>;
 
   agentThreads: Record<string, AgentThread>;
@@ -95,6 +99,36 @@ export const createAgentChatSlice: StateCreator<AppStore, [], [], AgentChatSlice
         ? { ...s.agentThreads, [sessionId]: { ...s.agentThreads[sessionId], task_summary: title } }
         : s.agentThreads,
     })),
+
+  setSessionModel: async (sessionId, providerId, model) => {
+    const { agentTauriService } = await import('../services/agentTauriService');
+    // Optimistically update the session row + the picker's in-memory active model.
+    set((s) => ({
+      sessions: s.sessions.map((x) => (x.id === sessionId ? { ...x, providerId, model } : x)),
+      selection: { ...s.selection, active: { providerId, model } },
+    }));
+    try {
+      await agentTauriService.setSessionModel(sessionId, providerId, model);
+    } catch (e) {
+      console.error('[agentChatSlice] Failed to set session model:', e);
+    }
+    // Re-resolve vision gating + the context bar for the newly pinned model.
+    await get().refreshActiveCapability();
+    try {
+      const usage = await agentTauriService.getContextUsage(sessionId);
+      if (usage) get().setTokenUsage(sessionId, usage.total_tokens, usage.context_limit);
+    } catch {
+      /* ignore */
+    }
+  },
+
+  syncPickerToSession: (sessionId) => {
+    const sess = get().sessions.find((s) => s.id === sessionId);
+    if (sess?.providerId && sess?.model) {
+      set((s) => ({ selection: { ...s.selection, active: { providerId: sess.providerId!, model: sess.model! } } }));
+      void get().refreshActiveCapability();
+    }
+  },
 
   loadSessions: async () => {
     set({ sessionsLoading: true });

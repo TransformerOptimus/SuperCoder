@@ -183,15 +183,37 @@ impl AgentLoop {
     }
 
     /// Update context limit when the user switches models mid-conversation.
-    /// If the new limit is smaller and current token usage exceeds the new threshold,
-    /// compaction will trigger automatically on the next loop iteration.
-    pub fn update_context_limit(&mut self, new_context_window: usize) {
+    /// `Some(n)` enables token-based auto-compaction at threshold × n; `None`
+    /// (unknown model) disables it. If the new limit is smaller and current usage
+    /// exceeds the new threshold, compaction triggers on the next loop iteration.
+    pub fn update_context_limit(&mut self, new_context_window: Option<usize>) {
         let old = self.config.compaction_config.context_limit;
-        self.config.compaction_config.context_limit = new_context_window;
-        log::info!(
-            "[AgentLoop {}] Context limit updated: {} → {}",
-            self.session_id, old, new_context_window
-        );
+        match new_context_window {
+            Some(n) => {
+                self.config.compaction_config.context_limit = n;
+                self.config.compaction_config.auto_compact = true;
+                log::info!(
+                    "[AgentLoop {}] Context limit updated: {} → {}",
+                    self.session_id, old, n
+                );
+            }
+            None => {
+                self.config.compaction_config.auto_compact = false;
+                log::info!(
+                    "[AgentLoop {}] Context limit unknown — auto-compaction disabled",
+                    self.session_id
+                );
+            }
+        }
+    }
+
+    /// The context limit to report to the UI: `Some(n)` when known/discovered,
+    /// `None` when auto-compaction is off (unknown model → no max/percentage).
+    fn event_context_limit(&self) -> Option<u32> {
+        self.config
+            .compaction_config
+            .auto_compact
+            .then_some(self.config.compaction_config.context_limit as u32)
     }
 
     /// Seed the conversation with initial context messages (e.g., sliding window from ask mode).
@@ -383,7 +405,7 @@ impl AgentLoop {
                 let _ = self.event_tx.send(AgentEvent::TokenUsage {
                     session_id: self.session_id.clone(),
                     total_tokens: usage.total_tokens,
-                    context_limit: self.config.compaction_config.context_limit as u32,
+                    context_limit: self.event_context_limit(),
                     cache_read_tokens: cache_read,
                     cache_creation_tokens: cache_write,
                 }).await;
@@ -989,7 +1011,7 @@ impl AgentLoop {
         let _ = self.event_tx.send(AgentEvent::TokenUsage {
             session_id: self.session_id.clone(),
             total_tokens: post_compaction_estimate as u32,
-            context_limit: self.config.compaction_config.context_limit as u32,
+            context_limit: self.event_context_limit(),
             cache_read_tokens: None,
             cache_creation_tokens: None,
         }).await;
@@ -2420,6 +2442,7 @@ mod tests {
         // compact [1,4) = [ctx_user, ctx_asst, user] → 3 msgs, enough!
         config.compaction_config = CompactionConfig {
             context_limit: 50,
+            auto_compact: true,
             threshold_pct: 0.80,
             keep_recent_messages: 2,
             max_messages: 10_000,
@@ -2510,6 +2533,7 @@ mod tests {
         // context_limit=50, threshold=80% → compacts at 40 tokens
         config.compaction_config = CompactionConfig {
             context_limit: 50,
+            auto_compact: true,
             threshold_pct: 0.80,
             keep_recent_messages: 2,
             max_messages: 10_000,

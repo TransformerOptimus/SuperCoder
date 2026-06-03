@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { Dropdown } from 'antd';
 import { FileText, X } from 'lucide-react';
 import { useAppStore } from '@/store';
 import { agentTauriService } from '@/services/agentTauriService';
 import type { PermissionLevel } from '@/types/agentContract';
-import MermaidDiagram from './MermaidDiagram';
+import Markdown from '../../common/Markdown';
 import styles from './PlanThreadPanel.module.css';
 
 export default function PlanThreadPanel() {
@@ -76,24 +74,7 @@ export default function PlanThreadPanel() {
       </div>
 
       <div className={styles.body}>
-        <div className={`${styles.planMarkdown} message-html`}>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              code({ className, children, ...props }) {
-                if (className === 'language-mermaid') {
-                  const chart = Array.isArray(children)
-                    ? children.map((c) => (typeof c === 'string' ? c : String(c ?? ''))).join('')
-                    : String(children ?? '');
-                  return <MermaidDiagram chart={chart} />;
-                }
-                return <code className={className} {...props}>{children}</code>;
-              },
-            }}
-          >
-            {planText}
-          </ReactMarkdown>
-        </div>
+        <Markdown className={`${styles.planMarkdown} message-html`}>{planText}</Markdown>
       </div>
     </div>
   );

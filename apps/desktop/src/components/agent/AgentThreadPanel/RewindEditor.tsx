@@ -1,5 +1,6 @@
 import React, { useRef, useCallback } from "react";
 import { Input, Dropdown } from "antd";
+import { X } from "lucide-react";
 import type { TextAreaRef } from "antd/es/input/TextArea";
 import type { MenuProps } from "antd";
 
@@ -7,6 +8,10 @@ const { TextArea } = Input;
 
 interface RewindEditorProps {
   text: string;
+  /** Image data-URLs attached to the message being edited. */
+  images?: string[];
+  /** Remove the image at the given index from the resend. */
+  onRemoveImage?: (idx: number) => void;
   onChange: (text: string) => void;
   onCancel: () => void;
   onRewind: (restoreCode: boolean) => void;
@@ -16,6 +21,8 @@ interface RewindEditorProps {
 
 export default function RewindEditor({
   text,
+  images = [],
+  onRemoveImage,
   onChange,
   onCancel,
   onRewind,
@@ -36,8 +43,34 @@ export default function RewindEditor({
     }
   };
 
+  // Resend is allowed with text OR at least one kept image.
+  const canResend = !!text.trim() || images.length > 0;
+
   return (
     <div className="flex flex-col gap-2 p-3 rounded-lg" style={{ background: 'var(--white-opacity-4)' }}>
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {images.map((src, i) => (
+            <div key={i} className="relative group">
+              <img
+                src={src}
+                alt={`attachment ${i + 1}`}
+                className="h-16 w-16 rounded-lg border border-gray-200 dark:border-dark-border object-cover"
+              />
+              {onRemoveImage && !isRewinding && (
+                <button
+                  type="button"
+                  aria-label="Remove image"
+                  onClick={() => onRemoveImage(i)}
+                  className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white shadow hover:bg-black"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       <TextArea
         ref={handleRef}
         value={text}
@@ -60,11 +93,11 @@ export default function RewindEditor({
                 onRewind(key === "code"),
             } as MenuProps}
             trigger={["click"]}
-            disabled={isRewinding || !text.trim()}
+            disabled={isRewinding || !canResend}
           >
             <button
               className="primary_small"
-              disabled={isRewinding || !text.trim()}
+              disabled={isRewinding || !canResend}
             >
               {isRewinding ? "Resending..." : "Resend \u25BE"}
             </button>
@@ -73,7 +106,7 @@ export default function RewindEditor({
           <button
             className="primary_small"
             onClick={() => onRewind(false)}
-            disabled={isRewinding || !text.trim()}
+            disabled={isRewinding || !canResend}
           >
             {isRewinding ? "Resending..." : "Resend"}
           </button>

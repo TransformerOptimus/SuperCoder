@@ -20,6 +20,11 @@ import styles from "./AgentThreadPanel.module.css";
 
 const EMPTY_TODOS: TodoItem[] = [];
 
+/** Pull the media type out of a `data:<media>;base64,…` URL (defaults to png). */
+function dataUrlMediaType(url: string): string {
+  return /^data:([^;,]+)/.exec(url)?.[1] || "image/png";
+}
+
 export default function AgentThreadPanel() {
   const activeAgentThreadId = useAppStore((s) => s.activeAgentThreadId);
   const agentThreads = useAppStore((s) => s.agentThreads);
@@ -40,6 +45,8 @@ export default function AgentThreadPanel() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+  // Image data-URLs kept for the message being edited (user can remove them).
+  const [editingImages, setEditingImages] = useState<string[]>([]);
   const isRewindingRef = useRef(false);
 
   const rewindThread = useAppStore((s) => s.rewindThread);
@@ -47,14 +54,20 @@ export default function AgentThreadPanel() {
   const setActiveSession = useAppStore((s) => s.setActiveSession);
   const addCheckpoint = useAppStore((s) => s.addCheckpoint);
 
-  const handleStartEdit = useCallback((msgId: string, text: string) => {
+  const handleStartEdit = useCallback((msgId: string, text: string, images?: string[]) => {
     setEditingMessageId(msgId);
     setEditingText(text);
+    setEditingImages(images ?? []);
   }, []);
 
   const handleCancelEdit = useCallback(() => {
     setEditingMessageId(null);
     setEditingText("");
+    setEditingImages([]);
+  }, []);
+
+  const handleRemoveEditingImage = useCallback((idx: number) => {
+    setEditingImages((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
   const handleRewind = useCallback(
@@ -63,7 +76,9 @@ export default function AgentThreadPanel() {
       const targetIdx = thread.messages.findIndex((m) => m.id === editingMessageId);
       if (targetIdx < 0) return;
       const newText = editingText.trim();
-      if (!newText) return;
+      const keptImages = editingImages;
+      // Allow resending with only images (no text), but not a fully empty message.
+      if (!newText && keptImages.length === 0) return;
 
       // Backend rewind needs the SQLite row id (numeric). Only available after `done`.
       const sqliteId = Number(editingMessageId);
@@ -72,14 +87,30 @@ export default function AgentThreadPanel() {
         return;
       }
 
+      const attachments = keptImages.map((url) => ({
+        url,
+        file_name: "image",
+        media_type: dataUrlMediaType(url),
+      }));
+
       isRewindingRef.current = true;
       rewindThread(activeAgentThreadId, targetIdx);
       addMessageToThread(
         activeAgentThreadId,
-        buildAgentMessage(`rewind-user-${Date.now()}`, newText, "user", activeAgentThreadId, ""),
+        buildAgentMessage(
+          `rewind-user-${Date.now()}`,
+          newText,
+          "user",
+          activeAgentThreadId,
+          "",
+          undefined,
+          undefined,
+          keptImages.length > 0 ? keptImages : undefined,
+        ),
       );
       setEditingMessageId(null);
       setEditingText("");
+      setEditingImages([]);
       useAppStore.getState().setAgentStreaming(activeAgentThreadId, createInitialStreamingState());
 
       try {
@@ -88,6 +119,7 @@ export default function AgentThreadPanel() {
           sqliteId,
           restoreCode,
           newText,
+          attachments.length > 0 ? attachments : undefined,
         );
         setActiveSession(activeAgentThreadId, session_id);
       } catch (err) {
@@ -96,7 +128,7 @@ export default function AgentThreadPanel() {
         isRewindingRef.current = false;
       }
     },
-    [editingMessageId, editingText, activeAgentThreadId, thread, rewindThread, addMessageToThread, setActiveSession],
+    [editingMessageId, editingText, editingImages, activeAgentThreadId, thread, rewindThread, addMessageToThread, setActiveSession],
   );
 
   const handleApprovalResponse = useCallback(
@@ -223,6 +255,8 @@ export default function AgentThreadPanel() {
               {isEditing ? (
                 <RewindEditor
                   text={editingText}
+                  images={editingImages}
+                  onRemoveImage={handleRemoveEditingImage}
                   onChange={setEditingText}
                   onCancel={handleCancelEdit}
                   onRewind={handleRewind}
@@ -235,7 +269,7 @@ export default function AgentThreadPanel() {
                   onRewindAgent={
                     canRewind
                       ? {
-                          onEditAndResend: () => handleStartEdit(msg.id, msg.text),
+                          onEditAndResend: () => handleStartEdit(msg.id, msg.text, msg.images),
                           isCodingSession: !!thread.is_coding_session,
                           hasCheckpoints: (thread.checkpoints?.length ?? 0) > 1,
                           isStreaming: !!streaming?.isStreaming,

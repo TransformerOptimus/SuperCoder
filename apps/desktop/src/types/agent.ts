@@ -103,6 +103,8 @@ export interface AgentMessage {
   agent_id: string;
   role: AgentMessageRole;
   text: string;
+  /** Image data-URLs attached to this message (shown in the bubble). */
+  images?: string[];
   artifacts: Artifact[];
   created_at: string;
   thinking?: {
@@ -172,6 +174,8 @@ export interface AgentDisplayMessage {
   tools: AgentToolChip[];
   /** Seconds spent on tool calls before this message (for "Thought for Ns"). */
   duration_seconds: number;
+  /** Image data-URLs attached to this message (rebuilt from on-disk refs). */
+  images: string[];
 }
 
 // --- Session (from the `sessions` table via Tauri) ---
@@ -188,6 +192,7 @@ export interface SessionRow {
   updated_at: string;
   status: string;
   providerId?: string | null;
+  model?: string | null;
 }
 
 // --- Thread Summary (from SQLite via Tauri) ---
@@ -222,6 +227,13 @@ export interface ModelProfile {
 /** UI provider kind → backend wire format. "openai_compatible" takes a custom base_url. */
 export type ProviderKind = 'openai' | 'openai_compatible' | 'anthropic';
 
+/** Per-model discovered/edited metadata. Mirrors Rust `ModelMeta`. */
+export interface ModelMeta {
+  /** Discovered context length; absent/null = unknown. */
+  contextLength?: number | null;
+  supportsImages?: boolean;
+}
+
 /** A saved LLM provider = an endpoint (no model bundled). Mirrors Rust `ProviderConfig`. */
 export interface ProviderConfig {
   id: string;
@@ -232,6 +244,35 @@ export interface ProviderConfig {
   apiKey: string;
   /** Available model ids (populated by "Fetch models" or typed). Feeds the pickers. */
   models: string[];
+  /** Per-model metadata keyed by model id (discovered context length, vision). */
+  modelMeta?: Record<string, ModelMeta>;
+  /** Provider-level vision fallback for custom providers. */
+  supportsImages?: boolean;
+}
+
+/** A model advertised by a provider's /models, with discovered context length. */
+export interface FetchedModel {
+  id: string;
+  contextLength: number | null;
+}
+
+/** A built-in registry model for the Settings picker. Mirrors Rust `CuratedModel`. */
+export interface CuratedModel {
+  id: string;
+  displayName: string;
+  /** "openai" | "anthropic" — matches the built-in provider kind. */
+  provider: string;
+  contextWindow: number;
+  supportsImages: boolean;
+}
+
+/** Resolved capability for the active (provider, model). Mirrors Rust `ModelCapability`. */
+export interface ModelCapability {
+  /** `null` = unknown → context bar shows raw count, auto-compaction off. */
+  contextLimit: number | null;
+  supportsImages: boolean;
+  /** "known" | "discovered" | "unknown". */
+  source: string;
 }
 
 /** A model on a specific provider. */

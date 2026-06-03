@@ -1,7 +1,13 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useEffect } from "react";
 import { Button } from "antd";
 import { SendHorizontal, CircleStop } from "lucide-react";
-import type { InputShellProps } from "./types";
+import type { InputShellProps, WidthTier } from "./types";
+
+function tierFor(width: number): WidthTier {
+  if (width < 380) return "narrow";
+  if (width < 560) return "medium";
+  return "wide";
+}
 
 export default function InputShell({
   value,
@@ -20,9 +26,36 @@ export default function InputShell({
   aboveContent,
   innerContent,
   belowToolbar,
+  onWidthChange,
 }: InputShellProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const resolvedRef = (textareaRef ?? internalRef) as React.RefObject<HTMLTextAreaElement>;
+  const shellRef = useRef<HTMLDivElement>(null);
+  const tierRef = useRef<WidthTier | null>(null);
+
+  // Observe the composer width and report tier changes (debounced via rAF) so
+  // the toolbar can collapse controls into an overflow menu when narrow.
+  useEffect(() => {
+    const el = shellRef.current;
+    if (!el || !onWidthChange) return;
+    let frame = 0;
+    const observer = new ResizeObserver((entries) => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const width = entries[0]?.contentRect.width ?? el.clientWidth;
+        const tier = tierFor(width);
+        if (tier !== tierRef.current) {
+          tierRef.current = tier;
+          onWidthChange(tier);
+        }
+      });
+    });
+    observer.observe(el);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [onWidthChange]);
 
   useLayoutEffect(() => {
     const el = resolvedRef.current;
@@ -42,7 +75,10 @@ export default function InputShell({
     <div className="px-5 pt-0 pb-3">
       {aboveContent}
 
-      <div className="relative bg-gray-100 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl">
+      <div
+        ref={shellRef}
+        className="relative bg-gray-100 dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-xl"
+      >
         {innerContent}
 
         <textarea

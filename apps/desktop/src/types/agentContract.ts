@@ -173,7 +173,8 @@ export interface CompactionPayload {
 export interface TokenUsagePayload {
   thread_id: string;
   total_tokens: number;
-  context_limit: number;
+  /** `null` for unknown models → raw token count, no max/percentage. */
+  context_limit: number | null;
   cache_read_tokens?: number;
   cache_creation_tokens?: number;
 }

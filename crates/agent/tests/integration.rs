@@ -609,6 +609,7 @@ async fn test_compaction_triggers_with_small_context() {
     // Very small context limit to force compaction
     config.compaction_config = CompactionConfig {
         context_limit: 500,   // ~500 tokens → threshold at 400 tokens
+        auto_compact: true,
         threshold_pct: 0.80,
         keep_recent_messages: 2,
         max_messages: 10_000,
@@ -826,6 +827,7 @@ async fn test_compaction_survives_multi_file_reads() {
     let mut config = make_config(&api_key(), tmp.path().to_path_buf());
     config.compaction_config = CompactionConfig {
         context_limit: 2000,
+        auto_compact: true,
         threshold_pct: 0.40,  // threshold = 800 tokens
         keep_recent_messages: 2,
         max_messages: 10_000,

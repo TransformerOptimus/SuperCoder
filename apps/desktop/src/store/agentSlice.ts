@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { AgentToolCallState, ProviderConfig, ModelSelection } from '../types/agent';
+import type { AgentToolCallState, ProviderConfig, ModelSelection, ModelCapability } from '../types/agent';
 import type { PendingApproval, TodoItem } from '../types/agentContract';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ export interface AgentSlice {
   /** Per-session agent todo list from the todo_write tool. */
   agentTodos: Record<string, TodoItem[]>;
   /** Per-session token usage (persists after streaming clears). */
-  tokenUsage: Record<string, { totalTokens: number; contextLimit: number; cacheReadTokens?: number; cacheCreationTokens?: number }>;
+  tokenUsage: Record<string, { totalTokens: number; contextLimit: number | null; cacheReadTokens?: number; cacheCreationTokens?: number }>;
 
   // ── Plan-mode flow ──────────────────────────────────────────────────
   /** Per-project completed plans from plan-mode sessions. Key = projectPath. */
@@ -50,6 +50,8 @@ export interface AgentSlice {
   providers: ProviderConfig[];
   selection: ModelSelection;
   providersLoaded: boolean;
+  /** Resolved capability (context limit + vision) for the active model. */
+  activeCapability: ModelCapability | null;
 
   // ── Actions ─────────────────────────────────────────────────────────
   setAgentFolderPath: (path: string | null) => void;
@@ -61,7 +63,7 @@ export interface AgentSlice {
   addToolCall: (sessionId: string, toolCall: AgentToolCallState) => void;
   updateToolCall: (sessionId: string, toolCallId: string, success: boolean, summary: string) => void;
   setStreamingError: (sessionId: string, error: string | null) => void;
-  setTokenUsage: (sessionId: string, totalTokens: number, contextLimit: number, cacheReadTokens?: number, cacheCreationTokens?: number) => void;
+  setTokenUsage: (sessionId: string, totalTokens: number, contextLimit: number | null, cacheReadTokens?: number, cacheCreationTokens?: number) => void;
   clearTokenUsage: (sessionId: string) => void;
   clearAgentStreaming: (sessionId: string) => void;
   softClearAgentStreaming: (sessionId: string) => void;
@@ -84,6 +86,8 @@ export interface AgentSlice {
 
   loadProviders: () => Promise<void>;
   setActiveModel: (providerId: string, model: string) => Promise<void>;
+  /** Resolve and cache the active model's capability (context limit + vision). */
+  refreshActiveCapability: () => Promise<void>;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -128,7 +132,7 @@ function patchStreaming(
 
 // ── Slice Creator ──────────────────────────────────────────────────────────
 
-export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (set) => ({
+export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (set, get) => ({
   agentFolderPath: null,
   agentBranch: null,
   agentStreaming: {},
@@ -143,6 +147,7 @@ export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (s
   providers: [],
   selection: { active: null, compaction: null, title: null },
   providersLoaded: false,
+  activeCapability: null,
 
   setAgentFolderPath: (path) => set({ agentFolderPath: path }),
   setAgentBranch: (branch) => set({ agentBranch: branch }),
@@ -267,6 +272,7 @@ export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (s
       const { agentTauriService } = await import('../services/agentTauriService');
       const { providers, selection } = await agentTauriService.listProviders();
       set({ providers, selection, providersLoaded: true });
+      void get().refreshActiveCapability();
     } catch (e) {
       console.error('[agentSlice] Failed to load providers:', e);
     }
@@ -277,8 +283,25 @@ export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (s
     try {
       const { agentTauriService } = await import('../services/agentTauriService');
       await agentTauriService.setModelSelection('active', providerId, model);
+      void get().refreshActiveCapability();
     } catch (e) {
       console.error('[agentSlice] Failed to set active model:', e);
+    }
+  },
+
+  refreshActiveCapability: async () => {
+    const active = get().selection.active;
+    if (!active) {
+      set({ activeCapability: null });
+      return;
+    }
+    try {
+      const { agentTauriService } = await import('../services/agentTauriService');
+      const cap = await agentTauriService.resolveModelCapability(active.providerId, active.model);
+      set({ activeCapability: cap });
+    } catch (e) {
+      console.error('[agentSlice] Failed to resolve model capability:', e);
+      set({ activeCapability: null });
     }
   },
 });

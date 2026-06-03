@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import Markdown from '../../common/Markdown';
 import { Dropdown } from 'antd';
 import { Maximize2 } from 'lucide-react';
 import { useAppStore } from '@/store';
@@ -70,9 +69,7 @@ export default function PlanCard({ planText, projectPath, planPath, branch }: Pl
 
       {expanded && (
         <div className={styles.body}>
-          <div className={`${styles.planText} ${styles.planMarkdown} message-html`}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{planText}</ReactMarkdown>
-          </div>
+          <Markdown className={`${styles.planText} ${styles.planMarkdown} message-html`}>{planText}</Markdown>
         </div>
       )}
     </div>

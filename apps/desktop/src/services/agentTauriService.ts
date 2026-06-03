@@ -3,6 +3,9 @@ import type {
   AgentDisplayMessage,
   CheckpointSummary,
   ContextEngineSettings,
+  CuratedModel,
+  FetchedModel,
+  ModelCapability,
   ProviderConfig,
   ProvidersResponse,
   SelectionRole,
@@ -103,8 +106,8 @@ export const agentTauriService = {
   // ── Context usage / clear / compact ────────────────────────────────────
   async getContextUsage(
     sessionId: string,
-  ): Promise<{ total_tokens: number; context_limit: number; message_count: number } | null> {
-    return invoke<{ total_tokens: number; context_limit: number; message_count: number } | null>(
+  ): Promise<{ total_tokens: number; context_limit: number | null; message_count: number } | null> {
+    return invoke<{ total_tokens: number; context_limit: number | null; message_count: number } | null>(
       'agent_get_context_usage',
       { sessionId },
     );
@@ -186,14 +189,29 @@ export const agentTauriService = {
     return invoke<void>('agent_set_model_selection', { role, providerId, model });
   },
 
+  /** Re-pin an open session's provider + model (picker switch while a session is open). */
+  async setSessionModel(sessionId: string, providerId: string, model: string): Promise<void> {
+    return invoke<void>('agent_set_session_model', { sessionId, providerId, model });
+  },
+
   /** Query the provider's models endpoint (uses the draft's base_url/api_key/kind). */
-  async fetchProviderModels(provider: ProviderConfig): Promise<string[]> {
-    return invoke<string[]>('agent_fetch_provider_models', { provider });
+  async fetchProviderModels(provider: ProviderConfig): Promise<FetchedModel[]> {
+    return invoke<FetchedModel[]>('agent_fetch_provider_models', { provider });
+  },
+
+  /** Built-in model registry (context window + vision) — drives the Settings picker. */
+  async listModels(): Promise<CuratedModel[]> {
+    return invoke<CuratedModel[]>('agent_list_models');
   },
 
   /** Verify the provider's API key. Rejects (throws) only on a clear 401/403. */
   async verifyProvider(provider: ProviderConfig): Promise<void> {
     return invoke<void>('agent_verify_provider', { provider });
+  },
+
+  /** Resolve context limit + vision support for a (provider, model) pair. */
+  async resolveModelCapability(providerId: string, model: string): Promise<ModelCapability> {
+    return invoke<ModelCapability>('agent_resolve_model_capability', { providerId, model });
   },
 
   // ── Context engine (opt-in semantic/graph search) ──────────────────────

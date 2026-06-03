@@ -140,6 +140,20 @@ async fn build_user_message(text: &str, attachments: Option<Vec<AttachmentPayloa
 /// array under `llm_providers`. `kind` maps to a wire format:
 /// openai/openai_compatible → OpenAI; anthropic → Anthropic. OpenAI and Anthropic
 /// are built-in singletons (ids "openai"/"anthropic"); openai_compatible can be added.
+/// Per-model metadata discovered from a provider's `/models` endpoint or edited
+/// by the user. Optional & defaulted so older stored providers deserialize.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelMeta {
+    /// Discovered context length (e.g. OpenRouter `context_length`). `None` =
+    /// unknown → context bar shows raw count, auto-compaction disabled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_length: Option<usize>,
+    /// Whether this model accepts image inputs.
+    #[serde(default)]
+    pub supports_images: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderConfig {
@@ -154,6 +168,13 @@ pub struct ProviderConfig {
     /// Available model ids (populated by "Fetch models" or typed). Feeds the pickers.
     #[serde(default)]
     pub models: Vec<String>,
+    /// Per-model discovered/edited metadata, keyed by model id.
+    #[serde(default)]
+    pub model_meta: std::collections::HashMap<String, ModelMeta>,
+    /// Provider-level vision fallback for custom providers when a model advertises
+    /// no per-model flag. Built-ins resolve vision from the model registry instead.
+    #[serde(default)]
+    pub supports_images: bool,
 }
 
 impl ProviderConfig {
@@ -203,6 +224,8 @@ fn default_providers() -> Vec<ProviderConfig> {
             base_url: "https://api.openai.com/v1".to_string(),
             api_key: String::new(),
             models: Vec::new(),
+            model_meta: std::collections::HashMap::new(),
+            supports_images: false,
         },
         ProviderConfig {
             id: "anthropic".to_string(),
@@ -211,6 +234,8 @@ fn default_providers() -> Vec<ProviderConfig> {
             base_url: "https://api.anthropic.com".to_string(),
             api_key: String::new(),
             models: Vec::new(),
+            model_meta: std::collections::HashMap::new(),
+            supports_images: false,
         },
     ]
 }
@@ -379,6 +404,88 @@ pub fn provider_to_llm_config(p: &ProviderConfig, model: &str) -> LlmClientConfi
     }
 }
 
+/// Resolved capability for a (provider, model) pair. Single source of truth for
+/// the context bar's tri-state and the image-attach gating on the frontend.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelCapability {
+    /// `Some(n)` = known/discovered limit → show used/max + %, auto-compact on.
+    /// `None` = unknown → show raw token count, auto-compaction disabled.
+    pub context_limit: Option<usize>,
+    pub supports_images: bool,
+    /// "known" (registry) | "discovered" (provider /models) | "unknown".
+    pub source: String,
+}
+
+/// Resolve context limit + vision capability: known registry model (built-ins) →
+/// discovered per-model provider metadata → unknown.
+async fn resolve_capability(
+    agent_state: &AgentState,
+    provider: &ProviderConfig,
+    model: &str,
+) -> ModelCapability {
+    if let Some(p) = agent_state.model_registry.read().await.get(model) {
+        return ModelCapability {
+            context_limit: Some(p.context_window),
+            supports_images: p.supports_images,
+            source: "known".into(),
+        };
+    }
+    let meta = provider.model_meta.get(model);
+    let context_limit = meta.and_then(|m| m.context_length);
+    let supports_images = meta.map(|m| m.supports_images).unwrap_or(false) || provider.supports_images;
+    ModelCapability {
+        context_limit,
+        supports_images,
+        source: if context_limit.is_some() { "discovered".into() } else { "unknown".into() },
+    }
+}
+
+/// A built-in model from the registry, for the Settings model picker. Carries
+/// the context window + vision flag so the UI never has to duplicate that data.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CuratedModel {
+    pub id: String,
+    pub display_name: String,
+    /// "openai" | "anthropic" — matches the built-in provider `kind`.
+    pub provider: String,
+    pub context_window: usize,
+    pub supports_images: bool,
+}
+
+/// List the built-in model registry — the single source of truth for the
+/// Settings picker (replaces the old hardcoded frontend `CURATED_MODELS`).
+#[tauri::command]
+pub async fn agent_list_models(agent_state: State<'_, AgentState>) -> Result<Vec<CuratedModel>, String> {
+    let registry = agent_state.model_registry.read().await;
+    Ok(registry
+        .list()
+        .into_iter()
+        .map(|p| CuratedModel {
+            id: p.id.clone(),
+            display_name: p.display_name.clone(),
+            provider: p.provider.clone(),
+            context_window: p.context_window,
+            supports_images: p.supports_images,
+        })
+        .collect())
+}
+
+/// Frontend-facing resolver: the context bar and attach UI call this for the
+/// active (provider, model) to learn the limit and vision support in one shot.
+#[tauri::command]
+pub async fn agent_resolve_model_capability(
+    provider_id: String,
+    model: String,
+    agent_state: State<'_, AgentState>,
+    app_state: State<'_, AppState>,
+) -> Result<ModelCapability, String> {
+    let provider = provider_by_id(&app_state, &provider_id)
+        .ok_or_else(|| format!("Unknown provider: {provider_id}"))?;
+    Ok(resolve_capability(&agent_state, &provider, &model).await)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn build_agent_config(
     main_provider: &ProviderConfig,
@@ -386,7 +493,7 @@ fn build_agent_config(
     compaction: Option<(&ProviderConfig, &str)>,
     working_dir: PathBuf,
     mode: ToolMode,
-    context_window: usize,
+    context_limit: Option<usize>,
     project_note: Option<&str>,
     checkpoint_dir: PathBuf,
     skills: Option<Arc<agent::skills::SkillRegistry>>,
@@ -395,7 +502,15 @@ fn build_agent_config(
 ) -> AgentConfig {
     let mut config = AgentConfig::new(provider_to_llm_config(main_provider, main_model), working_dir);
     config.mode = mode;
-    config.compaction_config.context_limit = context_window;
+    // Known/discovered limit → auto-compact at threshold × n. Unknown → disable
+    // token-based compaction (the message-count guard still applies).
+    match context_limit {
+        Some(n) => {
+            config.compaction_config.context_limit = n;
+            config.compaction_config.auto_compact = true;
+        }
+        None => config.compaction_config.auto_compact = false,
+    }
     config.skills = skills;
     config.subagents = subagents;
     config.checkpoint_dir = Some(checkpoint_dir);
@@ -655,6 +770,8 @@ pub struct AgentDisplayMessage {
     pub tools: Vec<ToolChip>,
     /// Wall-clock seconds spent on tool calls before this assistant message.
     pub duration_seconds: u32,
+    /// Image data-URLs attached to this message (rebuilt from on-disk refs).
+    pub images: Vec<String>,
 }
 
 /// Pull a short, human-friendly summary out of a tool call's JSON arguments.
@@ -730,7 +847,8 @@ pub struct CheckpointInfo {
 #[derive(Debug, Serialize)]
 pub struct ContextUsageResponse {
     pub total_tokens: u32,
-    pub context_limit: u32,
+    /// `None` for unknown models → UI shows raw token count with no max/percentage.
+    pub context_limit: Option<u32>,
     pub message_count: u32,
 }
 
@@ -799,6 +917,23 @@ pub async fn agent_rename_session(
         .map_err(|e| format!("Failed to rename session: {e}"))
 }
 
+/// Re-pin an open session's provider + model. Used when the user switches the
+/// model picker while a session is open — subsequent turns and the context bar
+/// then use the newly selected model.
+#[tauri::command]
+pub async fn agent_set_session_model(
+    session_id: String,
+    provider_id: String,
+    model: String,
+    agent_state: State<'_, AgentState>,
+) -> Result<(), String> {
+    let db = Arc::clone(&agent_state.db);
+    tokio::task::spawn_blocking(move || db.set_session_model(&session_id, &provider_id, &model))
+        .await
+        .map_err(|e| format!("join error: {e}"))?
+        .map_err(|e| format!("Failed to set session model: {e}"))
+}
+
 /// Soft-delete a session (hidden from the sidebar; data preserved on disk).
 /// Rejected while its folder has a running loop — stop that first.
 #[tauri::command]
@@ -818,10 +953,14 @@ pub async fn agent_delete_session(
         }
     }
     let db = Arc::clone(&agent_state.db);
-    tokio::task::spawn_blocking(move || db.delete_session(&session_id))
+    let sid = session_id.clone();
+    tokio::task::spawn_blocking(move || db.delete_session(&sid))
         .await
         .map_err(|e| format!("join error: {e}"))?
-        .map_err(|e| format!("Failed to delete session: {e}"))
+        .map_err(|e| format!("Failed to delete session: {e}"))?;
+    // Best-effort GC of the session's on-disk image attachments.
+    let _ = std::fs::remove_dir_all(crate::agent_bridge::db::images_dir(&session_id));
+    Ok(())
 }
 
 /// List all sessions for the sidebar, most recent first.
@@ -1005,7 +1144,8 @@ async fn run_agent_turn(
     };
     // Global compaction model (any provider), resolved once for this turn.
     let compaction = read_selection(app_state).compaction.and_then(|r| resolve_ref(app_state, &r));
-    let context_window = agent_state.model_registry.read().await.context_window_for(&model);
+    // Tri-state context limit: known/discovered → Some(n) (auto-compact); unknown → None.
+    let context_limit = resolve_capability(agent_state, &provider, &model).await.context_limit;
 
     // Plan-mode note: surface existing plan files so the agent reuses edit_plan.
     let project_note = if mode == ToolMode::Plan {
@@ -1058,7 +1198,7 @@ async fn run_agent_turn(
         compaction.as_ref().map(|(p, m)| (p, m.as_str())),
         work_dir.clone(),
         mode,
-        context_window,
+        context_limit,
         project_note.as_deref(),
         agent_state.checkpoint_dir(),
         skill_registry,
@@ -1288,11 +1428,11 @@ pub async fn agent_get_messages(
         if (msg.role != "user" && msg.role != "assistant") || msg.type_ != "text" {
             continue;
         }
-        let text = serde_json::from_str::<serde_json::Value>(&msg.llm_message)
-            .ok()
-            .and_then(|v| v.get("content").and_then(|c| c.as_str()).map(String::from))
-            .unwrap_or_default();
-        if text.is_empty() {
+        // Extract text + image data-URLs (handles multimodal block arrays, which
+        // a bare `content.as_str()` would miss — silently dropping image messages).
+        let (text, images) =
+            crate::agent_bridge::db::extract_display_content(&msg.llm_message, &msg.session_id);
+        if text.is_empty() && images.is_empty() {
             if msg.role == "user" {
                 pending_tools.clear();
                 pending_started = None;
@@ -1319,6 +1459,7 @@ pub async fn agent_get_messages(
             session_id: msg.session_id.clone(),
             tools,
             duration_seconds,
+            images,
         });
     }
     Ok(out)
@@ -1333,15 +1474,18 @@ pub async fn agent_get_context_usage(
     app_state: State<'_, AppState>,
 ) -> Result<Option<ContextUsageResponse>, String> {
     let db = Arc::clone(&agent_state.db);
-    let model = db
+    let resolved = db
         .get_session(&session_id)
         .ok()
         .flatten()
-        .and_then(|s| session_model(&app_state, &s).ok())
-        .map(|(_, m)| m)
-        .unwrap_or_default();
-    let current_limit =
-        agent_state.model_registry.read().await.context_window_for(&model) as u32;
+        .and_then(|s| session_model(&app_state, &s).ok());
+    // Tri-state: known/discovered → Some(n); unknown → None (no max/percentage).
+    let current_limit = match resolved {
+        Some((ref provider, ref model)) => {
+            resolve_capability(&agent_state, provider, model).await.context_limit.map(|n| n as u32)
+        }
+        None => None,
+    };
     let sid = session_id.clone();
     let usage = tokio::task::spawn_blocking(move || db.get_context_usage(&sid))
         .await
@@ -1594,6 +1738,19 @@ struct ModelsListResponse {
 #[derive(Deserialize)]
 struct ModelEntry {
     id: String,
+    /// OpenRouter / vLLM style. Anthropic + OpenAI don't return this → stays None.
+    #[serde(default)]
+    context_length: Option<usize>,
+    #[serde(default)]
+    max_context_length: Option<usize>,
+}
+
+/// A model advertised by a provider's `/models`, with any discovered context length.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FetchedModel {
+    pub id: String,
+    pub context_length: Option<usize>,
 }
 
 /// Build the GET request to a provider's models endpoint (URL + auth headers).
@@ -1632,10 +1789,11 @@ fn models_request(provider: &ProviderConfig) -> Result<reqwest::RequestBuilder, 
     Ok(client.get(&url).headers(headers))
 }
 
-/// Query the provider's models endpoint and return the advertised model ids.
-/// Uses the draft's base_url + api_key + kind (so it works before saving).
+/// Query the provider's models endpoint and return the advertised models plus
+/// any discovered context length. Uses the draft's base_url + api_key + kind
+/// (so it works before saving).
 #[tauri::command]
-pub async fn agent_fetch_provider_models(provider: ProviderConfig) -> Result<Vec<String>, String> {
+pub async fn agent_fetch_provider_models(provider: ProviderConfig) -> Result<Vec<FetchedModel>, String> {
     let resp = models_request(&provider)?
         .send()
         .await
@@ -1646,7 +1804,11 @@ pub async fn agent_fetch_provider_models(provider: ProviderConfig) -> Result<Vec
     let body = resp.text().await.map_err(|e| format!("Failed to read response: {e}"))?;
     let parsed: ModelsListResponse =
         serde_json::from_str(&body).map_err(|_| "Unexpected models response shape".to_string())?;
-    Ok(parsed.data.into_iter().map(|m| m.id).collect())
+    Ok(parsed
+        .data
+        .into_iter()
+        .map(|m| FetchedModel { id: m.id, context_length: m.context_length.or(m.max_context_length) })
+        .collect())
 }
 
 /// Key check used before saving. Sends a minimal "hi" (max 16 tokens) through the

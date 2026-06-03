@@ -1,3 +1,26 @@
+import { Sun, Moon, Monitor } from 'lucide-react';
+import { Tooltip } from 'antd';
+import { useTheme, type ThemeMode } from '../context/ThemeContext';
+
+const NEXT_MODE: Record<ThemeMode, ThemeMode> = { light: 'dark', dark: 'system', system: 'light' };
+const MODE_LABEL: Record<ThemeMode, string> = { light: 'Light', dark: 'Dark', system: 'System' };
+
+function ThemeToggle() {
+  const { mode, setMode } = useTheme();
+  const Icon = mode === 'light' ? Sun : mode === 'dark' ? Moon : Monitor;
+  return (
+    <Tooltip title={`Theme: ${MODE_LABEL[mode]} (click to switch)`}>
+      <button
+        onClick={() => setMode(NEXT_MODE[mode])}
+        className="p-1.5 rounded-md text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-[var(--hover-bg)] pointer-events-auto"
+        aria-label={`Theme: ${MODE_LABEL[mode]}`}
+      >
+        <Icon size={16} />
+      </button>
+    </Tooltip>
+  );
+}
+
 function CoderLogo({ className }: { className?: string }) {
   return (
     <svg width="40" height="24" viewBox="0 0 40 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -26,6 +49,9 @@ export default function TopBar() {
       <div className="flex items-center gap-2 pointer-events-none">
         <CoderLogo className="h-6 text-gray-700 dark:text-gray-300 shrink-0" />
         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">SuperCoder</span>
+      </div>
+      <div className="ml-auto">
+        <ThemeToggle />
       </div>
     </div>
   );

@@ -1,20 +1,32 @@
 import { useEffect, useRef } from 'react';
 import { Terminal } from 'xterm';
+import type { ITheme } from 'xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { spawn } from 'tauri-pty';
 import type { IPty } from 'tauri-pty';
 import 'xterm/css/xterm.css';
 import styles from './InteractiveTerminal.module.css';
+import { useTheme } from '../../../context/ThemeContext';
 
 interface InteractiveTerminalProps {
   workingDir: string;
   onClose: () => void;
 }
 
+function terminalTheme(dark: boolean): ITheme {
+  return dark
+    ? { background: '#1e1e1e', foreground: '#d4d4d4', cursor: '#d4d4d4' }
+    : { background: '#fafafa', foreground: '#1e1e1e', cursor: '#1e1e1e' };
+}
+
 export default function InteractiveTerminal({ workingDir, onClose }: InteractiveTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const ptyRef = useRef<IPty | null>(null);
+  const { dark } = useTheme();
+  // Read the latest theme at creation time without re-spawning the PTY on toggle.
+  const darkRef = useRef(dark);
+  darkRef.current = dark;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -23,11 +35,7 @@ export default function InteractiveTerminal({ workingDir, onClose }: Interactive
     const term = new Terminal({
       fontSize: 13,
       fontFamily: '"Space Mono", "Menlo", "Monaco", monospace',
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
-      },
+      theme: terminalTheme(darkRef.current),
       cursorBlink: true,
     });
     const fitAddon = new FitAddon();
@@ -81,6 +89,11 @@ export default function InteractiveTerminal({ workingDir, onClose }: Interactive
       term.dispose();
     };
   }, [workingDir]);
+
+  // Live-update the terminal palette when the app theme changes.
+  useEffect(() => {
+    if (xtermRef.current) xtermRef.current.options.theme = terminalTheme(dark);
+  }, [dark]);
 
   return (
     <div className={styles.panel}>

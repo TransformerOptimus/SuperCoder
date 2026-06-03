@@ -1,3 +1,6 @@
+/** Width tier of the composer, driven by a ResizeObserver on the shell. */
+export type WidthTier = 'narrow' | 'medium' | 'wide';
+
 export interface InputShellProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
@@ -18,4 +21,6 @@ export interface InputShellProps {
   innerContent?: React.ReactNode;
   /** Content rendered below the toolbar row, inside the bordered box, with a top divider */
   belowToolbar?: React.ReactNode;
+  /** Notified when the composer's width tier changes (for responsive collapse). */
+  onWidthChange?: (tier: WidthTier) => void;
 }

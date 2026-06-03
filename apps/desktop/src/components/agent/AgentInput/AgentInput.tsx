@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import { X, FileText, Code, File as FileIcon, Bot, MessageCircle, Map, Plus } from "lucide-react";
+import { X, FileText, Code, File as FileIcon, Bot, MessageCircle, Map, Plus, MoreHorizontal, CircleDashed } from "lucide-react";
 import { useAppStore } from "@/store";
 import { useAgentSend } from "@/hooks/useAgentSend";
 import { saveDraft, loadDraft, clearDraft } from "@/utils/drafts";
@@ -11,10 +11,11 @@ import ActionChip from "@/components/common/ActionChip/ActionChip";
 import PermissionSettingsModal from "../PermissionSettingsModal/PermissionSettingsModal";
 import SkillsDialog from "../SkillsDialog/SkillsDialog";
 import SubagentsDialog from "../SubagentsDialog/SubagentsDialog";
-import { Segmented, Progress, Tooltip } from "antd";
+import { Segmented, Progress, Tooltip, Popover } from "antd";
 import { themedMessage } from "@/providers/AntDThemeProvider";
 import type { PermissionLevel, SubagentListEntry } from "@/types/agentContract";
 import type { Attachment } from "@/types/chat";
+import type { WidthTier } from "@/components/common/InputShell/types";
 import ModelPicker from "@/components/agent/ModelPicker/ModelPicker";
 import type { AgentInputProps } from "./types";
 
@@ -35,6 +36,23 @@ interface PendingAttachment {
 
 function isImage(name: string): boolean {
   return /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(name);
+}
+
+/** Infer an image MIME type from a filename. Files built from raw bytes have an
+ * empty `type`, which the backend's `image/*` filter would drop. */
+function mimeFromName(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    webp: "image/webp",
+    svg: "image/svg+xml",
+    bmp: "image/bmp",
+    ico: "image/x-icon",
+  };
+  return map[ext] ?? "";
 }
 
 /** Read a File as a base64 data: URL (local attachments, no upload server). */
@@ -59,6 +77,7 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
   const [showSkills, setShowSkills] = useState(false);
   const [showSubagents, setShowSubagents] = useState(false);
   const [permissionLevel, setPermissionLevel] = useState<PermissionLevel>("ApproveDestructive");
+  const [widthTier, setWidthTier] = useState<WidthTier>("wide");
 
   const [fileList, setFileList] = useState<string[]>([]);
   const [subagentList, setSubagentList] = useState<SubagentListEntry[]>([]);
@@ -86,6 +105,9 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
 
   const activeModel = useAppStore((s) => s.selection.active?.model ?? null);
   const tokenUsage = useAppStore((s) => s.tokenUsage[sessionId]);
+  // Vision capability for the active model gates the image-attach affordances.
+  const supportsImages = useAppStore((s) => s.activeCapability?.supportsImages ?? false);
+  const [dragActive, setDragActive] = useState(false);
 
   // Load git-tracked files for @ picker.
   useEffect(() => {
@@ -292,6 +314,7 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
   // Convert a local file to a data: URL attachment (no upload server).
   const trackAttachment = useCallback(async (file: File) => {
     const id = `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const mediaType = file.type || "application/octet-stream";
     setAttachments((prev) => [...prev, { id, file, file_name: file.name, uploading: true }]);
     try {
       const dataUrl = await fileToDataUrl(file);
@@ -301,7 +324,7 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
             ? {
                 ...a,
                 uploading: false,
-                uploaded: { url: dataUrl, file_name: file.name, media_type: file.type || "application/octet-stream" },
+                uploaded: { url: dataUrl, file_name: file.name, media_type: mediaType },
               }
             : a,
         ),
@@ -312,15 +335,25 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
   }, []);
 
   const handleUploadClick = useCallback(async () => {
-    const selected = await open({ directory: false, multiple: true, title: "Select files" });
+    const selected = await open({
+      directory: false,
+      multiple: true,
+      title: "Select images",
+      // Only images are supported (the backend forwards image/* attachments only).
+      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"] }],
+    });
     if (!selected) return;
     const paths = Array.isArray(selected) ? selected : [selected];
     for (const filePath of paths) {
+      const fileName = filePath.split("/").pop() || filePath;
+      // Guard against a non-image slipping through (e.g. the OS "All Files" override).
+      if (!isImage(fileName)) continue;
       try {
         const bytes = await invoke<number[]>("read_file_bytes", { path: filePath }).catch(() => null);
-        const fileName = filePath.split("/").pop() || filePath;
         if (bytes) {
-          const file = new File([new Uint8Array(bytes)], fileName);
+          // NOTE: File created from raw bytes has no MIME type, so file.type is "".
+          // Infer it from the extension so the backend's image/* filter keeps it.
+          const file = new File([new Uint8Array(bytes)], fileName, { type: mimeFromName(fileName) });
           await trackAttachment(file);
         }
       } catch {
@@ -333,6 +366,8 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
 
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      // Only intercept pasted images when the active model supports vision.
+      if (!supportsImages) return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (let i = 0; i < items.length; i++) {
@@ -347,8 +382,35 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
         }
       }
     },
-    [trackAttachment],
+    [trackAttachment, supportsImages],
   );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragActive(false);
+      if (!supportsImages) return;
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      for (const file of files) {
+        if (file.type.startsWith("image/") || isImage(file.name)) trackAttachment(file);
+      }
+    },
+    [trackAttachment, supportsImages],
+  );
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (!supportsImages) return;
+      e.preventDefault();
+      setDragActive(true);
+    },
+    [supportsImages],
+  );
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+  }, []);
 
   const insertPickerItem = useCallback(
     (item: PickerItem) => {
@@ -507,16 +569,29 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
     ) : null;
 
   const permissionLabel = PERMISSION_LABELS[permissionLevel] ?? "Balanced";
+  const isNarrow = widthTier === "narrow";
+  const isMedium = widthTier === "medium";
 
   const contextIndicator = (() => {
     if (!tokenUsage) return null;
     const { totalTokens, contextLimit } = tokenUsage;
-    if (!totalTokens || !contextLimit || contextLimit === 0) return null;
+    if (!totalTokens) return null;
+    const fmt = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n));
+    // Unknown context window → dashed ring + raw token count (no gauge, no %).
+    if (!contextLimit || contextLimit === 0) {
+      return (
+        <Tooltip title={`${fmt(totalTokens)} tokens used · context window unknown for this model`}>
+          <div className="flex items-center gap-1 shrink-0 mr-1 cursor-default">
+            <CircleDashed className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+            <span className="text-[10px] text-[var(--text-secondary)] font-mono">{fmt(totalTokens)}</span>
+          </div>
+        </Tooltip>
+      );
+    }
     const rawPercent = (totalTokens / contextLimit) * 100;
     const usagePercent = rawPercent > 0 && rawPercent < 1 ? 1 : Math.round(rawPercent);
     const displayPercent = rawPercent > 0 && rawPercent < 10 ? rawPercent.toFixed(1) : String(usagePercent);
     const usageColor = usagePercent > 80 ? "#f5222d" : usagePercent > 60 ? "#faad14" : "#52c41a";
-    const fmt = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n));
     return (
       <Tooltip title={`${fmt(totalTokens)} / ${fmt(contextLimit)} tokens (${displayPercent}%)`}>
         <div className="flex items-center gap-1 shrink-0 mr-1 cursor-default">
@@ -526,6 +601,94 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
       </Tooltip>
     );
   })();
+
+  // Image attach is the only attachment the backend forwards, so the upload
+  // affordance is shown only when the active model supports vision.
+  const uploadButton = supportsImages ? (
+    <button
+      onClick={handleUploadClick}
+      className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-[var(--hover-bg)]"
+      title="Attach image"
+    >
+      <Plus className="w-4 h-4" />
+    </button>
+  ) : null;
+
+  const permissionChipFull = (
+    <ActionChip
+      label={permissionLabel}
+      prefix={<Code className="w-4 h-4 text-gray-500" />}
+      onClick={() => setShowPermissions(true)}
+    />
+  );
+
+  const permissionChipIcon = (
+    <button
+      onClick={() => setShowPermissions(true)}
+      title={permissionLabel}
+      className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-[var(--hover-bg)]"
+    >
+      <Code className="w-4 h-4" />
+    </button>
+  );
+
+  const modeSegmented = (
+    <Segmented
+      size="small"
+      value={mode === "plan" ? "Plan" : mode === "coding" ? "Code" : "Ask"}
+      options={[
+        { label: <span className="flex items-center gap-1"><MessageCircle size={12} />{!isNarrow && <span>Ask</span>}</span>, value: "Ask" },
+        { label: <span className="flex items-center gap-1"><Map size={12} />{!isNarrow && <span>Plan</span>}</span>, value: "Plan" },
+        { label: <span className="flex items-center gap-1"><Code size={12} />{!isNarrow && <span>Code</span>}</span>, value: "Code" },
+      ]}
+      onChange={(val) => handleModeChange(val === "Plan" ? "plan" : val === "Code" ? "coding" : "ask")}
+      style={{ fontSize: 12, backgroundColor: "var(--white-opacity-10)" }}
+    />
+  );
+
+  // Narrow tier: model picker, permission, and context usage collapse into a "…" menu.
+  const overflowMenu = (
+    <Popover
+      trigger="click"
+      placement="topRight"
+      content={
+        <div className="flex flex-col gap-2 min-w-[180px]">
+          <ModelPicker />
+          {permissionChipFull}
+          {contextIndicator ?? (
+            <span className="text-xs text-[var(--text-secondary)]">No context usage yet</span>
+          )}
+        </div>
+      }
+    >
+      <button
+        className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-[var(--hover-bg)]"
+        title="More controls"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+    </Popover>
+  );
+
+  const toolbarLeftNode = isNarrow ? (
+    <>
+      {uploadButton}
+      {overflowMenu}
+    </>
+  ) : (
+    <>
+      {uploadButton}
+      <ModelPicker />
+      {isMedium ? permissionChipIcon : permissionChipFull}
+    </>
+  );
+
+  const toolbarRightNode = (
+    <div className="flex items-center">
+      {!isNarrow && contextIndicator}
+      {modeSegmented}
+    </div>
+  );
 
   const attachmentPreviews =
     attachments.length > 0 ? (
@@ -558,59 +721,41 @@ export default function AgentInput({ sessionId, folderPath, agentName = "the age
 
   return (
     <>
-      <InputShell
-        value={text}
-        onChange={(e) => handleTextChange(e.target.value, e.target.selectionStart ?? undefined)}
-        textareaRef={textareaRef}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        placeholder={`Ask ${agentName} to do something...`}
-        onSend={isBusy ? handleCancel : handleSend}
-        sendDisabled={
-          isBusy ? false : (!text.trim() && attachments.every((a) => !a.uploaded)) || isSending || isUploading || isCompacting
-        }
-        isStop={isBusy}
-        innerContent={
-          <>
-            {commandPickerDropdown}
-            {filePickerDropdown}
-            {attachmentPreviews}
-          </>
-        }
-        toolbarRight={
-          <div className="flex items-center">
-            {contextIndicator}
-            <Segmented
-              size="small"
-              value={mode === "plan" ? "Plan" : mode === "coding" ? "Code" : "Ask"}
-              options={[
-                { label: <span className="flex items-center gap-1"><MessageCircle size={12} /> Ask</span>, value: "Ask" },
-                { label: <span className="flex items-center gap-1"><Map size={12} /> Plan</span>, value: "Plan" },
-                { label: <span className="flex items-center gap-1"><Code size={12} /> Code</span>, value: "Code" },
-              ]}
-              onChange={(val) => handleModeChange(val === "Plan" ? "plan" : val === "Code" ? "coding" : "ask")}
-              style={{ fontSize: 12, backgroundColor: "var(--white-opacity-10)" }}
-            />
+      <div
+        className="relative"
+        onDrop={supportsImages ? handleDrop : undefined}
+        onDragOver={supportsImages ? handleDragOver : undefined}
+        onDragLeave={supportsImages ? handleDragLeave : undefined}
+      >
+        {dragActive && (
+          <div className="absolute inset-0 z-20 m-5 rounded-xl border-2 border-dashed border-blue-400 bg-blue-50/70 dark:bg-blue-500/10 flex items-center justify-center pointer-events-none">
+            <span className="text-sm text-blue-600 dark:text-blue-300">Drop image to attach</span>
           </div>
-        }
-        toolbarLeft={
-          <>
-            <button
-              onClick={handleUploadClick}
-              className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-[var(--hover-bg)]"
-              title="Attach files"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-            <ModelPicker />
-            <ActionChip
-              label={permissionLabel}
-              prefix={<Code className="w-4 h-4 text-gray-500" />}
-              onClick={() => setShowPermissions(true)}
-            />
-          </>
-        }
-      />
+        )}
+        <InputShell
+          value={text}
+          onChange={(e) => handleTextChange(e.target.value, e.target.selectionStart ?? undefined)}
+          textareaRef={textareaRef}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          placeholder={`Ask ${agentName} to do something...`}
+          onSend={isBusy ? handleCancel : handleSend}
+          sendDisabled={
+            isBusy ? false : (!text.trim() && attachments.every((a) => !a.uploaded)) || isSending || isUploading || isCompacting
+          }
+          isStop={isBusy}
+          onWidthChange={setWidthTier}
+          innerContent={
+            <>
+              {commandPickerDropdown}
+              {filePickerDropdown}
+              {attachmentPreviews}
+            </>
+          }
+          toolbarRight={toolbarRightNode}
+          toolbarLeft={toolbarLeftNode}
+        />
+      </div>
       <PermissionSettingsModal
         isOpen={showPermissions}
         onClose={() => {

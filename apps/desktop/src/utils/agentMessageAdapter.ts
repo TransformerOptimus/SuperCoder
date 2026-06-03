@@ -22,6 +22,7 @@ export function displayToAgentMessage(m: AgentDisplayMessage): AgentMessage {
     agent_id: '',
     role,
     text: m.text,
+    images: m.images,
     artifacts: [],
     created_at: m.created_at,
     thinking,
@@ -39,6 +40,7 @@ export function buildAgentMessage(
   agentId: string,
   artifacts?: Artifact[],
   thinking?: AgentMessage['thinking'],
+  images?: string[],
 ): AgentMessage {
   return {
     id,
@@ -46,6 +48,7 @@ export function buildAgentMessage(
     agent_id: agentId,
     role,
     text,
+    images,
     artifacts: artifacts ?? [],
     created_at: new Date().toISOString(),
     thinking,

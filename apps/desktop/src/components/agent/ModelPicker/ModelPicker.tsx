@@ -18,24 +18,38 @@ function providerName(p: ProviderConfig): string {
   }
 }
 
-/** Picks the active coding model across all configured providers (grouped). New
- * sessions snapshot the active model; manage providers/models in Settings. */
+/** Picks the coding model across all configured providers (grouped). When a
+ * session is open the picker controls THAT session's model (re-pins it); with no
+ * session open it sets the global default that new sessions snapshot. */
 export default function ModelPicker() {
   const providers = useAppStore((s) => s.providers);
   const selection = useAppStore((s) => s.selection);
   const providersLoaded = useAppStore((s) => s.providersLoaded);
   const loadProviders = useAppStore((s) => s.loadProviders);
   const setActiveModel = useAppStore((s) => s.setActiveModel);
+  const setSessionModel = useAppStore((s) => s.setSessionModel);
+  const syncPickerToSession = useAppStore((s) => s.syncPickerToSession);
+  const activeThreadId = useAppStore((s) => s.activeAgentThreadId);
+  // The open session's pinned model (if any) — the picker reflects/controls it.
+  const openSession = useAppStore((s) =>
+    activeThreadId ? s.sessions.find((x) => x.id === activeThreadId) : undefined,
+  );
 
   useEffect(() => {
     if (!providersLoaded) loadProviders();
   }, [providersLoaded, loadProviders]);
 
+  // When a session opens, align the in-memory active model + vision gating to it.
+  useEffect(() => {
+    if (activeThreadId) syncPickerToSession(activeThreadId);
+  }, [activeThreadId, openSession?.model, openSession?.providerId, syncPickerToSession]);
+
   const handleSelect = useCallback(
     (providerId: string, model: string) => {
-      setActiveModel(providerId, model);
+      if (activeThreadId) setSessionModel(activeThreadId, providerId, model);
+      else setActiveModel(providerId, model);
     },
-    [setActiveModel],
+    [activeThreadId, setSessionModel, setActiveModel],
   );
 
   // Flatten providers → models as grouped dropdown items (header + model rows).
@@ -56,7 +70,8 @@ export default function ModelPicker() {
     return items;
   }, [providers, handleSelect]);
 
-  const displayLabel = selection.active?.model ?? "Select model";
+  // Show the open session's model when one is open; otherwise the global default.
+  const displayLabel = openSession?.model ?? selection.active?.model ?? "Select model";
 
   return (
     <CustomDropdown

@@ -29,10 +29,20 @@ export function useAgentSend({ sessionId }: UseAgentSendOpts): UseAgentSendRetur
       setSending(true);
       const store = useAppStore.getState();
       try {
-        // Optimistic user message.
+        // Optimistic user message (carry image attachments so the bubble shows them).
+        const imageUrls = attachments?.filter((a) => a.media_type?.startsWith("image/")).map((a) => a.url);
         store.addMessageToThread(
           sessionId,
-          buildAgentMessage(`agent-user-${sessionId}-${Date.now()}`, text, "user", sessionId, ""),
+          buildAgentMessage(
+            `agent-user-${sessionId}-${Date.now()}`,
+            text,
+            "user",
+            sessionId,
+            "",
+            undefined,
+            undefined,
+            imageUrls && imageUrls.length > 0 ? imageUrls : undefined,
+          ),
         );
         store.setActiveSession(sessionId, sessionId);
         store.setAgentStreaming(sessionId, createInitialStreamingState());

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Input, Button, Select, Spin, Popconfirm, Switch } from "antd";
-import { ArrowLeft, Plus, Pencil, Trash2 } from "lucide-react";
+import { Input, Button, Select, Spin, Popconfirm, Switch, Segmented } from "antd";
+import { ArrowLeft, Plus, Pencil, Trash2, Sun, Moon, Monitor } from "lucide-react";
 import { agentTauriService } from "@/services/agentTauriService";
 import { useAppStore } from "@/store";
 import { themedMessage } from "@/providers/AntDThemeProvider";
+import { useTheme, type ThemeMode } from "@/context/ThemeContext";
 import type {
   ContextEngineSettings,
+  CuratedModel,
   ModelRef,
   ModelSelection,
   ProviderConfig,
@@ -19,35 +21,12 @@ const DEFAULT_BASE_URL: Record<string, string> = {
   openai_compatible: "",
 };
 
-/** Known models for the built-in providers — the user picks the subset to use.
- * (OpenAI-compatible providers fetch their list live instead.) */
-const CURATED_MODELS: Record<string, string[]> = {
-  // GPT-5.x family + 4.1/4o (and their minis), verified against /v1/chat/completions.
-  // Excludes codex + pro variants (those are /v1/responses-only) and the o-series.
-  openai: [
-    "gpt-5.5",
-    "gpt-5.4",
-    "gpt-5.4-mini",
-    "gpt-5.4-nano",
-    "gpt-5.3-chat-latest",
-    "gpt-5.2",
-    "gpt-5.1",
-    "gpt-5",
-    "gpt-5-mini",
-    "gpt-5-nano",
-    "gpt-4.1",
-    "gpt-4.1-mini",
-    "gpt-4o",
-    "gpt-4o-mini",
-  ],
-  anthropic: [
-    "claude-opus-4-8",
-    "claude-opus-4-7",
-    "claude-opus-4-6",
-    "claude-sonnet-4-6",
-    "claude-haiku-4-5",
-  ],
-};
+/** Format a context window as a compact label, e.g. 1_000_000 → "1M", 128_000 → "128k". */
+function formatContext(tokens: number): string {
+  if (tokens >= 1_000_000) return `${tokens / 1_000_000}M`;
+  if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}k`;
+  return String(tokens);
+}
 
 function providerName(p: ProviderConfig): string {
   if (p.kind === "openai") return "OpenAI";
@@ -70,6 +49,7 @@ const parseValue = (v: string): ModelRef => {
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { mode: themeMode, setMode: setThemeMode } = useTheme();
   const loadProviders = useAppStore((s) => s.loadProviders);
 
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
@@ -81,6 +61,8 @@ export default function Settings() {
   const [isNew, setIsNew] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [contextEngine, setContextEngine] = useState<ContextEngineSettings>({ enabled: false, port: 8106 });
+  // Built-in model registry (context window + vision), fetched from the backend.
+  const [curatedModels, setCuratedModels] = useState<CuratedModel[]>([]);
 
   const refresh = async () => {
     const res = await agentTauriService.listProviders();
@@ -94,6 +76,7 @@ export default function Settings() {
       try {
         await refresh();
         setContextEngine(await agentTauriService.getContextEngine());
+        setCuratedModels(await agentTauriService.listModels());
       } catch (err) {
         console.error("[Settings] Failed to load providers:", err);
       } finally {
@@ -149,8 +132,16 @@ export default function Settings() {
       const list = await agentTauriService.fetchProviderModels({ ...draft, baseUrl: draft.baseUrl.trim() });
       if (list.length > 0) {
         // Merge fetched ids into the model list (keep any manually-added ones).
-        const merged = Array.from(new Set([...draft.models, ...list]));
-        setDraft({ ...draft, models: merged });
+        const merged = Array.from(new Set([...draft.models, ...list.map((m) => m.id)]));
+        // Record any discovered context length + the provider's vision flag per model.
+        const modelMeta = { ...(draft.modelMeta ?? {}) };
+        for (const m of list) {
+          modelMeta[m.id] = {
+            contextLength: m.contextLength,
+            supportsImages: draft.modelMeta?.[m.id]?.supportsImages ?? draft.supportsImages ?? false,
+          };
+        }
+        setDraft({ ...draft, models: merged, modelMeta });
         themedMessage.success(`Found ${list.length} models`);
       } else {
         themedMessage.info("No models returned by this endpoint");
@@ -241,6 +232,22 @@ export default function Settings() {
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
+        {/* Appearance */}
+        <h2 className="text-base font-semibold text-[var(--text-primary)] mb-1">Appearance</h2>
+        <p className="text-sm text-[var(--text-secondary)] mb-3">
+          Choose the theme. System follows your OS appearance.
+        </p>
+        <Segmented
+          value={themeMode}
+          onChange={(val) => setThemeMode(val as ThemeMode)}
+          className="mb-8"
+          options={[
+            { label: <span className="flex items-center gap-1.5"><Sun size={14} /> Light</span>, value: "light" },
+            { label: <span className="flex items-center gap-1.5"><Moon size={14} /> Dark</span>, value: "dark" },
+            { label: <span className="flex items-center gap-1.5"><Monitor size={14} /> System</span>, value: "system" },
+          ]}
+        />
+
         <h1 className="text-xl font-semibold text-[var(--text-primary)] mb-1">LLM Providers</h1>
         <p className="text-sm text-[var(--text-secondary)] mb-6">
           Set the API key + base URL for each provider and fetch its models. Pick the coding model from
@@ -292,7 +299,12 @@ export default function Settings() {
                   className="w-full"
                   value={draft.models}
                   onChange={(models) => setDraft({ ...draft, models })}
-                  options={(CURATED_MODELS[draft.kind] ?? []).map((m) => ({ label: m, value: m }))}
+                  options={curatedModels
+                    .filter((m) => m.provider === draft.kind)
+                    .map((m) => ({
+                      label: `${m.id} · ${formatContext(m.contextWindow)}`,
+                      value: m.id,
+                    }))}
                   placeholder="Pick the models to use"
                 />
               ) : (
@@ -313,6 +325,28 @@ export default function Settings() {
                 </div>
               )}
             </div>
+
+            {!isBuiltin(draft) && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-[var(--text-primary)]">Supports images (vision)</div>
+                  <div className="text-xs text-[var(--text-secondary)]">
+                    Enables image attachments for this provider's models.
+                  </div>
+                </div>
+                <Switch
+                  checked={draft.supportsImages ?? false}
+                  onChange={(checked) => {
+                    // Apply the flag to the provider and propagate to known per-model meta.
+                    const modelMeta = { ...(draft.modelMeta ?? {}) };
+                    for (const id of Object.keys(modelMeta)) {
+                      modelMeta[id] = { ...modelMeta[id], supportsImages: checked };
+                    }
+                    setDraft({ ...draft, supportsImages: checked, modelMeta });
+                  }}
+                />
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button type="primary" onClick={handleSaveProvider} loading={saving}>

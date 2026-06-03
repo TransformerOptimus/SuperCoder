@@ -48,7 +48,9 @@ pub enum AgentEvent {
     TokenUsage {
         session_id: String,
         total_tokens: u32,
-        context_limit: u32,
+        /// Known/discovered context window. `None` for models with an unknown
+        /// limit — the UI then shows the raw token count with no max/percentage.
+        context_limit: Option<u32>,
         /// Tokens served from prompt cache this call (read tier).
         /// None when caching isn't active or the provider didn't report it.
         cache_read_tokens: Option<u32>,

@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
-
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'dark',
-  securityLevel: 'loose',
-});
+import { useTheme } from '../../../context/ThemeContext';
 
 let mermaidCounter = 0;
 
@@ -17,6 +12,7 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const idRef = useRef(`mermaid-${++mermaidCounter}`);
+  const { dark } = useTheme();
 
   useEffect(() => {
     if (!containerRef.current || !chart.trim()) return;
@@ -24,6 +20,12 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
 
     (async () => {
       try {
+        // Re-init per render so the diagram tracks the active app theme.
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: dark ? 'dark' : 'default',
+          securityLevel: 'loose',
+        });
         const { svg } = await mermaid.render(idRef.current, chart.trim());
         if (!cancelled && containerRef.current) {
           containerRef.current.innerHTML = svg;
@@ -38,7 +40,7 @@ export default function MermaidDiagram({ chart }: MermaidDiagramProps) {
     })();
 
     return () => { cancelled = true; };
-  }, [chart]);
+  }, [chart, dark]);
 
   if (error) {
     return (

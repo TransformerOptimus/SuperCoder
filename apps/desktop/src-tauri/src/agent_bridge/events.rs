@@ -251,6 +251,8 @@ async fn relay_event(
         AgentEvent::TokenUsage {
             total_tokens, context_limit, cache_read_tokens, cache_creation_tokens, ..
         } => {
+            // `None` (unknown model) → emit null / persist 0; the UI shows the raw
+            // token count with no max or percentage.
             emit_or_log(
                 ctx.emitter.as_ref(),
                 "agent:token_usage",
@@ -267,8 +269,9 @@ async fn relay_event(
                 let db = Arc::clone(db_ref);
                 let sid = ctx.session_id.clone();
                 let pp = ctx.project_path.clone();
+                let limit = context_limit.unwrap_or(0);
                 let _ = tokio::task::spawn_blocking(move || {
-                    if let Err(e) = db.upsert_context_usage(&sid, &pp, total_tokens, context_limit, 0) {
+                    if let Err(e) = db.upsert_context_usage(&sid, &pp, total_tokens, limit, 0) {
                         log::warn!("[Relay] Failed to persist context usage: {e}");
                     }
                 });

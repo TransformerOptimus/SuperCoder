@@ -252,6 +252,17 @@ impl AgentDb {
         Ok(())
     }
 
+    /// Re-pin a session's provider + model (when the user switches the picker for
+    /// an open session). Subsequent turns + context sizing use the new model.
+    pub fn set_session_model(&self, id: &str, provider_id: &str, model: &str) -> Result<(), AgentDbError> {
+        let conn = self.conn.lock();
+        conn.execute(
+            "UPDATE sessions SET provider_id = ?, model = ?, updated_at = ? WHERE id = ?",
+            rusqlite::params![provider_id, model, now_iso(), id],
+        )?;
+        Ok(())
+    }
+
     /// Set a session's current mode ("ask" | "plan" | "coding") and bump `updated_at`.
     pub fn set_session_mode(&self, id: &str, mode: &str) -> Result<(), AgentDbError> {
         let conn = self.conn.lock();
@@ -720,6 +731,148 @@ fn str_to_type(s: &str) -> MessageType {
 /// Reconstruct LLM context from stored messages, applying compaction.
 /// Finds the last compaction record, reads `kept_before_count`, and keeps that
 /// many non-compaction messages before it plus everything after.
+// ── Image persistence (disk-backed attachments) ────────────────────────────
+//
+// Image bytes are stored on disk under <appdata>/images/<session>/<uuid>.<ext>;
+// the persisted message keeps only a `supercoder-image:<file>` reference so
+// SQLite rows don't bloat with base64. The reference is rebuilt into a data-URL
+// before the message reaches the LLM client (the wire format is unchanged).
+
+const IMAGE_REF_PREFIX: &str = "supercoder-image:";
+
+/// On-disk image directory for a session.
+pub fn images_dir(session_id: &str) -> std::path::PathBuf {
+    crate::app_data_dir().join("images").join(session_id)
+}
+
+fn ext_for_media(media: &str) -> &'static str {
+    match media {
+        "image/png" => "png",
+        "image/jpeg" | "image/jpg" => "jpg",
+        "image/gif" => "gif",
+        "image/webp" => "webp",
+        "image/svg+xml" => "svg",
+        "image/bmp" => "bmp",
+        _ => "img",
+    }
+}
+
+fn media_for_ext(ext: &str) -> String {
+    match ext {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        "bmp" => "image/bmp",
+        _ => "application/octet-stream",
+    }
+    .to_string()
+}
+
+fn parse_data_uri(url: &str) -> Option<(String, String)> {
+    let rest = url.strip_prefix("data:")?;
+    let (meta, data) = rest.split_once(',')?;
+    let media = meta.strip_suffix(";base64").unwrap_or(meta);
+    if media.is_empty() {
+        return None;
+    }
+    Some((media.to_string(), data.to_string()))
+}
+
+/// Replace inline `data:` image URLs with on-disk references before persisting.
+/// Best-effort: on any IO/parse failure the original data-URL is left inline.
+fn externalize_images(llm_message: &mut serde_json::Value, session_id: &str) {
+    let Some(blocks) = llm_message.get_mut("content").and_then(|c| c.as_array_mut()) else {
+        return;
+    };
+    for block in blocks {
+        let url = match block.get("image_url").and_then(|i| i.get("url")).and_then(|u| u.as_str()) {
+            Some(u) if u.starts_with("data:") => u.to_string(),
+            _ => continue,
+        };
+        let Some((media, data)) = parse_data_uri(&url) else { continue };
+        use base64::Engine;
+        let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(data.as_bytes()) else {
+            continue;
+        };
+        let dir = images_dir(session_id);
+        if std::fs::create_dir_all(&dir).is_err() {
+            continue;
+        }
+        let file = format!("{}.{}", uuid::Uuid::new_v4(), ext_for_media(&media));
+        if std::fs::write(dir.join(&file), &bytes).is_err() {
+            continue;
+        }
+        block["image_url"]["url"] = serde_json::Value::String(format!("{IMAGE_REF_PREFIX}{file}"));
+    }
+}
+
+/// Rebuild `data:` image URLs from on-disk references before the message is used.
+/// Legacy inline data-URLs pass through untouched; missing files are left as-is.
+fn inline_images(llm_message: &mut serde_json::Value, session_id: &str) {
+    let Some(blocks) = llm_message.get_mut("content").and_then(|c| c.as_array_mut()) else {
+        return;
+    };
+    for block in blocks {
+        let file = match block.get("image_url").and_then(|i| i.get("url")).and_then(|u| u.as_str()) {
+            Some(u) => match u.strip_prefix(IMAGE_REF_PREFIX) {
+                Some(f) => f.to_string(),
+                None => continue,
+            },
+            None => continue,
+        };
+        let path = images_dir(session_id).join(&file);
+        let Ok(bytes) = std::fs::read(&path) else { continue };
+        use base64::Engine;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        let ext = std::path::Path::new(&file).extension().and_then(|e| e.to_str()).unwrap_or("img");
+        let data_url = format!("data:{};base64,{}", media_for_ext(ext), encoded);
+        block["image_url"]["url"] = serde_json::Value::String(data_url);
+    }
+}
+
+/// Extract the display text and image data-URLs from a stored `llm_message` JSON.
+/// Handles both plain-string content and the multimodal block array (text +
+/// image_url). On-disk image refs are rebuilt into data-URLs so the UI can show
+/// them. Used by the message-list command to render images in the chat bubble.
+pub fn extract_display_content(llm_message_json: &str, session_id: &str) -> (String, Vec<String>) {
+    let mut val: serde_json::Value =
+        serde_json::from_str(llm_message_json).unwrap_or(serde_json::json!({}));
+    inline_images(&mut val, session_id);
+
+    let content = &val["content"];
+    if let Some(s) = content.as_str() {
+        return (s.to_string(), Vec::new());
+    }
+    let Some(blocks) = content.as_array() else {
+        return (String::new(), Vec::new());
+    };
+
+    let mut text = String::new();
+    let mut images = Vec::new();
+    for block in blocks {
+        match block.get("type").and_then(|t| t.as_str()) {
+            Some("text") => {
+                if let Some(t) = block.get("text").and_then(|t| t.as_str()) {
+                    text.push_str(t);
+                }
+            }
+            Some("image_url") => {
+                if let Some(u) = block
+                    .get("image_url")
+                    .and_then(|i| i.get("url"))
+                    .and_then(|u| u.as_str())
+                {
+                    images.push(u.to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+    (text, images)
+}
+
 pub fn reconstruct_context(stored: Vec<StoredMessage>) -> Vec<AgentMessage> {
     if stored.is_empty() {
         return Vec::new();
@@ -754,8 +907,10 @@ pub fn reconstruct_context(stored: Vec<StoredMessage>) -> Vec<AgentMessage> {
 }
 
 fn stored_to_agent_message(stored: StoredMessage) -> AgentMessage {
-    let llm_message: serde_json::Value =
+    let mut llm_message: serde_json::Value =
         serde_json::from_str(&stored.llm_message).unwrap_or(serde_json::json!({}));
+    // Rebuild any disk-backed image references into data-URLs before the LLM sees them.
+    inline_images(&mut llm_message, &stored.session_id);
     let metadata: serde_json::Value =
         serde_json::from_str(&stored.metadata).unwrap_or(serde_json::json!({}));
     let content = llm_message["content"].as_str().unwrap_or("").to_string();
@@ -811,7 +966,10 @@ impl MessagePersister for SqliteMessagePersister {
         let role = role_to_str(message.role).to_string();
         let type_ = type_to_str(message.message_type).to_string();
         let turn_count = message.turn_count;
-        let llm_message = serde_json::to_string(&message.llm_message)
+        // Externalize inline image bytes to disk, keeping only a reference in SQLite.
+        let mut llm_value = message.llm_message.clone();
+        externalize_images(&mut llm_value, session_id);
+        let llm_message = serde_json::to_string(&llm_value)
             .map_err(|e| PersistError::Storage(e.to_string()))?;
         let metadata = serde_json::to_string(&message.metadata)
             .map_err(|e| PersistError::Storage(e.to_string()))?;

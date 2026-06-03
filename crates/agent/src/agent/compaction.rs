@@ -7,12 +7,13 @@ use super::config::CompactionConfig;
 /// - message_count >= max_messages (array length guard)
 /// If total_tokens is 0 (first call, or after compaction reset), only the message count check applies.
 pub fn needs_compaction_by_tokens(total_tokens: usize, message_count: usize, config: &CompactionConfig) -> bool {
-    // Message array length guard — prevents OpenAI 400 "array too long" errors
+    // Message array length guard — prevents OpenAI 400 "array too long" errors.
+    // Always active, even when token-based auto-compaction is disabled.
     if message_count >= config.max_messages {
         return true;
     }
-    // Token-based check
-    if total_tokens == 0 {
+    // Token-based check — skipped when the context limit is unknown.
+    if !config.auto_compact || total_tokens == 0 {
         return false;
     }
     let threshold = (config.context_limit as f64 * config.threshold_pct) as usize;
@@ -201,6 +202,16 @@ mod tests {
         // At max_messages → triggers compaction regardless of tokens
         assert!(needs_compaction_by_tokens(0, config.max_messages, &config));
         assert!(needs_compaction_by_tokens(0, config.max_messages + 1, &config));
+    }
+
+    #[test]
+    fn test_auto_compact_disabled_suppresses_token_trigger() {
+        let mut config = default_config();
+        config.auto_compact = false;
+        // Token threshold would normally fire — but auto-compaction is off.
+        assert!(!needs_compaction_by_tokens(110_000, 5, &config));
+        // The message-count guard still applies regardless.
+        assert!(needs_compaction_by_tokens(0, config.max_messages, &config));
     }
 
     #[test]

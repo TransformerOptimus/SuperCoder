@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import Markdown from '../../common/Markdown';
 import styles from './PlanBanner.module.css';
 
 interface PlanBannerProps {
@@ -18,9 +17,7 @@ export default function PlanBanner({ planText }: PlanBannerProps) {
       </button>
       {expanded && (
         <div className={styles.body}>
-          <div className={`${styles.markdown} message-html`}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{planText}</ReactMarkdown>
-          </div>
+          <Markdown className={`${styles.markdown} message-html`}>{planText}</Markdown>
         </div>
       )}
     </div>

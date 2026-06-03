@@ -98,8 +98,13 @@ pub struct RetryConfig {
 /// Configuration for context window compaction.
 #[derive(Debug, Clone)]
 pub struct CompactionConfig {
-    /// Maximum context size in estimated tokens (default 128_000)
+    /// Maximum context size in estimated tokens (default 128_000). Only meaningful
+    /// when `auto_compact` is true; ignored for the token trigger otherwise.
     pub context_limit: usize,
+    /// Whether token-based auto-compaction is enabled. `false` for models with an
+    /// unknown context window — we don't guess a trigger; the message-count guard
+    /// still applies. (The friendly "prompt too long" error covers overflow.)
+    pub auto_compact: bool,
     /// Threshold percentage at which to trigger compaction (default 0.80)
     pub threshold_pct: f64,
     /// Number of recent messages to keep uncompacted (default 10)
@@ -113,6 +118,7 @@ impl Default for CompactionConfig {
     fn default() -> Self {
         Self {
             context_limit: 128_000,
+            auto_compact: true,
             threshold_pct: 0.80,
             keep_recent_messages: 10,
             max_messages: 10_000,

@@ -530,6 +530,8 @@ pub fn run() {
             agent_bridge::commands::agent_set_model_selection,
             agent_bridge::commands::agent_fetch_provider_models,
             agent_bridge::commands::agent_verify_provider,
+            agent_bridge::commands::agent_get_context_engine,
+            agent_bridge::commands::agent_set_context_engine,
             agent_bridge::commands::agent_get_permissions,
             agent_bridge::commands::agent_set_permission,
             agent_bridge::commands::agent_list_skills,

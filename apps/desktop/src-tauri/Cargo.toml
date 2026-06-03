@@ -40,6 +40,9 @@ chrono = "0.4"
 async-trait = "0.1"
 tokio-util = "0.7"
 tempfile = "3"
+sha2 = "0.10"
+flate2 = "1"
+ignore = "0.4"
 
 [dev-dependencies]
 wiremock = "0.6"

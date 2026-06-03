@@ -254,6 +254,12 @@ export interface ProvidersResponse {
   selection: ModelSelection;
 }
 
+/** Opt-in context engine (semantic + graph code search) settings. */
+export interface ContextEngineSettings {
+  enabled: boolean;
+  port: number;
+}
+
 // --- Agent List API ---
 
 export interface ListAgentsParams {

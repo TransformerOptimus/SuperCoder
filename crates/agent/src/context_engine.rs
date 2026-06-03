@@ -295,7 +295,7 @@ impl ContextEngineApi for ContextEngineClient {
         strategy: Option<&str>,
         limit: Option<u32>,
     ) -> Result<SearchResponse, ContextEngineError> {
-        let url = format!("{}/search", self.config.base_url);
+        let url = format!("{}/api/v1/search", self.config.base_url);
         let body = SearchRequest {
             query: query.to_string(),
             repo_path: self.config.repo_path.clone(),
@@ -316,7 +316,7 @@ impl ContextEngineApi for ContextEngineClient {
         file_path: Option<&str>,
         query_type: Option<&str>,
     ) -> Result<GraphQueryResponse, ContextEngineError> {
-        let url = format!("{}/graph/query", self.config.base_url);
+        let url = format!("{}/api/v1/graph/query", self.config.base_url);
         let body = GraphQueryRequest {
             query: query.map(String::from),
             function_name: function_name.map(String::from),

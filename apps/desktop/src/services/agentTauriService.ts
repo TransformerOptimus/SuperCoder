@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type {
   AgentDisplayMessage,
   CheckpointSummary,
+  ContextEngineSettings,
   ProviderConfig,
   ProvidersResponse,
   SelectionRole,
@@ -193,6 +194,15 @@ export const agentTauriService = {
   /** Verify the provider's API key. Rejects (throws) only on a clear 401/403. */
   async verifyProvider(provider: ProviderConfig): Promise<void> {
     return invoke<void>('agent_verify_provider', { provider });
+  },
+
+  // ── Context engine (opt-in semantic/graph search) ──────────────────────
+  async getContextEngine(): Promise<ContextEngineSettings> {
+    return invoke<ContextEngineSettings>('agent_get_context_engine');
+  },
+
+  async setContextEngine(settings: ContextEngineSettings): Promise<void> {
+    return invoke<void>('agent_set_context_engine', { settings });
   },
 
   // ── Checkpoints (snapshot-backed) ──────────────────────────────────────

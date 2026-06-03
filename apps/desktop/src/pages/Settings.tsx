@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Input, Button, Select, Spin, Popconfirm } from "antd";
+import { Input, Button, Select, Spin, Popconfirm, Switch } from "antd";
 import { ArrowLeft, Plus, Pencil, Trash2 } from "lucide-react";
 import { agentTauriService } from "@/services/agentTauriService";
 import { useAppStore } from "@/store";
 import { themedMessage } from "@/providers/AntDThemeProvider";
-import type { ModelRef, ModelSelection, ProviderConfig, SelectionRole } from "@/types/agent";
+import type {
+  ContextEngineSettings,
+  ModelRef,
+  ModelSelection,
+  ProviderConfig,
+  SelectionRole,
+} from "@/types/agent";
 
 const DEFAULT_BASE_URL: Record<string, string> = {
   openai: "https://api.openai.com/v1",
@@ -74,6 +80,7 @@ export default function Settings() {
   const [draft, setDraft] = useState<ProviderConfig | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
+  const [contextEngine, setContextEngine] = useState<ContextEngineSettings>({ enabled: false, port: 8106 });
 
   const refresh = async () => {
     const res = await agentTauriService.listProviders();
@@ -86,6 +93,7 @@ export default function Settings() {
     (async () => {
       try {
         await refresh();
+        setContextEngine(await agentTauriService.getContextEngine());
       } catch (err) {
         console.error("[Settings] Failed to load providers:", err);
       } finally {
@@ -94,6 +102,16 @@ export default function Settings() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const saveContextEngine = async (next: ContextEngineSettings) => {
+    setContextEngine(next);
+    try {
+      await agentTauriService.setContextEngine(next);
+    } catch (err) {
+      console.error("[Settings] Failed to save context engine settings:", err);
+      themedMessage.error("Failed to save context engine settings");
+    }
+  };
 
   // Grouped (provider, model) options for the compaction/title pickers.
   const modelOptions = useMemo(
@@ -371,6 +389,53 @@ export default function Settings() {
                   notFoundContent="Fetch models on a provider first"
                 />
               </div>
+            </div>
+
+            {/* Context engine (opt-in semantic + graph search) */}
+            <h2 className="text-base font-semibold text-[var(--text-primary)] mt-8 mb-1">
+              Context engine (semantic search)
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] mb-4">
+              Optional. Runs a local Docker stack that indexes the open repo for semantic + graph code
+              search (the agent's <code>codebase_search</code> / <code>codebase_graph</code> tools). The
+              app stays zero-backend when off.
+            </p>
+            <div className="flex flex-col gap-4 border border-[var(--border)] rounded-lg p-5 mb-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-[var(--text-primary)]">Enable context engine</div>
+                  <div className="text-xs text-[var(--text-secondary)]">
+                    Streams the open repo for indexing on session start.
+                  </div>
+                </div>
+                <Switch
+                  checked={contextEngine.enabled}
+                  onChange={(v) => saveContextEngine({ ...contextEngine, enabled: v })}
+                />
+              </div>
+              {contextEngine.enabled && (
+                <>
+                  <div>
+                    <label className="block text-xs text-[var(--text-secondary)] mb-1">Port</label>
+                    <Input
+                      className="w-32"
+                      type="number"
+                      value={contextEngine.port}
+                      onChange={(e) =>
+                        setContextEngine({ ...contextEngine, port: Number(e.target.value) || 8106 })
+                      }
+                      onBlur={() => saveContextEngine(contextEngine)}
+                    />
+                  </div>
+                  <div className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                    Setup — run the stack from <code>services/context-engine</code>:
+                    <pre className="mt-1 p-2 rounded bg-[var(--border)] text-[var(--text-primary)] overflow-x-auto">
+cp .env.example .env   # set SUPERAGI_OPENAI_API_KEY
+docker compose up -d --build</pre>
+                    The app connects to <code>http://127.0.0.1:{contextEngine.port}</code>.
+                  </div>
+                </>
+              )}
             </div>
           </>
         )}

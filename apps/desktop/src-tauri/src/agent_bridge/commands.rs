@@ -19,6 +19,7 @@ use crate::agent_bridge::events::{
     spawn_event_relay, PermissionAwareApprovalHandler, TauriApprovalHandler,
     TauriApprovalHandlerFactory,
 };
+use crate::agent_bridge::index_sync;
 use crate::agent_bridge::permissions::PermissionConfig;
 use crate::agent_bridge::traits::{EventEmitter, TauriEventEmitter};
 use crate::AppState;
@@ -37,6 +38,9 @@ pub struct AgentState {
     pub(crate) approval_handlers: RwLock<std::collections::HashMap<String, Arc<TauriApprovalHandler>>>,
     pub(crate) model_registry: RwLock<agent::agent::model_profile::ModelRegistry>,
     pub(crate) write_lock_registry: Arc<agent::subagents::WriteLockRegistry>,
+    /// Repo paths already streamed to the context engine this app run — gates
+    /// the background sync to once per repo per run (re-syncs on later opens).
+    pub(crate) indexed_repos: Arc<RwLock<HashSet<String>>>,
 }
 
 impl AgentState {
@@ -49,6 +53,7 @@ impl AgentState {
             approval_handlers: RwLock::new(std::collections::HashMap::new()),
             model_registry: RwLock::new(agent::agent::model_profile::ModelRegistry::with_defaults()),
             write_lock_registry: Arc::new(agent::subagents::WriteLockRegistry::new()),
+            indexed_repos: Arc::new(RwLock::new(HashSet::new())),
         }
     }
 
@@ -264,6 +269,65 @@ fn write_selection(app_state: &AppState, sel: &ModelSelection) -> Result<(), Str
     app_state.db.set_setting(SELECTION_KEY, &raw)
 }
 
+// ── Context engine (opt-in semantic/graph search) ─────────────────────────────
+
+const CONTEXT_ENGINE_KEY: &str = "context_engine";
+const MACHINE_ID_KEY: &str = "machine_id";
+
+/// Persisted `{enabled, port}` toggle for the optional context engine. When
+/// enabled, the app wires the search/graph tools and streams the repo up for
+/// indexing on session start.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextEngineSettings {
+    pub enabled: bool,
+    pub port: u16,
+}
+
+impl Default for ContextEngineSettings {
+    fn default() -> Self {
+        Self { enabled: false, port: 8106 }
+    }
+}
+
+fn read_context_engine(app_state: &AppState) -> ContextEngineSettings {
+    app_state
+        .db
+        .get_setting(CONTEXT_ENGINE_KEY)
+        .ok()
+        .flatten()
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .unwrap_or_default()
+}
+
+/// Stable per-machine UUID for context-engine tenancy headers. Generated and
+/// persisted to the settings DB on first use (no accounts in v1).
+fn machine_id(app_state: &AppState) -> String {
+    if let Ok(Some(id)) = app_state.db.get_setting(MACHINE_ID_KEY) {
+        if !id.is_empty() {
+            return id;
+        }
+    }
+    let id = uuid::Uuid::new_v4().to_string();
+    let _ = app_state.db.set_setting(MACHINE_ID_KEY, &id);
+    id
+}
+
+#[tauri::command]
+pub async fn agent_get_context_engine(
+    app_state: State<'_, AppState>,
+) -> Result<ContextEngineSettings, String> {
+    Ok(read_context_engine(&app_state))
+}
+
+#[tauri::command]
+pub async fn agent_set_context_engine(
+    settings: ContextEngineSettings,
+    app_state: State<'_, AppState>,
+) -> Result<(), String> {
+    let raw = serde_json::to_string(&settings).map_err(|e| e.to_string())?;
+    app_state.db.set_setting(CONTEXT_ENGINE_KEY, &raw)
+}
+
 fn provider_by_id(app_state: &AppState, id: &str) -> Option<ProviderConfig> {
     read_providers(app_state).into_iter().find(|p| p.id == id)
 }
@@ -327,6 +391,7 @@ fn build_agent_config(
     checkpoint_dir: PathBuf,
     skills: Option<Arc<agent::skills::SkillRegistry>>,
     subagents: Option<Arc<agent::subagents::SubagentRegistry>>,
+    context_engine: Option<agent::context_engine::ContextEngineConfig>,
 ) -> AgentConfig {
     let mut config = AgentConfig::new(provider_to_llm_config(main_provider, main_model), working_dir);
     config.mode = mode;
@@ -334,6 +399,16 @@ fn build_agent_config(
     config.skills = skills;
     config.subagents = subagents;
     config.checkpoint_dir = Some(checkpoint_dir);
+
+    // When the context engine is enabled, wire the search/graph client so the
+    // crate auto-registers codebase_search / codebase_graph. The repo path the
+    // index is keyed by is the session working dir.
+    if let Some(ce_cfg) = context_engine {
+        config.context_engine_repo_path = Some(PathBuf::from(&ce_cfg.repo_path));
+        let client: Arc<dyn agent::context_engine::ContextEngineApi> =
+            Arc::new(agent::context_engine::ContextEngineClient::new(ce_cfg));
+        config.context_engine = Some(client);
+    }
 
     // Compaction runs on the globally-selected compaction model (any provider),
     // falling back to the session's own model when none is set.
@@ -961,6 +1036,22 @@ async fn run_agent_turn(
     let skill_registry = crate::agent_bridge::skills::build_registry_for_agent(&agent_state.db, &work_dir);
     let subagent_registry = crate::agent_bridge::subagents::build_registry_for_agent(&agent_state.db, &work_dir);
 
+    // Context engine (opt-in). When enabled, the agent gets the search/graph
+    // tools and the repo is streamed up for indexing in the background.
+    let ce_settings = read_context_engine(app_state);
+    let ce_config = if ce_settings.enabled {
+        Some(agent::context_engine::ContextEngineConfig {
+            base_url: format!("http://127.0.0.1:{}", ce_settings.port),
+            user_id: "local".to_string(),
+            workspace_id: 0,
+            machine_id: machine_id(app_state),
+            repo_path: folder.clone(),
+            auth_token: String::new(),
+        })
+    } else {
+        None
+    };
+
     let mut config = build_agent_config(
         &provider,
         &model,
@@ -972,9 +1063,29 @@ async fn run_agent_turn(
         agent_state.checkpoint_dir(),
         skill_registry,
         subagent_registry,
+        ce_config.clone(),
     );
 
     let emitter: Arc<dyn EventEmitter> = Arc::new(TauriEventEmitter::new(app_handle.clone()));
+
+    // Stream the repo to the context engine once per repo per app run.
+    if let Some(cfg) = ce_config {
+        let newly = agent_state.indexed_repos.write().await.insert(cfg.repo_path.clone());
+        if newly {
+            let identity = index_sync::SyncIdentity {
+                user_id: cfg.user_id,
+                workspace_id: cfg.workspace_id,
+                machine_id: cfg.machine_id,
+                repo_path: cfg.repo_path,
+            };
+            let base_url = cfg.base_url;
+            let sync_emitter = emitter.clone();
+            let sid = session_id.clone();
+            tokio::spawn(async move {
+                index_sync::sync_repo(base_url, identity, sync_emitter, sid).await;
+            });
+        }
+    }
     let perm_config = load_permission_config(app_state, Some(&folder));
     let approval_handler = create_approval_handler(agent_state, emitter.clone(), &session_id, perm_config).await;
 

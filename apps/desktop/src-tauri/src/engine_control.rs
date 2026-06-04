@@ -33,6 +33,70 @@ const CE_KEY: &str = "context_engine"; // shared with agent_bridge::commands
 const APP_PORT_KEY: &str = "context_engine_app_port";
 const OPENAI_KEY_KEY: &str = "context_engine_openai_key";
 
+// ── docker CLI resolution ─────────────────────────────────────────────────
+// GUI-launched apps (macOS Finder/Dock, Linux .desktop) inherit a minimal PATH
+// that usually omits where Docker installs its CLI, so a bare `docker` lookup
+// fails even when Docker is installed. Resolve the binary from well-known
+// locations and widen the child PATH so docker can also find its compose plugin
+// and credential helpers.
+
+#[cfg(target_os = "macos")]
+const DOCKER_DIRS: &[&str] = &[
+    "/usr/local/bin",
+    "/opt/homebrew/bin",
+    "/Applications/Docker.app/Contents/Resources/bin",
+    "/Applications/OrbStack.app/Contents/MacOS/xbin",
+];
+#[cfg(target_os = "linux")]
+const DOCKER_DIRS: &[&str] = &["/usr/bin", "/usr/local/bin", "/snap/bin"];
+#[cfg(target_os = "windows")]
+const DOCKER_DIRS: &[&str] = &[r"C:\Program Files\Docker\Docker\resources\bin"];
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+const DOCKER_DIRS: &[&str] = &[];
+
+#[cfg(windows)]
+const DOCKER_EXE: &str = "docker.exe";
+#[cfg(not(windows))]
+const DOCKER_EXE: &str = "docker";
+
+/// Absolute path to the `docker` binary, falling back to bare `"docker"` (PATH).
+/// `SUPERCODER_DOCKER_BIN` overrides everything (escape hatch for exotic setups).
+fn docker_bin() -> String {
+    if let Ok(p) = std::env::var("SUPERCODER_DOCKER_BIN") {
+        if !p.is_empty() {
+            return p;
+        }
+    }
+    if let Some(home) = dirs::home_dir() {
+        let p = home.join(".docker/bin").join(DOCKER_EXE);
+        if p.exists() {
+            return p.to_string_lossy().into_owned();
+        }
+    }
+    for d in DOCKER_DIRS {
+        let p = std::path::Path::new(d).join(DOCKER_EXE);
+        if p.exists() {
+            return p.to_string_lossy().into_owned();
+        }
+    }
+    DOCKER_EXE.to_string()
+}
+
+/// A `docker` command with the binary resolved and the child PATH widened to the
+/// common CLI dirs (so credential helpers / plugins resolve under a minimal GUI PATH).
+fn docker_command() -> tokio::process::Command {
+    let mut cmd = tokio::process::Command::new(docker_bin());
+    let sep = if cfg!(windows) { ";" } else { ":" };
+    let mut path = DOCKER_DIRS.join(sep);
+    if let Ok(existing) = std::env::var("PATH") {
+        if !existing.is_empty() {
+            path = if path.is_empty() { existing } else { format!("{path}{sep}{existing}") };
+        }
+    }
+    cmd.env("PATH", path);
+    cmd
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EngineMode {
@@ -111,12 +175,14 @@ impl EngineController {
     // ── docker plumbing ───────────────────────────────────────────────────
 
     async fn run_docker(&self, args: &[&str]) -> Result<std::process::Output, String> {
-        let mut cmd = tokio::process::Command::new("docker");
+        let mut cmd = docker_command();
         cmd.args(args);
         git_ops::no_window::no_window_tokio(&mut cmd);
         cmd.output().await.map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                "Docker CLI not found on PATH. Install Docker Desktop and retry.".to_string()
+                "Docker CLI not found. Install Docker Desktop, OrbStack, or colima \
+                 (or set SUPERCODER_DOCKER_BIN to the docker path), then retry."
+                    .to_string()
             } else {
                 e.to_string()
             }
@@ -324,7 +390,7 @@ impl EngineController {
             &file_str,
             &["up", "-d", "--remove-orphans", "--pull", "missing"],
         );
-        let mut cmd = tokio::process::Command::new("docker");
+        let mut cmd = docker_command();
         cmd.args(&argv);
         cmd.env("SUPERCODER_OPENAI_API_KEY", &key);
         cmd.env("SUPERCODER_PORT", port.to_string());
@@ -536,4 +602,81 @@ pub fn agent_engine_has_key(controller: Ctl<'_>) -> bool {
 #[tauri::command]
 pub fn agent_engine_set_key(key: String, controller: Ctl<'_>) -> Result<(), String> {
     controller.set_openai_key(key.trim())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn docker_installed_somewhere() -> bool {
+        DOCKER_DIRS
+            .iter()
+            .any(|d| std::path::Path::new(d).join(DOCKER_EXE).exists())
+            || dirs::home_dir()
+                .map(|h| h.join(".docker/bin").join(DOCKER_EXE).exists())
+                .unwrap_or(false)
+    }
+
+    /// The core of the fix: resolution must NOT depend on PATH. When docker is
+    /// installed in a known location we get back an absolute, existing path —
+    /// never the bare `"docker"` (which a minimal GUI PATH can't find).
+    #[test]
+    fn docker_bin_resolves_absolutely_not_via_path() {
+        std::env::remove_var("SUPERCODER_DOCKER_BIN");
+        let bin = docker_bin();
+        if docker_installed_somewhere() {
+            let p = std::path::Path::new(&bin);
+            assert!(p.is_absolute() && p.exists(), "expected an absolute docker path, got {bin:?}");
+        } else {
+            assert_eq!(bin, DOCKER_EXE, "no docker in known dirs → bare PATH fallback");
+        }
+    }
+
+    /// End-to-end of the bug + fix. Needs docker installed; run explicitly:
+    ///   cargo test -p supercoder-agent-desktop -- --ignored docker_reachable
+    #[tokio::test]
+    #[ignore]
+    async fn docker_reachable_under_finder_minimal_path() {
+        std::env::remove_var("SUPERCODER_DOCKER_BIN");
+
+        // (1) Baseline — on the normal PATH, plain `docker` is reachable. If not,
+        // docker isn't installed here and there's nothing to prove, so skip.
+        let baseline = tokio::process::Command::new("docker")
+            .arg("version")
+            .output()
+            .await;
+        if !baseline.map(|o| o.status.success()).unwrap_or(false) {
+            eprintln!("skipping: docker not reachable on the normal PATH (not installed?)");
+            return;
+        }
+
+        // (2) Reproduce the Finder/launchd environment: a minimal PATH that omits
+        // where docker actually lives (/usr/local/bin, /opt/homebrew/bin, …).
+        std::env::set_var("PATH", "/usr/bin:/bin:/usr/sbin:/sbin");
+
+        // The original bug: a bare `docker` lookup typically fails now (unless this
+        // box happens to keep docker in a system dir). Informational, not asserted.
+        let bare_ok = tokio::process::Command::new("docker")
+            .arg("version")
+            .output()
+            .await
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        eprintln!("bare `docker` under minimal PATH reachable = {bare_ok} (false = bug reproduced)");
+
+        // The fix: docker_command() resolves docker absolutely + widens PATH, so it
+        // still works under the minimal Finder PATH.
+        let fixed = docker_command()
+            .arg("version")
+            .arg("--format")
+            .arg("{{.Client.Version}}")
+            .output()
+            .await
+            .expect("spawn docker via docker_command()");
+        assert!(
+            fixed.status.success(),
+            "docker_command() must reach docker under the minimal Finder PATH: {}",
+            String::from_utf8_lossy(&fixed.stderr)
+        );
+    }
 }

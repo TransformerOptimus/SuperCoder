@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "asynq",
+    srcs = ["asynq.go"],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/internal/pkg/config/asynq",
+    visibility = ["//services/context-engine:__subpackages__"],
+    deps = [
+        "//services/context-engine/internal/pkg/config/redis",
+        "@com_github_hibiken_asynq//:asynq",
+    ],
+)

@@ -1,0 +1,30 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "impl",
+    srcs = [
+        "graph_repository_impl.go",
+        "repo_repository_impl.go",
+        "shard_repository_impl.go",
+        "sync_batch_repository_impl.go",
+        "sync_outbox_repository_impl.go",
+        "sync_session_repository_impl.go",
+        "text_repository_impl.go",
+        "vector_repository_ensure_cache.go",
+        "vector_repository_impl.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/repositories/impl",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//services/context-engine/config",
+        "//services/context-engine/models/db/postgres",
+        "//services/context-engine/repositories",
+        "//services/context-engine/services",
+        "@com_github_falkordb_falkordb_go_v2//:falkordb-go",
+        "@com_github_google_uuid//:uuid",
+        "@com_github_qdrant_go_client//qdrant",
+        "@io_gorm_gorm//:gorm",
+        "@io_gorm_gorm//clause",
+        "@org_uber_go_zap//:zap",
+    ],
+)

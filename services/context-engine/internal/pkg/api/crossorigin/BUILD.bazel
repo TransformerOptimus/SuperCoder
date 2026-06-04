@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "crossorigin",
+    srcs = ["config.go"],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/internal/pkg/api/crossorigin",
+    visibility = ["//services/context-engine:__subpackages__"],
+    deps = ["@com_github_gin_contrib_cors//:cors"],
+)

@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "repositories",
+    srcs = [
+        "errors.go",
+        "graph_repository.go",
+        "repo_repository.go",
+        "shard_repository.go",
+        "sync_batch_repository.go",
+        "sync_outbox_repository.go",
+        "sync_session_repository.go",
+        "text_repository.go",
+        "vector_repository.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/repositories",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//services/context-engine/models/db/postgres",
+        "//services/context-engine/services",
+        "@io_gorm_gorm//:gorm",
+    ],
+)

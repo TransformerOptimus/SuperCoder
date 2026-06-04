@@ -1,0 +1,116 @@
+name: supercoder-context-engine
+
+# App-managed stack. Shipped as a Tauri bundled resource and run by the desktop
+# app itself (see apps/desktop/src-tauri/src/engine_control.rs). Unlike the dev
+# compose it pulls pre-built images instead of building, uses its own project
+# name + volumes (so it never clobbers a hand-run dev stack), and publishes only
+# the server port — the datastores stay on the internal compose network.
+#
+# Image refs default to the published GHCR tags but are env-overridable so a
+# local build can be tested without pushing:
+#   SUPERCODER_CE_IMAGE=supercoder/context-engine:local
+#   SUPERCODER_CE_MIGRATE_IMAGE=supercoder/context-engine-migrate:local
+
+x-engine-env: &engine-env
+  SUPERCODER_INDEXER_ENABLED: "true"
+  SUPERCODER_INDEXER_STREAMING_ENABLED: "true"
+  SUPERCODER_DB_HOST: postgres
+  SUPERCODER_DB_PORT: "5432"
+  SUPERCODER_DB_USER: superagi
+  SUPERCODER_DB_PASSWORD: superagi
+  SUPERCODER_DB_NAME: supercoder
+  SUPERCODER_REDIS_HOST: redis
+  SUPERCODER_REDIS_PORT: "6379"
+  SUPERCODER_QDRANT_HOST: qdrant
+  SUPERCODER_QDRANT_PORT: "6334"
+  SUPERCODER_FALKORDB_HOST: falkordb
+  SUPERCODER_FALKORDB_PORT: "6379"
+  SUPERCODER_MERKLE_DIR: /data/merkle
+  # Injected into the compose process env by the app at launch (never on disk).
+  SUPERCODER_OPENAI_API_KEY: ${SUPERCODER_OPENAI_API_KEY:-}
+  SUPERCODER_OPENAI_EMBEDDING_MODEL: ${SUPERCODER_OPENAI_EMBEDDING_MODEL:-text-embedding-3-large}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: superagi
+      POSTGRES_PASSWORD: superagi
+      POSTGRES_DB: supercoder
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superagi -d supercoder"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  qdrant:
+    image: qdrant/qdrant:v1.17.0
+    volumes: ["qdrantdata:/qdrant/storage"]
+
+  falkordb:
+    # FalkorDB publishes no semver tag; pin the tested multi-arch digest so a
+    # pull can't silently jump to an index-incompatible build. Bump deliberately.
+    image: falkordb/falkordb@sha256:d61be0c43eb7556c476efedd3e3f4f7c668d2bf0df9d05f6c95a2f3d1255c559
+    volumes: ["falkordata:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  migrate:
+    image: ${SUPERCODER_CE_MIGRATE_IMAGE:-ghcr.io/transformeroptimus/supercoder/context-engine-migrate:latest}
+    command: >
+      migrate apply
+      --dir file:///migrations
+      --url "postgres://superagi:superagi@postgres:5432/supercoder?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  context-engine-server:
+    image: ${SUPERCODER_CE_IMAGE:-ghcr.io/transformeroptimus/supercoder/context-engine:latest}
+    command: ["/app/server"]
+    environment: *engine-env
+    # Only the server is published; the app talks to it on 127.0.0.1:<port>.
+    ports: ["${SUPERCODER_PORT:-8106}:8106"]
+    volumes: ["merkle:/data/merkle"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      falkordb: {condition: service_healthy}
+      qdrant: {condition: service_started}
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8106/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  context-engine-worker:
+    image: ${SUPERCODER_CE_IMAGE:-ghcr.io/transformeroptimus/supercoder/context-engine:latest}
+    command: ["/app/worker"]
+    environment: *engine-env
+    volumes: ["merkle:/data/merkle"]
+    depends_on:
+      context-engine-server: {condition: service_started}
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      falkordb: {condition: service_healthy}
+      qdrant: {condition: service_started}
+      migrate: {condition: service_completed_successfully}
+
+volumes:
+  pgdata:
+  qdrantdata:
+  falkordata:
+  merkle:

@@ -1,0 +1,34 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "services",
+    srcs = [
+        "chunker_service.go",
+        "coder_integration_client.go",
+        "embedder_service.go",
+        "index_retrieval_service.go",
+        "indexer_service.go",
+        "ingest_batch_types.go",
+        "merkle_service.go",
+        "metrics_service.go",
+        "outbox_dispatcher.go",
+        "parser_service.go",
+        "pipeline_errors.go",
+        "pipeline_identity.go",
+        "retriever_service.go",
+        "reviewer.go",
+        "source_provider.go",
+        "source_provider_memory.go",
+        "stream_content_redis.go",
+        "streaming_indexer.go",
+        "streaming_tasks.go",
+        "sync_session_service.go",
+        "terminal_error.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/services",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//services/context-engine/models/dto",
+        "@com_github_redis_go_redis_v9//:go-redis",
+    ],
+)

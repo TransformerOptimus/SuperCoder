@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/agent", "crates/git-ops", "apps/desktop/src-tauri"]
+
+[profile.dev]
+debug = 0
+incremental = true
+split-debuginfo = "off"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

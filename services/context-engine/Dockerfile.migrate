@@ -1,0 +1,7 @@
+# syntax=docker/dockerfile:1
+#
+# One-shot migration runner. Bundles the Atlas versioned migrations into the
+# image so the stack applies the schema without host-mounting the repo. The
+# arigaio/atlas entrypoint is `atlas`, so compose passes `migrate apply ...`.
+FROM arigaio/atlas:latest
+COPY migrations/postgres /migrations

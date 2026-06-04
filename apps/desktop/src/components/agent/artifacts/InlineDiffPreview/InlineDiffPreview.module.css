@@ -1,0 +1,131 @@
+.container {
+  border: 1px solid var(--border-color-8);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.container:hover {
+  border-color: var(--text-secondary);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color-8);
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: "Space Mono", monospace;
+}
+
+.stat_add {
+  color: var(--diff-add-color);
+}
+
+.stat_del {
+  color: var(--diff-del-color);
+}
+
+.expand_icon {
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.container:hover .expand_icon {
+  opacity: 1;
+}
+
+.file_section {
+  border-bottom: 1px solid var(--border-color-8);
+}
+
+.file_section:last-child {
+  border-bottom: none;
+}
+
+.file_header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+.file_path {
+  flex: 1;
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file_stat_add {
+  color: var(--diff-add-color);
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+}
+
+.file_stat_del {
+  color: var(--diff-del-color);
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+}
+
+.diff_preview {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+.line_add {
+  background: var(--diff-add-bg);
+  color: var(--diff-add-color);
+  padding: 0 12px;
+  display: flex;
+  white-space: pre;
+}
+
+.line_delete {
+  background: var(--diff-del-bg);
+  color: var(--diff-del-color);
+  padding: 0 12px;
+  display: flex;
+  white-space: pre;
+}
+
+.line_context {
+  color: var(--text-secondary);
+  padding: 0 12px;
+  display: flex;
+  white-space: pre;
+}
+
+.line_prefix {
+  display: inline-block;
+  width: 16px;
+  flex-shrink: 0;
+  user-select: none;
+}

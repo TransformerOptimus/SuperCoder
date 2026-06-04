@@ -1,0 +1,82 @@
+.container {
+  margin: 8px 4px;
+  border-radius: 10px;
+  background: var(--bg-secondary, #f9fafb);
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  overflow: visible;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.header:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.chevron {
+  font-size: 10px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.title {
+  flex: 1;
+}
+
+.list {
+  list-style: none;
+  padding: 0 12px 8px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  padding: 2px 0;
+}
+
+.icon {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.content {
+  flex: 1;
+}
+
+.status_completed .content {
+  color: var(--text-tertiary, #9ca3af);
+  text-decoration: line-through;
+}
+
+.status_in_progress .icon {
+  color: #3b82f6;
+}
+
+.status_completed .icon {
+  color: #22c55e;
+}
+
+.status_pending .icon {
+  color: var(--text-tertiary, #9ca3af);
+}

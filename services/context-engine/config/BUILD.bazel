@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "config",
+    srcs = [
+        "anthropic.go",
+        "falkordb.go",
+        "grpc.go",
+        "indexer.go",
+        "kafka.go",
+        "openai.go",
+        "qdrant.go",
+        "reviewer.go",
+        "shard.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/config",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_knadh_koanf_v2//:koanf"],
+)

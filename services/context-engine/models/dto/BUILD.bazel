@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "dto",
+    srcs = [
+        "action_event.go",
+        "batch_entry.go",
+        "context_request.go",
+        "context_response.go",
+        "diff_request.go",
+        "diff_response.go",
+        "graph_query_request.go",
+        "graph_query_response.go",
+        "index_request.go",
+        "index_response.go",
+        "index_status_response.go",
+        "review_request.go",
+        "review_response.go",
+        "search_request.go",
+        "search_response.go",
+        "stream_batch_response.go",
+        "sync_complete_request.go",
+        "sync_complete_response.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/models/dto",
+    visibility = ["//visibility:public"],
+)

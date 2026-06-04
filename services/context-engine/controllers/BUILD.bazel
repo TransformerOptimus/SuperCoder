@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "controllers",
+    srcs = [
+        "gzip_body.go",
+        "health_controller.go",
+        "index_diff_controller.go",
+        "index_retrieval_controller.go",
+        "index_stream_controller.go",
+        "index_sync_complete_controller.go",
+    ],
+    importpath = "github.com/TransformerOptimus/SuperCoder/services/context-engine/controllers",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//services/context-engine/internal/pkg/api/context",
+        "//services/context-engine/internal/pkg/config/core",
+        "//services/context-engine/models/dto",
+        "//services/context-engine/repositories",
+        "//services/context-engine/services",
+        "@com_github_gin_gonic_gin//:gin",
+        "@org_uber_go_zap//:zap",
+    ],
+)

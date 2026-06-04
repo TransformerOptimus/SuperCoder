@@ -37,6 +37,14 @@ jobs:
             libssl-dev \
             libxdo-dev
 
+      - name: Stub frontend assets
+        # tauri::generate_context! requires frontendDist (../dist) to exist at
+        # compile time. The frontend job builds it for real; a stub is enough to
+        # type-check the Rust here.
+        run: |
+          mkdir -p apps/desktop/dist
+          echo '<!doctype html><title>stub</title>' > apps/desktop/dist/index.html
+
       - name: cargo check (workspace)
         run: cargo check --workspace --all-targets
 
@@ -55,9 +63,9 @@ jobs:
         working-directory: apps/desktop
         run: npm ci
 
-      - name: Type-check
+      - name: Build (type-check + bundle)
         working-directory: apps/desktop
-        run: npx tsc --noEmit
+        run: npm run build
 
   context-engine:
     runs-on: ubuntu-latest

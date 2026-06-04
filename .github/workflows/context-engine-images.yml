@@ -62,7 +62,9 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
-          push: true
+          # Push on a real release, or on a manual dispatch only when a version is
+          # given. A bare workflow_dispatch is a build-only dry run (nothing pushed).
+          push: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

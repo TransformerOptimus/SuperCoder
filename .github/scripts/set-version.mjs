@@ -21,6 +21,13 @@ setJson('apps/desktop/src-tauri/tauri.conf.json', 'version');
 const cargoPath = 'apps/desktop/src-tauri/Cargo.toml';
 const cargo = readFileSync(cargoPath, 'utf8');
 // Replace only the [package] version (first `version = "..."` at column 0).
-writeFileSync(cargoPath, cargo.replace(/^version = ".*"/m, `version = "${version}"`));
+// Assert the line exists so a layout change fails loudly instead of silently
+// shipping a stale version (a same-version no-op stamp is still fine).
+const versionLine = /^version = ".*"/m;
+if (!versionLine.test(cargo)) {
+  console.error(`${cargoPath}: no [package] version line matched — aborting`);
+  process.exit(1);
+}
+writeFileSync(cargoPath, cargo.replace(versionLine, `version = "${version}"`));
 
 console.log(`stamped version ${version}`);

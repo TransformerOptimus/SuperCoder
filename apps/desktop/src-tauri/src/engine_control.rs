@@ -11,6 +11,7 @@
 
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -77,6 +78,9 @@ pub struct EngineController {
     status: Mutex<EngineStatus>,
     /// Cancels an in-flight `start()` (compose up + health wait).
     cancel: Mutex<Option<CancellationToken>>,
+    /// True while a `start()` is in flight, so concurrent starts (auto-start +
+    /// a user click) can't race and clobber each other's cancel token.
+    starting: AtomicBool,
 }
 
 impl EngineController {
@@ -87,6 +91,7 @@ impl EngineController {
             db,
             status: Mutex::new(EngineStatus::Stopped),
             cancel: Mutex::new(None),
+            starting: AtomicBool::new(false),
         }
     }
 
@@ -158,6 +163,15 @@ impl EngineController {
             "-f".to_string(),
             file.to_string(),
         ];
+        v.extend(extra.iter().map(|s| s.to_string()));
+        v
+    }
+
+    /// `docker compose -p <project>` argv WITHOUT `-f`. Compose resolves the
+    /// project from running-container labels, so teardown/inspection works even
+    /// if the bundled compose file is missing or the app was moved.
+    fn compose_project_argv(&self, extra: &[&str]) -> Vec<String> {
+        let mut v = vec!["compose".to_string(), "-p".to_string(), PROJECT.to_string()];
         v.extend(extra.iter().map(|s| s.to_string()));
         v
     }
@@ -261,6 +275,17 @@ impl EngineController {
         if self.mode != EngineMode::App {
             return Err("engine start is only available in app mode".to_string());
         }
+        // Serialize starts: the first wins, a concurrent caller bails out.
+        if self.starting.swap(true, Ordering::SeqCst) {
+            return Err("engine is already starting".to_string());
+        }
+        struct StartGuard<'a>(&'a AtomicBool);
+        impl Drop for StartGuard<'_> {
+            fn drop(&mut self) {
+                self.0.store(false, Ordering::SeqCst);
+            }
+        }
+        let _start_guard = StartGuard(&self.starting);
         self.set_status(EngineStatus::Starting);
 
         if let Err(e) = self.preflight().await {
@@ -303,12 +328,22 @@ impl EngineController {
         cmd.args(&argv);
         cmd.env("SUPERCODER_OPENAI_API_KEY", &key);
         cmd.env("SUPERCODER_PORT", port.to_string());
-        // Pass image overrides through so a local build can be tested unpushed.
-        for k in ["SUPERCODER_CE_IMAGE", "SUPERCODER_CE_MIGRATE_IMAGE"] {
-            if let Ok(val) = std::env::var(k) {
-                cmd.env(k, val);
-            }
-        }
+        // Pin the engine images to this app's version so an installed vX.Y.Z app
+        // pulls the matching engine (the tag CI publishes). An explicit env
+        // override wins, so a local unpushed build can still be tested.
+        let ver = env!("CARGO_PKG_VERSION");
+        cmd.env(
+            "SUPERCODER_CE_IMAGE",
+            std::env::var("SUPERCODER_CE_IMAGE").unwrap_or_else(|_| {
+                format!("ghcr.io/transformeroptimus/supercoder/context-engine:v{ver}")
+            }),
+        );
+        cmd.env(
+            "SUPERCODER_CE_MIGRATE_IMAGE",
+            std::env::var("SUPERCODER_CE_MIGRATE_IMAGE").unwrap_or_else(|_| {
+                format!("ghcr.io/transformeroptimus/supercoder/context-engine-migrate:v{ver}")
+            }),
+        );
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
         git_ops::no_window::no_window_tokio(&mut cmd);
 
@@ -316,12 +351,14 @@ impl EngineController {
             .spawn()
             .map_err(|e| format!("failed to launch docker compose: {e}"))?;
 
-        // Stream compose stdout+stderr → progress events.
+        // Stream compose stdout+stderr → progress events; keep the stderr tail so
+        // a failed `up` can surface the real cause, not just "up failed".
+        let stderr_tail = Arc::new(Mutex::new(Vec::<String>::new()));
         if let Some(out) = child.stdout.take() {
-            self.spawn_line_relay(out);
+            self.spawn_line_relay(out, None);
         }
         if let Some(err) = child.stderr.take() {
-            self.spawn_line_relay(err);
+            self.spawn_line_relay(err, Some(stderr_tail.clone()));
         }
 
         let exit = tokio::select! {
@@ -337,7 +374,12 @@ impl EngineController {
 
         if !exit.success() {
             let tail = self.logs(120).await.ok();
-            let reason = "docker compose up failed".to_string();
+            let stderr = stderr_tail.lock().join("\n");
+            let reason = if stderr.trim().is_empty() {
+                "docker compose up failed".to_string()
+            } else {
+                format!("docker compose up failed:\n{}", stderr.trim())
+            };
             self.set_status(EngineStatus::Error { reason: reason.clone(), logs_tail: tail });
             return Err(reason);
         }
@@ -356,7 +398,7 @@ impl EngineController {
         }
     }
 
-    fn spawn_line_relay<R>(&self, reader: R)
+    fn spawn_line_relay<R>(&self, reader: R, sink: Option<Arc<Mutex<Vec<String>>>>)
     where
         R: tokio::io::AsyncRead + Unpin + Send + 'static,
     {
@@ -365,6 +407,14 @@ impl EngineController {
             let mut lines = BufReader::new(reader).lines();
             while let Ok(Some(line)) = lines.next_line().await {
                 let _ = app.emit("engine:progress", &line);
+                if let Some(s) = &sink {
+                    let mut g = s.lock();
+                    g.push(line);
+                    let overflow = g.len().saturating_sub(20);
+                    if overflow > 0 {
+                        g.drain(0..overflow);
+                    }
+                }
             }
         });
     }
@@ -385,7 +435,11 @@ impl EngineController {
                     return Ok(());
                 }
             }
-            tokio::time::sleep(Duration::from_secs(3)).await;
+            // Wake immediately on cancellation instead of sitting out the sleep.
+            tokio::select! {
+                _ = token.cancelled() => return Err("startup cancelled".to_string()),
+                _ = tokio::time::sleep(Duration::from_secs(3)) => {}
+            }
         }
         Err("context engine did not become healthy within 3 minutes".to_string())
     }
@@ -395,11 +449,10 @@ impl EngineController {
         if let Some(t) = self.cancel.lock().take() {
             t.cancel();
         }
-        let file = self.compose_file()?;
         // Short stop timeout: the worker has no SIGTERM handler and would
         // otherwise hold the default ~10s grace before being killed, making quit
         // feel slow. 3s lets the datastores flush; volumes are kept either way.
-        let argv = self.compose_argv(&file.to_string_lossy(), &["stop", "-t", "3"]);
+        let argv = self.compose_project_argv(&["stop", "-t", "3"]);
         let refs: Vec<&str> = argv.iter().map(String::as_str).collect();
         self.run_docker(&refs).await?;
         self.set_status(EngineStatus::Stopped);
@@ -411,13 +464,12 @@ impl EngineController {
         if let Some(t) = self.cancel.lock().take() {
             t.cancel();
         }
-        let file = self.compose_file()?;
         let extra: &[&str] = if remove_data {
             &["down", "-v", "--remove-orphans"]
         } else {
             &["down", "--remove-orphans"]
         };
-        let argv = self.compose_argv(&file.to_string_lossy(), extra);
+        let argv = self.compose_project_argv(extra);
         let refs: Vec<&str> = argv.iter().map(String::as_str).collect();
         self.run_docker(&refs).await?;
         self.set_status(EngineStatus::Stopped);
@@ -426,12 +478,8 @@ impl EngineController {
 
     /// Tail of the combined compose logs (for surfacing a failure cause).
     pub async fn logs(&self, tail: usize) -> Result<String, String> {
-        let file = self.compose_file()?;
         let tailn = tail.to_string();
-        let argv = self.compose_argv(
-            &file.to_string_lossy(),
-            &["logs", "--tail", &tailn, "--no-color"],
-        );
+        let argv = self.compose_project_argv(&["logs", "--tail", &tailn, "--no-color"]);
         let refs: Vec<&str> = argv.iter().map(String::as_str).collect();
         let o = self.run_docker(&refs).await?;
         let mut s = String::from_utf8_lossy(&o.stdout).into_owned();

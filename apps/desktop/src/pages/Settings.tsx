@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input, Button, Select, Spin, Popconfirm, Switch, Segmented } from "antd";
 import { ArrowLeft, Plus, Pencil, Trash2, Sun, Moon, Monitor } from "lucide-react";
@@ -215,6 +215,7 @@ export default function Settings() {
     const running = engineStatus?.state === "running";
     const toastKey = "ce-restart";
     setSavingKey(true);
+    setEngineBusy(true); // also disable Start/Stop while the restart is in flight
     themedMessage.loading(running ? "Restarting engine…" : "Starting engine…", toastKey);
     try {
       if (keyInput.trim()) {
@@ -229,6 +230,7 @@ export default function Settings() {
       themedMessage.error(`${running ? "Restart" : "Start"} failed: ${err}`, toastKey);
     } finally {
       setSavingKey(false);
+      setEngineBusy(false);
     }
   };
 
@@ -268,11 +270,15 @@ export default function Settings() {
     }
   };
 
-  // Load the repo list once the app-managed stack reports healthy.
+  // Load the repo list once the app-managed stack reports healthy — only on the
+  // transition INTO running, not on every re-render that keeps state === running.
+  const prevEngineState = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (engineMode === "app" && engineStatus?.state === "running") {
+    const state = engineStatus?.state;
+    if (engineMode === "app" && state === "running" && prevEngineState.current !== "running") {
       loadCeRepos();
     }
+    prevEngineState.current = state;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engineMode, engineStatus?.state]);
 
@@ -864,8 +870,14 @@ export default function Settings() {
                     okText="Remove"
                     okButtonProps={{ danger: true }}
                     onConfirm={removeEngineData}
+                    disabled={engineStatus?.state === "pulling" || engineStatus?.state === "starting"}
                   >
-                    <Button size="small" danger loading={engineBusy}>
+                    <Button
+                      size="small"
+                      danger
+                      loading={engineBusy}
+                      disabled={engineStatus?.state === "pulling" || engineStatus?.state === "starting"}
+                    >
                       Remove indexed data
                     </Button>
                   </Popconfirm>

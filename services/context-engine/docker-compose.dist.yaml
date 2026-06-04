@@ -53,11 +53,13 @@ services:
       retries: 12
 
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.17.0
     volumes: ["qdrantdata:/qdrant/storage"]
 
   falkordb:
-    image: falkordb/falkordb:latest
+    # FalkorDB publishes no semver tag; pin the tested multi-arch digest so a
+    # pull can't silently jump to an index-incompatible build. Bump deliberately.
+    image: falkordb/falkordb@sha256:d61be0c43eb7556c476efedd3e3f4f7c668d2bf0df9d05f6c95a2f3d1255c559
     volumes: ["falkordata:/data"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

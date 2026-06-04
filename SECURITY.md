@@ -33,3 +33,23 @@ against it.
 
 Never include real API keys, tokens, or other credentials in a report, issue, or
 PR. Configure provider keys only via the app's Settings or environment variables.
+
+## Security model notes
+
+SuperCoder is a single-user, local-first desktop app. A few behaviors are
+intentional given that model — they assume an attacker who can already run code
+as your user has no boundary left to cross, so they are not treated as
+vulnerabilities:
+
+- **Context-engine embedding key in the process environment.** In app-managed
+  mode the embedding key is passed to the local Docker stack via the
+  `SUPERCODER_OPENAI_API_KEY` environment variable. Same-UID processes can read
+  it (e.g. `/proc/<pid>/environ`), as they can already read the app's local
+  SQLite store. The key is never logged or written into the compose file.
+- **`SUPERCODER_CE_*` environment overrides** (compose-file path, image refs,
+  mode, port) are trusted developer conveniences for local testing. Setting them
+  requires control of the launch environment, which already implies user-level
+  code execution.
+- **User-mode backend URL probe.** In user mode the app probes the backend URL
+  *you* configure (`/api/health`) with no host allowlist — that is the feature
+  (connect to your own self-run engine), not an SSRF sink.

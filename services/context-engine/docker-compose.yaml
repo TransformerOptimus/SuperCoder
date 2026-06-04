@@ -47,7 +47,7 @@ services:
       retries: 12
 
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.17.0
     # 6333 = REST, 6334 = gRPC (the Go client uses gRPC). No healthcheck: the
     # image ships no shell/curl, and the engine's qdrant client tolerates a
     # slightly-late server (warns, retries).
@@ -55,7 +55,9 @@ services:
     volumes: ["qdrantdata:/qdrant/storage"]
 
   falkordb:
-    image: falkordb/falkordb:latest
+    # FalkorDB publishes no semver tag; pin the tested multi-arch digest so a
+    # pull can't silently jump to an index-incompatible build. Bump deliberately.
+    image: falkordb/falkordb@sha256:d61be0c43eb7556c476efedd3e3f4f7c668d2bf0df9d05f6c95a2f3d1255c559
     # Redis-module instance for the code graph. Mapped to host 6380 to avoid
     # colliding with the redis service's 6379 on the host.
     ports: ["6380:6379"]

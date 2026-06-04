@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { AgentToolCallState, ProviderConfig, ModelSelection, ModelCapability, ContextWatcherStatus } from '../types/agent';
+import type { AgentToolCallState, ProviderConfig, ModelSelection, ModelCapability, ContextWatcherStatus, EngineStatus } from '../types/agent';
 import type { PendingApproval, TodoItem } from '../types/agentContract';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -39,6 +39,10 @@ export interface AgentSlice {
   tokenUsage: Record<string, { totalTokens: number; contextLimit: number | null; cacheReadTokens?: number; cacheCreationTokens?: number }>;
   /** Live file-watcher status per repo path, fed by `context-watcher-status` events. */
   contextWatcherStatus: Record<string, ContextWatcherStatus>;
+  /** App-managed engine lifecycle status, fed by `engine:status` events (null until known). */
+  engineStatus: EngineStatus | null;
+  /** Latest `docker compose` progress line, fed by `engine:progress` events. */
+  engineProgress: string | null;
 
   // ── Plan-mode flow ──────────────────────────────────────────────────
   /** Per-project completed plans from plan-mode sessions. Key = projectPath. */
@@ -68,6 +72,8 @@ export interface AgentSlice {
   setTokenUsage: (sessionId: string, totalTokens: number, contextLimit: number | null, cacheReadTokens?: number, cacheCreationTokens?: number) => void;
   clearTokenUsage: (sessionId: string) => void;
   setContextWatcherStatus: (repoPath: string, status: ContextWatcherStatus) => void;
+  setEngineStatus: (status: EngineStatus) => void;
+  setEngineProgress: (line: string) => void;
   clearAgentStreaming: (sessionId: string) => void;
   softClearAgentStreaming: (sessionId: string) => void;
 
@@ -145,6 +151,8 @@ export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (s
   agentTodos: {},
   tokenUsage: {},
   contextWatcherStatus: {},
+  engineStatus: null,
+  engineProgress: null,
   completedPlans: {},
   activePlanProjectPath: null,
   pendingPlanForCoding: null,
@@ -211,6 +219,9 @@ export const createAgentSlice: StateCreator<AgentSlice, [], [], AgentSlice> = (s
     set((s) => ({
       contextWatcherStatus: { ...s.contextWatcherStatus, [repoPath]: status },
     })),
+
+  setEngineStatus: (status) => set({ engineStatus: status }),
+  setEngineProgress: (line) => set({ engineProgress: line }),
 
   clearAgentStreaming: (sessionId) =>
     set((s) => {

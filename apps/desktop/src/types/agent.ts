@@ -319,6 +319,20 @@ export interface IndexedRepo {
   file_count: number | null;
 }
 
+/** Context-engine lifecycle mode. `user` = connect to a self-run backend;
+ *  `app` = the app runs the docker-compose stack itself. */
+export type EngineMode = "user" | "app";
+
+/** App-managed stack lifecycle status, mirrored from `engine:status` events.
+ *  Tagged by `state`; only the matching variant's fields are present. */
+export type EngineStatus =
+  | { state: "docker_missing"; reason: string }
+  | { state: "stopped" }
+  | { state: "pulling"; line: string }
+  | { state: "starting" }
+  | { state: "running"; base_url: string }
+  | { state: "error"; reason: string; logs_tail: string | null };
+
 /** Live file-watcher status for a repo, mirrored from `context-watcher-status` events. */
 export interface ContextWatcherStatus {
   /** "not_indexed" | "indexing" | "indexed" | "error" */

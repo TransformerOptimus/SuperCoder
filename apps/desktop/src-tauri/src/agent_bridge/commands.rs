@@ -397,16 +397,26 @@ pub async fn agent_set_context_engine(
     settings: ContextEngineSettings,
     app_state: State<'_, AppState>,
     watcher: State<'_, Arc<crate::context_watcher::WatcherManager>>,
+    controller: State<'_, Arc<crate::engine_control::EngineController>>,
 ) -> Result<(), String> {
     let raw = serde_json::to_string(&settings).map_err(|e| e.to_string())?;
     app_state.db.set_setting(CONTEXT_ENGINE_KEY, &raw)?;
 
-    // Toggling the feature starts/stops the live watchers.
+    let app_mode = controller.mode() == crate::engine_control::EngineMode::App;
+
     if settings.enabled {
-        let wm = watcher.inner().clone();
-        tokio::spawn(async move { wm.auto_start().await });
+        // User mode: connecting to a self-run backend, so start watching now.
+        // App mode: only reveal the panel — the explicit Start button (gated on
+        // the embedding key) owns bringing the stack up, then starts watchers.
+        if !app_mode {
+            let wm = watcher.inner().clone();
+            tokio::spawn(async move { wm.auto_start().await });
+        }
     } else {
         watcher.stop_all().await;
+        if app_mode {
+            let _ = controller.stop().await;
+        }
     }
     Ok(())
 }

@@ -5,6 +5,8 @@ import type {
   ContextEngineSettings,
   ContextEngineStatus,
   ContextWatcherStatus,
+  EngineMode,
+  EngineStatus,
   IndexedRepo,
   CuratedModel,
   FetchedModel,
@@ -254,6 +256,47 @@ export const agentTauriService = {
   /** Query the current watcher status for a repo (null if not watched). */
   async contextWatcherStatus(repoPath: string): Promise<ContextWatcherStatus | null> {
     return invoke<ContextWatcherStatus | null>('context_watcher_status', { repoPath });
+  },
+
+  // ── App-managed engine lifecycle (app mode only) ───────────────────────
+  /** Lifecycle mode: "user" (connect to a URL) or "app" (app runs the stack). */
+  async engineMode(): Promise<EngineMode> {
+    return invoke<EngineMode>('agent_engine_mode');
+  },
+
+  /** Current app-managed stack status (snapshot; live updates via engine:status). */
+  async engineStatus(): Promise<EngineStatus> {
+    return invoke<EngineStatus>('agent_engine_status');
+  },
+
+  /** Check Docker CLI + daemon + compose v2. Rejects with a message if unmet. */
+  async enginePreflight(): Promise<void> {
+    return invoke<void>('agent_engine_preflight');
+  },
+
+  /** Bring the app-managed stack up (pull + compose up + wait healthy). */
+  async engineStart(): Promise<void> {
+    return invoke<void>('agent_engine_start');
+  },
+
+  /** Stop the app-managed stack (keeps volumes). */
+  async engineStop(): Promise<void> {
+    return invoke<void>('agent_engine_stop');
+  },
+
+  /** Tear the stack down. `removeData` also drops the indexed-data volumes. */
+  async engineRemove(removeData: boolean): Promise<void> {
+    return invoke<void>('agent_engine_remove', { removeData });
+  },
+
+  /** Whether an embedding API key is stored for the app-managed stack. */
+  async engineHasKey(): Promise<boolean> {
+    return invoke<boolean>('agent_engine_has_key');
+  },
+
+  /** Persist the embedding API key (injected into the stack's process env). */
+  async engineSetKey(key: string): Promise<void> {
+    return invoke<void>('agent_engine_set_key', { key });
   },
 
   // ── Checkpoints (snapshot-backed) ──────────────────────────────────────

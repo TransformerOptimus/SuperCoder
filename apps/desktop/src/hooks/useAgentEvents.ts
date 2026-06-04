@@ -4,6 +4,7 @@ import { useAppStore } from "@/store";
 import { createInitialStreamingState } from "@/store/agentSlice";
 import { agentTauriService } from "@/services/agentTauriService";
 import { parseThinkingMarkers, buildAgentMessage, buildThinkingMeta, displayToAgentMessage } from "@/utils/agentMessageAdapter";
+import type { EngineStatus } from "@/types/agent";
 import type {
   ApprovalNeededPayload,
   TextDeltaPayload,
@@ -350,6 +351,18 @@ export function useAgentEvents() {
           });
         },
       ),
+    );
+
+    // ── engine:status / engine:progress (app-managed stack lifecycle) ──
+    listeners.push(
+      listen<EngineStatus>("engine:status", (event) => {
+        useAppStore.getState().setEngineStatus(event.payload);
+      }),
+    );
+    listeners.push(
+      listen<string>("engine:progress", (event) => {
+        useAppStore.getState().setEngineProgress(event.payload);
+      }),
     );
 
     return () => {

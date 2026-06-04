@@ -9,6 +9,7 @@ import { useTheme, type ThemeMode } from "@/context/ThemeContext";
 import type {
   ContextEngineSettings,
   ContextEngineStatus,
+  EngineMode,
   IndexedRepo,
   CuratedModel,
   ModelRef,
@@ -72,6 +73,14 @@ export default function Settings() {
   const [ceConnecting, setCeConnecting] = useState(false);
   const [ceRepos, setCeRepos] = useState<IndexedRepo[]>([]);
   const [ceReposLoading, setCeReposLoading] = useState(false);
+  // App-managed engine lifecycle (only meaningful when engineMode === "app").
+  const [engineMode, setEngineMode] = useState<EngineMode>("user");
+  const [hasKey, setHasKey] = useState(false);
+  const [keyInput, setKeyInput] = useState("");
+  const [savingKey, setSavingKey] = useState(false);
+  const [engineBusy, setEngineBusy] = useState(false);
+  const engineStatus = useAppStore((s) => s.engineStatus);
+  const engineProgress = useAppStore((s) => s.engineProgress);
   // Built-in model registry (context window + vision), fetched from the backend.
   const [curatedModels, setCuratedModels] = useState<CuratedModel[]>([]);
 
@@ -89,15 +98,26 @@ export default function Settings() {
         const ce = await agentTauriService.getContextEngine();
         setContextEngine(ce);
         setCuratedModels(await agentTauriService.listModels());
-        // Probe the saved backend in the background so the panel opens with
-        // live status + the indexed-repo list already populated.
-        agentTauriService
-          .contextEngineStatus(ce.base_url)
-          .then(async (status) => {
-            setCeStatus(status);
-            if (status.connected) await loadCeRepos();
-          })
-          .catch(() => setCeStatus({ connected: false, error: "unreachable" }));
+        const mode = await agentTauriService.engineMode();
+        setEngineMode(mode);
+        if (mode === "app") {
+          // App-managed: seed the lifecycle status + key presence. Live updates
+          // arrive via engine:status events; repos load when the stack is running.
+          setHasKey(await agentTauriService.engineHasKey());
+          const st = await agentTauriService.engineStatus();
+          useAppStore.getState().setEngineStatus(st);
+          if (st.state === "running") await loadCeRepos();
+        } else {
+          // User-managed: probe the saved backend so the panel opens with live
+          // status + the indexed-repo list already populated.
+          agentTauriService
+            .contextEngineStatus(ce.base_url)
+            .then(async (status) => {
+              setCeStatus(status);
+              if (status.connected) await loadCeRepos();
+            })
+            .catch(() => setCeStatus({ connected: false, error: "unreachable" }));
+        }
       } catch (err) {
         console.error("[Settings] Failed to load providers:", err);
       } finally {
@@ -154,11 +174,26 @@ export default function Settings() {
     }
   };
 
-  // Master toggle. Persist the new `enabled` and probe when turning on. Note:
-  // we probe with `next` (not via connect) so we never re-save stale state.
+  // Master toggle. Persist the new `enabled`. In user mode we probe the backend;
+  // in app mode `agent_set_context_engine` starts/stops the docker stack and the
+  // status arrives via engine:status events (no probe here).
   const toggleContextEngine = async (enabled: boolean) => {
     const next = { ...contextEngine, enabled };
+    // App mode: turning off stops the docker stack (a few seconds) — show a
+    // loading toast since the call blocks until the containers are down.
+    if (engineMode === "app" && !enabled) {
+      const toastKey = "ce-stop";
+      themedMessage.loading("Stopping engine…", toastKey);
+      try {
+        await saveContextEngine(next);
+        themedMessage.success("Engine stopped", toastKey);
+      } catch (err) {
+        themedMessage.error(`Failed to stop: ${err}`, toastKey);
+      }
+      return;
+    }
     await saveContextEngine(next);
+    if (engineMode === "app") return;
     if (enabled) await probeBackend(next.base_url);
     else {
       setCeStatus(null);
@@ -166,11 +201,157 @@ export default function Settings() {
     }
   };
 
-  // Connect button: persist the current settings (incl. edited URL), then probe.
+  // Connect button (user mode): persist current settings (incl. edited URL), then probe.
   const connectContextEngine = async () => {
     await saveContextEngine(contextEngine);
     await probeBackend(contextEngine.base_url);
   };
+
+  // ── App-managed lifecycle handlers ──────────────────────────────────────
+  // Persist the key (if a new one was entered), then (re)start the stack so the
+  // key is injected into the engine's process env. `engineStart` recreates the
+  // server/worker containers when the env changed and waits for /api/health.
+  const saveAndRestart = async () => {
+    const running = engineStatus?.state === "running";
+    const toastKey = "ce-restart";
+    setSavingKey(true);
+    themedMessage.loading(running ? "Restarting engine…" : "Starting engine…", toastKey);
+    try {
+      if (keyInput.trim()) {
+        await agentTauriService.engineSetKey(keyInput.trim());
+        setHasKey(true);
+        setKeyInput("");
+      }
+      await agentTauriService.engineStart();
+      await loadCeRepos();
+      themedMessage.success(running ? "Engine restarted" : "Engine started", toastKey);
+    } catch (err) {
+      themedMessage.error(`${running ? "Restart" : "Start"} failed: ${err}`, toastKey);
+    } finally {
+      setSavingKey(false);
+    }
+  };
+
+  const startEngine = async () => {
+    setEngineBusy(true);
+    try {
+      await agentTauriService.engineStart();
+      await loadCeRepos();
+    } catch (err) {
+      themedMessage.error(`Engine failed to start: ${err}`);
+    } finally {
+      setEngineBusy(false);
+    }
+  };
+
+  const stopEngine = async () => {
+    setEngineBusy(true);
+    try {
+      await agentTauriService.engineStop();
+    } catch (err) {
+      themedMessage.error(`Failed to stop: ${err}`);
+    } finally {
+      setEngineBusy(false);
+    }
+  };
+
+  const removeEngineData = async () => {
+    setEngineBusy(true);
+    try {
+      await agentTauriService.engineRemove(true);
+      setCeRepos([]);
+      themedMessage.success("Indexed data removed");
+    } catch (err) {
+      themedMessage.error(`Failed to remove data: ${err}`);
+    } finally {
+      setEngineBusy(false);
+    }
+  };
+
+  // Load the repo list once the app-managed stack reports healthy.
+  useEffect(() => {
+    if (engineMode === "app" && engineStatus?.state === "running") {
+      loadCeRepos();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engineMode, engineStatus?.state]);
+
+  // Whether the indexed-repos list has a live backend to query.
+  const ceConnected =
+    engineMode === "app" ? engineStatus?.state === "running" : !!ceStatus?.connected;
+
+  // Indexed-repositories list — shared by both modes.
+  const reposSection = (
+    <div className="border-t border-[var(--border)] pt-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm font-medium text-[var(--text-primary)]">Indexed repositories</div>
+        <Button size="small" onClick={loadCeRepos} loading={ceReposLoading} disabled={!ceConnected}>
+          Refresh
+        </Button>
+      </div>
+      {!ceConnected ? (
+        <div className="text-xs text-[var(--text-secondary)]">
+          {engineMode === "app"
+            ? "Start the engine to see indexed repos."
+            : "Connect to a backend to see indexed repos."}
+        </div>
+      ) : ceRepos.length === 0 ? (
+        <div className="text-xs text-[var(--text-secondary)]">
+          {ceReposLoading ? "Loading…" : "No repositories indexed yet — open a session in a repo to index it."}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto">
+          {ceRepos.map((r) => {
+            // Prefer the live watcher status; fall back to the fetched /index/status.
+            const live = contextWatcherStatus[r.path];
+            const tag = live?.status ?? r.status ?? null;
+            const fileCount = live?.fileCount ?? r.file_count ?? null;
+            const indexed = tag === "indexed" || (r.exists && !r.empty);
+            const empty = r.exists && r.empty;
+            return (
+              <div
+                key={r.path}
+                className="flex items-center gap-2 border border-[var(--border)] rounded-md px-3 py-2"
+              >
+                <span className="flex-1 text-xs text-[var(--text-primary)] truncate" title={r.path}>
+                  {r.path}
+                </span>
+                <span className="text-[11px] whitespace-nowrap">
+                  {tag === "indexing" ? (
+                    <span className="text-[var(--text-secondary)]">
+                      <Spin size="small" className="mr-1" />Indexing…
+                    </span>
+                  ) : tag && tag.startsWith("error") ? (
+                    <span className="text-red-500" title={live?.reason ?? undefined}>⚠ Error</span>
+                  ) : indexed ? (
+                    <span className="text-green-500">
+                      ✓ Indexed
+                      {fileCount != null ? ` · ${fileCount} files` : ""}
+                    </span>
+                  ) : empty ? (
+                    <span className="text-amber-500">○ Empty</span>
+                  ) : (
+                    <span className="text-[var(--text-secondary)]">○ Not indexed</span>
+                  )}
+                </span>
+                {r.exists && (
+                  <Popconfirm
+                    title="Delete this index?"
+                    description="Removes the indexed vectors + graph for this repo."
+                    okText="Delete"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={() => deleteIndexedRepo(r.path)}
+                  >
+                    <Button type="text" size="small" danger icon={<Trash2 className="w-3.5 h-3.5" />} />
+                  </Popconfirm>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
   // Grouped (provider, model) options for the compaction/title pickers.
   const modelOptions = useMemo(
@@ -511,12 +692,15 @@ export default function Settings() {
             <p className="text-sm text-[var(--text-secondary)] mb-4 leading-relaxed">
             Lets the agent search your code by meaning and relationships, not just keywords.
             </p>
-            <p className="text-sm text-[var(--text-secondary)] mb-4 leading-relaxed">
-            Requires a local
-            backend — run <code>docker compose up -d</code> in <code>services/context-engine</code>.
-            </p>
+            {engineMode === "user" && (
+              <p className="text-sm text-[var(--text-secondary)] mb-4 leading-relaxed">
+              Requires a local
+              backend — run <code>docker compose up -d</code> in <code>services/context-engine</code>.
+              </p>
+            )}
 
-            {contextEngine.enabled && (
+            {/* User-managed: connect to a self-run backend by URL. */}
+            {contextEngine.enabled && engineMode === "user" && (
               <div className="flex flex-col gap-5 border border-[var(--border)] rounded-lg p-5 mb-8">
                 {/* Connection */}
                 <div>
@@ -554,71 +738,137 @@ export default function Settings() {
                   </div>
                 </div>
 
-                {/* Indexed repositories */}
-                <div className="border-t border-[var(--border)] pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm font-medium text-[var(--text-primary)]">Indexed repositories</div>
-                    <Button size="small" onClick={loadCeRepos} loading={ceReposLoading} disabled={!ceStatus?.connected}>
-                      Refresh
+                {reposSection}
+              </div>
+            )}
+
+            {/* App-managed: the app runs the docker stack itself. */}
+            {contextEngine.enabled && engineMode === "app" && (
+              <div className="flex flex-col gap-5 border border-[var(--border)] rounded-lg p-5 mb-8">
+                {/* Embedding key (injected into the stack's process env). */}
+                <div>
+                  <label className="block text-xs text-[var(--text-secondary)] mb-1">
+                    OpenAI embedding API key {hasKey && <span className="text-green-500">· saved</span>}
+                  </label>
+                  <div className="flex gap-2">
+                    <Input.Password
+                      className="flex-1"
+                      placeholder={hasKey ? "•••••••• (stored) — enter to replace" : "sk-…"}
+                      value={keyInput}
+                      onChange={(e) => setKeyInput(e.target.value)}
+                      onPressEnter={saveAndRestart}
+                    />
+                    <Button
+                      type="primary"
+                      onClick={saveAndRestart}
+                      loading={savingKey}
+                      disabled={!keyInput.trim() && !hasKey}
+                      style={dark ? { background: "#fff", color: "#131315", borderColor: "#fff" } : undefined}
+                    >
+                      {engineStatus?.state === "running" ? "Save & Restart" : "Save & Start"}
                     </Button>
                   </div>
-                  {!ceStatus?.connected ? (
-                    <div className="text-xs text-[var(--text-secondary)]">Connect to a backend to see indexed repos.</div>
-                  ) : ceRepos.length === 0 ? (
-                    <div className="text-xs text-[var(--text-secondary)]">
-                      {ceReposLoading ? "Loading…" : "No repositories indexed yet — open a session in a repo to index it."}
+                  <div className="mt-1.5 text-[11px] text-[var(--text-secondary)]">
+                    Used only for embeddings. Stored locally and injected into the engine — never written to disk as a file.
+                  </div>
+                </div>
+
+                {/* Lifecycle controls + status */}
+                <div className="border-t border-[var(--border)] pt-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-xs flex items-center gap-1.5 min-w-0">
+                      {(() => {
+                        const st = engineStatus?.state;
+                        if (st === "running")
+                          return <span className="text-green-500">● Running</span>;
+                        if (st === "pulling" || st === "starting")
+                          return (
+                            <span className="text-[var(--text-secondary)] flex items-center">
+                              <Spin size="small" className="mr-1.5" />
+                              {st === "pulling" ? "Pulling & starting…" : "Waiting for engine…"}
+                            </span>
+                          );
+                        if (st === "docker_missing")
+                          return (
+                            <span className="text-red-500 truncate" title={engineStatus?.state === "docker_missing" ? engineStatus.reason : undefined}>
+                              ● Docker unavailable
+                            </span>
+                          );
+                        if (st === "error")
+                          return (
+                            <span className="text-red-500 truncate" title={engineStatus?.state === "error" ? engineStatus.reason : undefined}>
+                              ● Error{engineStatus?.state === "error" ? ` — ${engineStatus.reason}` : ""}
+                            </span>
+                          );
+                        return <span className="text-[var(--text-secondary)]">○ Stopped</span>;
+                      })()}
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto">
-                      {ceRepos.map((r) => {
-                        // Prefer the live watcher status; fall back to the fetched /index/status.
-                        const live = contextWatcherStatus[r.path];
-                        const tag = live?.status ?? r.status ?? null;
-                        const fileCount = live?.fileCount ?? r.file_count ?? null;
-                        const indexed = tag === "indexed" || (r.exists && !r.empty);
-                        const empty = r.exists && r.empty;
-                        return (
-                          <div
-                            key={r.path}
-                            className="flex items-center gap-2 border border-[var(--border)] rounded-md px-3 py-2"
-                          >
-                            <span className="flex-1 text-xs text-[var(--text-primary)] truncate" title={r.path}>
-                              {r.path}
-                            </span>
-                            <span className="text-[11px] whitespace-nowrap">
-                              {tag === "indexing" ? (
-                                <span className="text-[var(--text-secondary)]">
-                                  <Spin size="small" className="mr-1" />Indexing…
-                                </span>
-                              ) : tag && tag.startsWith("error") ? (
-                                <span className="text-red-500" title={live?.reason ?? undefined}>⚠ Error</span>
-                              ) : indexed ? (
-                                <span className="text-green-500">
-                                  ✓ Indexed
-                                  {fileCount != null ? ` · ${fileCount} files` : ""}
-                                </span>
-                              ) : empty ? (
-                                <span className="text-amber-500">○ Empty</span>
-                              ) : (
-                                <span className="text-[var(--text-secondary)]">○ Not indexed</span>
-                              )}
-                            </span>
-                            {r.exists && (
-                              <Popconfirm
-                                title="Delete this index?"
-                                description="Removes the indexed vectors + graph for this repo."
-                                okText="Delete"
-                                okButtonProps={{ danger: true }}
-                                onConfirm={() => deleteIndexedRepo(r.path)}
-                              >
-                                <Button type="text" size="small" danger icon={<Trash2 className="w-3.5 h-3.5" />} />
-                              </Popconfirm>
-                            )}
-                          </div>
-                        );
-                      })}
+                    <div className="flex gap-2 shrink-0">
+                      {engineStatus?.state === "running" ? (
+                        <Button size="small" onClick={stopEngine} loading={engineBusy}>
+                          Stop
+                        </Button>
+                      ) : (
+                        <Button
+                          size="small"
+                          type="primary"
+                          onClick={startEngine}
+                          loading={engineBusy || engineStatus?.state === "pulling" || engineStatus?.state === "starting"}
+                          disabled={!hasKey}
+                          style={dark ? { background: "#fff", color: "#131315", borderColor: "#fff" } : undefined}
+                        >
+                          {engineStatus?.state === "error" || engineStatus?.state === "docker_missing" ? "Retry" : "Start"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {!hasKey && (
+                    <div className="mt-2 text-[11px] text-amber-500">Add an embedding key above to start the engine.</div>
+                  )}
+                  {engineStatus?.state === "docker_missing" && (
+                    <div className="mt-2 text-[11px] text-[var(--text-secondary)]">
+                      {engineStatus.reason}{" "}
+                      <a
+                        className="text-blue-500 underline"
+                        href="https://docs.docker.com/get-docker/"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Install Docker
+                      </a>
                     </div>
                   )}
+                  {(engineStatus?.state === "pulling" || engineStatus?.state === "starting") && engineProgress && (
+                    <div className="mt-2 text-[11px] text-[var(--text-secondary)] font-mono truncate" title={engineProgress}>
+                      {engineProgress}
+                    </div>
+                  )}
+                  {engineStatus?.state === "error" && engineStatus.logs_tail && (
+                    <pre className="mt-2 text-[10px] leading-4 text-[var(--text-secondary)] bg-[var(--bg-secondary)] rounded p-2 max-h-32 overflow-auto whitespace-pre-wrap">
+                      {engineStatus.logs_tail.split("\n").slice(-12).join("\n")}
+                    </pre>
+                  )}
+                </div>
+
+                {reposSection}
+
+                {/* Destructive cleanup */}
+                <div className="border-t border-[var(--border)] pt-4 flex items-center justify-between">
+                  <div className="text-xs text-[var(--text-secondary)]">
+                    Stop & delete all indexed data (drops the engine's volumes).
+                  </div>
+                  <Popconfirm
+                    title="Remove all indexed data?"
+                    description="Tears the stack down and deletes every indexed repo. Cannot be undone."
+                    okText="Remove"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={removeEngineData}
+                  >
+                    <Button size="small" danger loading={engineBusy}>
+                      Remove indexed data
+                    </Button>
+                  </Popconfirm>
                 </div>
               </div>
             )}

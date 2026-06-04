@@ -1,8 +1,16 @@
-name: supercoder-context-engine-dev
+name: supercoder-context-engine
 
-# Shared env for the server + worker. Defaults in default_config_provider.go
-# already target these hostnames; we set them explicitly for clarity. The
-# embedding API key comes from .env (never baked into the image).
+# App-managed stack. Shipped as a Tauri bundled resource and run by the desktop
+# app itself (see apps/desktop/src-tauri/src/engine_control.rs). Unlike the dev
+# compose it pulls pre-built images instead of building, uses its own project
+# name + volumes (so it never clobbers a hand-run dev stack), and publishes only
+# the server port — the datastores stay on the internal compose network.
+#
+# Image refs default to the published GHCR tags but are env-overridable so a
+# local build can be tested without pushing:
+#   SUPERCODER_CE_IMAGE=supercoder/context-engine:local
+#   SUPERCODER_CE_MIGRATE_IMAGE=supercoder/context-engine-migrate:local
+
 x-engine-env: &engine-env
   SUPERCODER_INDEXER_ENABLED: "true"
   SUPERCODER_INDEXER_STREAMING_ENABLED: "true"
@@ -17,8 +25,8 @@ x-engine-env: &engine-env
   SUPERCODER_QDRANT_PORT: "6334"
   SUPERCODER_FALKORDB_HOST: falkordb
   SUPERCODER_FALKORDB_PORT: "6379"
-  # Merkle trees persist to a shared volume (local-disk CAS; no S3/MinIO).
   SUPERCODER_MERKLE_DIR: /data/merkle
+  # Injected into the compose process env by the app at launch (never on disk).
   SUPERCODER_OPENAI_API_KEY: ${SUPERCODER_OPENAI_API_KEY:-}
   SUPERCODER_OPENAI_EMBEDDING_MODEL: ${SUPERCODER_OPENAI_EMBEDDING_MODEL:-text-embedding-3-large}
 
@@ -29,7 +37,6 @@ services:
       POSTGRES_USER: superagi
       POSTGRES_PASSWORD: superagi
       POSTGRES_DB: supercoder
-    ports: ["5432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U superagi -d supercoder"]
@@ -39,7 +46,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -48,17 +54,10 @@ services:
 
   qdrant:
     image: qdrant/qdrant:latest
-    # 6333 = REST, 6334 = gRPC (the Go client uses gRPC). No healthcheck: the
-    # image ships no shell/curl, and the engine's qdrant client tolerates a
-    # slightly-late server (warns, retries).
-    ports: ["6333:6333", "6334:6334"]
     volumes: ["qdrantdata:/qdrant/storage"]
 
   falkordb:
     image: falkordb/falkordb:latest
-    # Redis-module instance for the code graph. Mapped to host 6380 to avoid
-    # colliding with the redis service's 6379 on the host.
-    ports: ["6380:6379"]
     volumes: ["falkordata:/data"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -66,14 +65,8 @@ services:
       timeout: 3s
       retries: 12
 
-  # Applies the Atlas versioned migrations (bundled into the image), then
-  # exits. Server/worker wait for this so the schema (incl. streaming tables)
-  # exists first.
   migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile.migrate
-    image: supercoder/context-engine-migrate:local
+    image: ${SUPERCODER_CE_MIGRATE_IMAGE:-ghcr.io/transformeroptimus/supercoder/context-engine-migrate:latest}
     command: >
       migrate apply
       --dir file:///migrations
@@ -83,13 +76,11 @@ services:
         condition: service_healthy
 
   context-engine-server:
-    build:
-      context: ../..
-      dockerfile: services/context-engine/Dockerfile
-    image: supercoder/context-engine:local
+    image: ${SUPERCODER_CE_IMAGE:-ghcr.io/transformeroptimus/supercoder/context-engine:latest}
     command: ["/app/server"]
     environment: *engine-env
-    ports: ["8106:8106"]
+    # Only the server is published; the app talks to it on 127.0.0.1:<port>.
+    ports: ["${SUPERCODER_PORT:-8106}:8106"]
     volumes: ["merkle:/data/merkle"]
     depends_on:
       postgres: {condition: service_healthy}
@@ -104,12 +95,9 @@ services:
       retries: 12
 
   context-engine-worker:
-    # Reuses the server image (built once); runs the asynq worker entrypoint.
-    image: supercoder/context-engine:local
+    image: ${SUPERCODER_CE_IMAGE:-ghcr.io/transformeroptimus/supercoder/context-engine:latest}
     command: ["/app/worker"]
     environment: *engine-env
-    # Same merkle volume as the server — the finalizer writes the tree the
-    # server's /diff reads (flock CAS coordinates across both containers).
     volumes: ["merkle:/data/merkle"]
     depends_on:
       context-engine-server: {condition: service_started}

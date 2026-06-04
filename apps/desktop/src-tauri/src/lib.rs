@@ -7,6 +7,7 @@ use tauri::Manager;
 
 pub mod agent_bridge;
 pub mod context_watcher;
+pub mod engine_control;
 
 /// Local application data directory: `<data_local_dir>/.supercoder`.
 /// Holds the settings DB, the agent DB, skills/subagents, and the checkpoint root.
@@ -487,6 +488,16 @@ pub fn run() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     tauri::Builder::default()
+        // Single-instance must be registered first: only one app process may own
+        // the (app-managed) context-engine stack lifecycle. A second launch just
+        // focuses the existing window.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_pty::init())
         .plugin(tauri_plugin_notification::init())
@@ -531,10 +542,28 @@ pub fn run() {
             ));
             app.manage(Arc::clone(&watcher_manager));
 
-            // Re-watch repos used in the last 7 days (only if the feature is on).
+            // App-managed context-engine lifecycle controller (inert in user mode).
+            let engine_mode = engine_control::resolve_mode();
+            let engine_controller = Arc::new(engine_control::EngineController::new(
+                engine_mode,
+                app.handle().clone(),
+                Arc::clone(&db),
+            ));
+            app.manage(Arc::clone(&engine_controller));
+
+            // On launch: in app mode bring the stack up first (when the feature is
+            // enabled) so the watcher's full-sync has a backend to talk to; then
+            // re-watch repos used in the last 7 days.
             {
                 let wm = Arc::clone(&watcher_manager);
+                let ctl = Arc::clone(&engine_controller);
+                let enabled = agent_bridge::commands::read_context_engine_db(&db).enabled;
                 tauri::async_runtime::spawn(async move {
+                    if ctl.mode() == engine_control::EngineMode::App && enabled {
+                        if let Err(e) = ctl.start().await {
+                            log::warn!("[engine] app-managed start failed: {e}");
+                        }
+                    }
                     wm.auto_start().await;
                 });
             }
@@ -570,17 +599,6 @@ pub fn run() {
                 let _ = window.set_position(tauri::LogicalPosition::new(x, y));
             }
             Ok(())
-        })
-        .on_window_event(|window, event| {
-            // Shut watchers down cleanly on quit (~1s/repo grace, concurrent).
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                if let Some(wm) =
-                    window.try_state::<Arc<context_watcher::WatcherManager>>()
-                {
-                    let wm = wm.inner().clone();
-                    tauri::async_runtime::block_on(async move { wm.stop_all().await });
-                }
-            }
         })
         .invoke_handler(tauri::generate_handler![
             open_in_vscode,
@@ -633,6 +651,14 @@ pub fn run() {
             agent_bridge::commands::agent_context_engine_status,
             agent_bridge::commands::agent_context_engine_repos,
             agent_bridge::commands::agent_context_engine_delete_repo,
+            engine_control::agent_engine_mode,
+            engine_control::agent_engine_status,
+            engine_control::agent_engine_preflight,
+            engine_control::agent_engine_start,
+            engine_control::agent_engine_stop,
+            engine_control::agent_engine_remove,
+            engine_control::agent_engine_has_key,
+            engine_control::agent_engine_set_key,
             context_watcher::commands::context_watcher_start,
             context_watcher::commands::context_watcher_stop,
             context_watcher::commands::context_watcher_status,
@@ -650,6 +676,30 @@ pub fn run() {
             agent_bridge::commands::agent_restore_checkpoint,
             agent_bridge::commands::agent_rewind_to_message,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Clean up only on actual process termination — Cmd+Q / dock-quit on
+            // macOS, window-close on Windows/Linux. (A macOS window-X keeps the app
+            // alive in the dock, so we must NOT tear down there.)
+            if let tauri::RunEvent::Exit = event {
+                if let Some(wm) =
+                    app_handle.try_state::<Arc<context_watcher::WatcherManager>>()
+                {
+                    let wm = wm.inner().clone();
+                    tauri::async_runtime::block_on(async move { wm.stop_all().await });
+                }
+                // App-managed stack: stop containers (keep volumes).
+                if let Some(ctl) =
+                    app_handle.try_state::<Arc<engine_control::EngineController>>()
+                {
+                    if ctl.mode() == engine_control::EngineMode::App {
+                        let ctl = ctl.inner().clone();
+                        tauri::async_runtime::block_on(async move {
+                            let _ = ctl.stop().await;
+                        });
+                    }
+                }
+            }
+        });
 }

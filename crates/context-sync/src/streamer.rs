@@ -25,7 +25,7 @@ use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
-use super::ignore_filter::IgnoreFilter;
+use crate::ignore_filter::IgnoreFilter;
 
 // ────────────────── Constants ──────────────────
 

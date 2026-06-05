@@ -1,0 +1,16 @@
+[package]
+name = "bench-runner"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "bench-runner"
+path = "src/main.rs"
+
+[dependencies]
+agent = { path = "../agent" }
+git-ops = { path = "../git-ops" }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }

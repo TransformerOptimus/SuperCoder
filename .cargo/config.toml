@@ -1,0 +1,10 @@
+# The static musl bench-runner must be a NON-PIE static binary.
+#
+# Rust defaults the x86_64-unknown-linux-musl target to static-PIE, which
+# segfaults at startup on some native x86_64 hosts (it only ran under emulation
+# in local testing; CI on a native runner caught the SIGSEGV). relocation-model=
+# static produces a classic, position-dependent, fully static executable that
+# runs everywhere — including the SWE-bench task containers the bench-runner
+# ships into.
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "relocation-model=static"]

@@ -10,8 +10,7 @@ use tokio::task::{JoinHandle, JoinSet};
 use tokio_util::sync::CancellationToken;
 
 use super::file_watcher::{ChangeBatch, FileWatcher};
-use super::ignore_filter::IgnoreFilter;
-use super::streamer::{Streamer, StreamerConfig, SyncError};
+use context_sync::{IgnoreFilter, Streamer, StreamerConfig, SyncError};
 
 // ---------------------------------------------------------------------------
 // Types

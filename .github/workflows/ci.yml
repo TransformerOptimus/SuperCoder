@@ -48,6 +48,48 @@ jobs:
       - name: cargo check (workspace)
         run: cargo check --workspace --all-targets
 
+      - name: cargo test (workspace)
+        run: cargo test --workspace --locked
+
+  bench-runner-musl:
+    # The bench-runner ships as a static musl binary into toolchain-free task
+    # containers. cargo check can't catch a native-tls regression (it only breaks
+    # the musl link), so we build it for real here to guard the rustls-only (R1)
+    # invariant. Builds ONLY -p bench-runner, so no tauri/frontend deps are needed.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          key: musl-bench-runner
+
+      - name: Install musl toolchain
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Build static bench-runner
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+        run: cargo build --release --locked -p bench-runner --target x86_64-unknown-linux-musl
+
+      - name: Assert static & self-contained (R1 guard)
+        run: |
+          BIN=target/x86_64-unknown-linux-musl/release/bench-runner
+          file "$BIN"
+          ldd "$BIN" 2>&1 || true
+          # musl static-pie resolves NO shared libs; a real dynamic dep shows "=>".
+          # (file's wording for static-pie varies by version, so don't grep file.)
+          if ldd "$BIN" 2>&1 | grep -qE '=>|libssl|libcrypto'; then
+            echo "ERROR: dynamic dependency present (native-tls regressed?)"; exit 1
+          fi
+          # Self-contained: runs on this host even though no musl libc is installed.
+          "$BIN" --help >/dev/null && echo "runs standalone: OK"
+
   frontend:
     runs-on: ubuntu-latest
     steps:

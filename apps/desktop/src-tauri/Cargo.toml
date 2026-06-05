@@ -23,7 +23,8 @@ tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12", features = ["json", "multipart", "stream"] }
+# rustls only — do NOT enable default-tls/native-tls; the static musl bench-runner depends on it.
+reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "stream", "http2", "charset", "system-proxy", "rustls-tls"] }
 base64 = "0.22"
 tokio = { version = "1", features = ["fs", "rt", "time", "macros", "test-util"] }
 uuid = { version = "1", features = ["v4"] }
@@ -35,6 +36,7 @@ url = "2"
 env_logger = "0.11"
 git-ops = { path = "../../../crates/git-ops" }
 agent = { path = "../../../crates/agent" }
+context-sync = { path = "../../../crates/context-sync" }
 dotenvy = "0.15"
 thiserror = "2"
 chrono = "0.4"

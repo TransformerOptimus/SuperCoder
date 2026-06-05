@@ -13,8 +13,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use agent::context_engine::{ContextEngineApi, ContextEngineClient, ContextEngineConfig};
-use supercoder_lib::context_watcher::ignore_filter::IgnoreFilter;
-use supercoder_lib::context_watcher::streamer::{Streamer, StreamerConfig};
+use context_sync::{IgnoreFilter, Streamer, StreamerConfig};
 use tokio_util::sync::CancellationToken;
 
 #[tokio::main]

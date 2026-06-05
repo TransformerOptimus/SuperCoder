@@ -105,3 +105,46 @@ jobs:
           name: supercoder-${{ matrix.target }}
           path: ${{ join(fromJSON(steps.tauri.outputs.artifactPaths), '\n') }}
           if-no-files-found: ignore
+
+  bench-runner:
+    # The eval-harness bench-runner: a static musl x86_64 binary that runs the
+    # agent headless inside toolchain-free task containers. Not a tauri bundle, so
+    # it lives outside the desktop build matrix.
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          key: musl-bench-runner
+
+      - name: Install musl toolchain
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Build static bench-runner
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+        run: cargo build --release --locked -p bench-runner --target x86_64-unknown-linux-musl
+
+      - name: Stage artifact
+        run: cp target/x86_64-unknown-linux-musl/release/bench-runner bench-runner-x86_64-unknown-linux-musl
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" bench-runner-x86_64-unknown-linux-musl --clobber
+
+      - name: Upload as workflow artifact (workflow_dispatch only)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-runner-x86_64-unknown-linux-musl
+          path: bench-runner-x86_64-unknown-linux-musl

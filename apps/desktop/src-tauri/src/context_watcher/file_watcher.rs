@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-use super::ignore_filter::IgnoreFilter;
+use context_sync::IgnoreFilter;
 
 const DEBOUNCE_MS: u64 = 500;
 // 60s cooldown → max 1 trigger per minute.

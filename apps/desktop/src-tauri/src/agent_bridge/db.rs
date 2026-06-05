@@ -1050,9 +1050,13 @@ mod tests {
         let s = db.get_session("s1").unwrap().unwrap();
         assert_eq!(s.folder, "/proj");
         assert_eq!(s.mode, "coding");
-        assert_eq!(s.status, "active");
+        // A new session starts "idle" — "active" means a turn is currently running
+        // (set on run start, cleared on run end). So nothing is active yet.
+        assert_eq!(s.status, "idle");
+        assert!(db.active_session_for_folder("/proj").unwrap().is_none());
 
-        // one-active-per-folder lookup
+        // one-active-per-folder lookup tracks the running session
+        db.set_session_status("s1", "active").unwrap();
         assert_eq!(db.active_session_for_folder("/proj").unwrap().as_deref(), Some("s1"));
         db.set_session_status("s1", "idle").unwrap();
         assert!(db.active_session_for_folder("/proj").unwrap().is_none());

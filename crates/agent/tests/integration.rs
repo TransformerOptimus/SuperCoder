@@ -982,6 +982,7 @@ async fn test_caching_emits_cache_tokens_across_turns() {
         None, // no project note
         None, // no skills
         None, // no subagents
+        cfg.context_engine.is_some(),
     ));
 
     std::fs::write(tmp.path().join("sample.txt"), "hello world\n").unwrap();

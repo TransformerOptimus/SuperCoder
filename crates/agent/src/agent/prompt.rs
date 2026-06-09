@@ -12,6 +12,29 @@ const ASK_PROMPT_TEMPLATE: &str = include_str!("ask_prompt.txt");
 const CODING_PROMPT_TEMPLATE: &str = include_str!("coding_prompt.txt");
 const PLAN_PROMPT_TEMPLATE: &str = include_str!("plan_prompt.txt");
 
+/// Injected after the static body when a context-engine index is available.
+/// The base templates advertise only grep/glob and instruct the model to "use
+/// glob and grep to find what you need", so without this block models never reach
+/// for the `codebase_search`/`codebase_graph` tools (registered by
+/// `ToolRegistry::for_mode`) even though they're more capable. This block
+/// advertises the index tools and steers exploration to `codebase_search` first.
+const INDEX_PROMPT_BLOCK: &str = "# Codebase Index (semantic search — PREFER THIS for finding code)\n\
+\n\
+This project is indexed. Two extra tools are available and are faster and more accurate \
+than grep/glob for locating code:\n\
+\n\
+- `codebase_search` — semantic, AI-ranked search across the whole codebase. Handles \
+conceptual queries (e.g. \"color parsing\", \"rate limiting logic\") and finds relevant \
+code even when you don't know the exact symbol or string.\n\
+- `codebase_graph` — call/dependency graph: find a function's callers, callees, \
+definitions, and references.\n\
+\n\
+Exploration workflow (this OVERRIDES the grep/glob guidance in the sections below): when \
+you need to find where something is implemented or understand how a feature works, call \
+`codebase_search` FIRST (and `codebase_graph` for relationships), then `read` the files it \
+points to. Use `grep`/`glob` only for exact-string matches, or if the index tool reports \
+it is unavailable.\n";
+
 /// One block of the system prompt. Anthropic sends these in order; each block
 /// can independently carry a `cache_control` marker.
 #[derive(Debug, Clone)]
@@ -45,6 +68,7 @@ pub fn build_system_prompt(
     project_note: Option<&str>,
     skills: Option<&SkillRegistry>,
     subagents: Option<&SubagentRegistry>,
+    context_engine_enabled: bool,
 ) -> Vec<SystemBlock> {
     let template = match mode {
         ToolMode::Ask => ASK_PROMPT_TEMPLATE,
@@ -73,6 +97,15 @@ pub fn build_system_prompt(
         text: static_body,
         cache_control: Some(CacheControl::ephemeral()),
     }];
+
+    // Context-engine index guidance — only when an index is available for this run.
+    // Its own ephemeral breakpoint so toggling the engine invalidates just this block.
+    if context_engine_enabled {
+        blocks.push(SystemBlock {
+            text: INDEX_PROMPT_BLOCK.to_string(),
+            cache_control: Some(CacheControl::ephemeral()),
+        });
+    }
 
     // Skills + Subagents share ONE ephemeral breakpoint. Toggling either
     // invalidates the combined block once (not twice).
@@ -155,7 +188,7 @@ mod tests {
     #[test]
     fn test_build_system_prompt_splits_into_two_blocks() {
         for mode in [ToolMode::Ask, ToolMode::Coding, ToolMode::Plan] {
-            let blocks = build_system_prompt(mode, &PathBuf::from("/p"), Some("main"), None, None, None);
+            let blocks = build_system_prompt(mode, &PathBuf::from("/p"), Some("main"), None, None, None, false);
             assert_eq!(blocks.len(), 2, "{:?}: expected exactly 2 blocks", mode);
             assert!(blocks[0].cache_control.is_some(), "{:?}: block 0 must be cached", mode);
             assert!(blocks[1].cache_control.is_none(), "{:?}: block 1 must NOT be cached", mode);
@@ -173,6 +206,7 @@ mod tests {
                 None,
                 Some(&registry),
                 None,
+                false,
             );
             assert_eq!(blocks.len(), 3, "{:?}: expected 3 blocks with skills", mode);
             assert!(blocks[0].cache_control.is_some(), "{:?}: static body cached", mode);
@@ -193,15 +227,32 @@ mod tests {
             None,
             Some(&empty),
             None,
+            false,
         );
         assert_eq!(blocks.len(), 2, "empty registry must not add a block");
+    }
+
+    #[test]
+    fn test_index_block_inserted_only_when_context_engine_enabled() {
+        for mode in [ToolMode::Ask, ToolMode::Coding, ToolMode::Plan] {
+            let on = build_system_prompt(mode, &PathBuf::from("/p"), Some("main"), None, None, None, true);
+            assert!(
+                on.iter().any(|b| b.text.contains("codebase_search")),
+                "{:?}: index block must advertise codebase_search when engine enabled", mode
+            );
+            let off = build_system_prompt(mode, &PathBuf::from("/p"), Some("main"), None, None, None, false);
+            assert!(
+                !off.iter().any(|b| b.text.contains("codebase_search")),
+                "{:?}: no index block when engine disabled", mode
+            );
+        }
     }
 
     #[test]
     fn test_static_body_excludes_date() {
         let today = chrono::Local::now().format("%Y-%m-%d").to_string();
         for mode in [ToolMode::Ask, ToolMode::Coding, ToolMode::Plan] {
-            let blocks = build_system_prompt(mode, &PathBuf::from("/p"), Some("main"), None, None, None);
+            let blocks = build_system_prompt(mode, &PathBuf::from("/p"), Some("main"), None, None, None, false);
             assert!(
                 !blocks[0].text.contains(&today),
                 "{:?}: static body must not contain today's date (would invalidate cache daily)",
@@ -214,7 +265,7 @@ mod tests {
     fn test_env_block_contains_date_and_working_dir() {
         let today = chrono::Local::now().format("%Y-%m-%d").to_string();
         for mode in [ToolMode::Ask, ToolMode::Coding, ToolMode::Plan] {
-            let blocks = build_system_prompt(mode, &PathBuf::from("/home/user/project"), Some("main"), None, None, None);
+            let blocks = build_system_prompt(mode, &PathBuf::from("/home/user/project"), Some("main"), None, None, None, false);
             assert!(blocks[1].text.contains(&today), "{:?}: env must contain date", mode);
             assert!(blocks[1].text.contains("/home/user/project"), "{:?}: env must contain working_dir", mode);
             assert!(blocks[1].text.contains("main"), "{:?}: env must contain branch when provided", mode);
@@ -226,7 +277,7 @@ mod tests {
     #[test]
     fn test_working_dir_injected_all_modes() {
         for mode in [ToolMode::Ask, ToolMode::Coding, ToolMode::Plan] {
-            let prompt = joined(&build_system_prompt(mode, &PathBuf::from("/home/user/project"), None, None, None, None));
+            let prompt = joined(&build_system_prompt(mode, &PathBuf::from("/home/user/project"), None, None, None, None, false));
             assert!(prompt.contains("/home/user/project"), "Mode {:?} missing working_dir", mode);
             assert!(!prompt.contains("{{working_dir}}"), "Mode {:?} has unresolved placeholder", mode);
         }
@@ -234,19 +285,19 @@ mod tests {
 
     #[test]
     fn test_branch_injected() {
-        let prompt = joined(&build_system_prompt(ToolMode::Coding, &PathBuf::from("/tmp"), Some("feature/login"), None, None, None));
+        let prompt = joined(&build_system_prompt(ToolMode::Coding, &PathBuf::from("/tmp"), Some("feature/login"), None, None, None, false));
         assert!(prompt.contains("feature/login"));
     }
 
     #[test]
     fn test_branch_omitted_when_none() {
-        let prompt = joined(&build_system_prompt(ToolMode::Ask, &PathBuf::from("/tmp"), None, None, None, None));
+        let prompt = joined(&build_system_prompt(ToolMode::Ask, &PathBuf::from("/tmp"), None, None, None, None, false));
         assert!(!prompt.contains("Git branch"));
     }
 
     #[test]
     fn test_date_injected() {
-        let prompt = joined(&build_system_prompt(ToolMode::Ask, &PathBuf::from("/tmp"), None, None, None, None));
+        let prompt = joined(&build_system_prompt(ToolMode::Ask, &PathBuf::from("/tmp"), None, None, None, None, false));
         let today = chrono::Local::now().format("%Y-%m-%d").to_string();
         assert!(prompt.contains(&today));
     }
@@ -254,7 +305,7 @@ mod tests {
     #[test]
     fn test_os_arch_injected() {
         for mode in [ToolMode::Ask, ToolMode::Coding, ToolMode::Plan] {
-            let prompt = joined(&build_system_prompt(mode, &PathBuf::from("/tmp"), None, None, None, None));
+            let prompt = joined(&build_system_prompt(mode, &PathBuf::from("/tmp"), None, None, None, None, false));
             assert!(prompt.contains(std::env::consts::OS), "Mode {:?} missing OS", mode);
             assert!(prompt.contains(std::env::consts::ARCH), "Mode {:?} missing ARCH", mode);
         }
@@ -263,7 +314,7 @@ mod tests {
     #[test]
     fn test_no_unresolved_placeholders() {
         for mode in [ToolMode::Ask, ToolMode::Coding, ToolMode::Plan] {
-            let prompt = joined(&build_system_prompt(mode, &PathBuf::from("/tmp"), Some("main"), None, None, None));
+            let prompt = joined(&build_system_prompt(mode, &PathBuf::from("/tmp"), Some("main"), None, None, None, false));
             assert!(!prompt.contains("{{"), "Mode {:?} has unresolved placeholder: {}", mode,
                 prompt.find("{{").map(|i| &prompt[i..(i+30).min(prompt.len())]).unwrap_or(""));
         }

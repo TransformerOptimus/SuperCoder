@@ -64,6 +64,7 @@ pub fn spawn_agent(
             None,
             config.skills.as_deref(),
             config.subagents.as_deref(),
+            config.context_engine.is_some(),
         ));
     }
 

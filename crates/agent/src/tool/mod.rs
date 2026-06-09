@@ -292,7 +292,7 @@ mod tests {
         use std::path::PathBuf;
         let wd = PathBuf::from(".");
         for mode in [ToolMode::Ask, ToolMode::Coding, ToolMode::Plan] {
-            let sys_blocks = build_system_prompt(mode, &wd, Some("main"), None, None, None);
+            let sys_blocks = build_system_prompt(mode, &wd, Some("main"), None, None, None, false);
             let sys: String = sys_blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>().join("\n");
             let reg = ToolRegistry::for_mode(mode, None, None);
             let tools = reg.tool_definitions();

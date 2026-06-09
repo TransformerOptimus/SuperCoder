@@ -43,6 +43,12 @@ struct Cli {
     #[arg(long)]
     base_url: Option<String>,
 
+    /// Extra HTTP headers for the LLM endpoint, repeatable: `--llm-header "X-Run-Id: abc"`.
+    /// Used to pass an inference-router/gateway's tenancy + attribution headers
+    /// (e.g. X-USER-ID, X-WORKSPACE-ID, X-Run-Id). Format "Key: Value" (first ':' splits).
+    #[arg(long = "llm-header", value_name = "K: V")]
+    llm_headers: Vec<String>,
+
     /// Context-engine base URL (bare, e.g. http://localhost:8106). When set, the agent gets
     /// `codebase_search`/`codebase_graph` (the ON path); when absent it falls back to grep/glob.
     #[arg(long)]
@@ -174,6 +180,17 @@ async fn run(cli: &Cli, spec: &TaskSpec) -> RunResult {
         None
     };
 
+    // Parse repeatable `--llm-header "Key: Value"` flags into (name, value) pairs.
+    // Forwarded verbatim with every LLM request (proxy tenancy/attribution headers).
+    let extra_headers: Vec<(String, String)> = cli
+        .llm_headers
+        .iter()
+        .filter_map(|h| {
+            h.split_once(':')
+                .map(|(k, v)| (k.trim().to_string(), v.trim().to_string()))
+        })
+        .collect();
+
     let llm = LlmClientConfig {
         provider,
         base_url,
@@ -181,7 +198,7 @@ async fn run(cli: &Cli, spec: &TaskSpec) -> RunResult {
         api_key,
         temperature,
         max_completion_tokens: None,
-        extra_headers: vec![],
+        extra_headers,
         thinking: None,
         disable_cache_control: false,
     };

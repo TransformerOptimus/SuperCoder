@@ -10,6 +10,24 @@ use crate::context_engine::{ContextEngineApi, SearchResultItem};
 use crate::error::ToolError;
 use super::{Tool, ToolContext, ToolResult};
 
+/// Default result count when the model omits `limit` (bench policy only).
+const DEFAULT_SEARCH_LIMIT: u32 = 20;
+/// Max bytes of chunk content rendered per result (bench policy only).
+const MAX_CHUNK_BYTES: usize = 2048;
+
+/// Truncate a chunk's content to `MAX_CHUNK_BYTES` on a UTF-8 boundary, appending a
+/// marker when clipped. Keeps oversized index payloads from ballooning the context.
+fn cap_chunk_content(content: &str) -> String {
+    if content.len() <= MAX_CHUNK_BYTES {
+        return content.to_string();
+    }
+    let mut end = MAX_CHUNK_BYTES;
+    while !content.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}\n…[truncated]", &content[..end])
+}
+
 pub struct CodebaseSearchTool {
     context_engine: Arc<dyn ContextEngineApi>,
     /// Canonical repo path the context-engine index was built from (for logging /
@@ -69,7 +87,15 @@ impl Tool for CodebaseSearchTool {
             .ok_or_else(|| ToolError("Missing required parameter: query".into()))?;
 
         let strategy = args.get("strategy").and_then(|v| v.as_str());
-        let limit = args.get("limit").and_then(|v| v.as_u64().map(|n| n as u32));
+        let mut limit = args.get("limit").and_then(|v| v.as_u64().map(|n| n as u32));
+
+        // Bench policy: when the model omits `limit`, default to 20 so the engine
+        // doesn't return a huge result set that balloons the conversation. The model
+        // can still page by raising the existing `limit` param. No-op under app policy.
+        let caps = ctx.policy.codebase_result_caps;
+        if caps && limit.is_none() {
+            limit = Some(DEFAULT_SEARCH_LIMIT);
+        }
 
         log::info!(
             "[codebase_search] query=\"{}\", strategy={:?}, limit={:?}",
@@ -127,6 +153,18 @@ impl Tool for CodebaseSearchTool {
         );
         if let Err(e) = apply_local_overlay(&mut results, &ctx.working_dir).await {
             log::warn!("[codebase_search] local overlay failed, skipping: {e}");
+        }
+
+        // Bench policy: cap result count (defensive — the engine may ignore `limit`)
+        // and cap each chunk's content so oversized payloads don't inflate every
+        // subsequent turn's context. No-op under the default (app) policy.
+        if caps {
+            if let Some(l) = limit {
+                results.truncate(l as usize);
+            }
+            for item in results.iter_mut() {
+                item.content = cap_chunk_content(&item.content);
+            }
         }
 
         let mut output = format!("Found {} results for \"{}\":\n\n", results.len(), query);
@@ -418,6 +456,73 @@ mod tests {
             .unwrap();
 
         assert!(!result.is_error);
+    }
+
+    #[tokio::test]
+    async fn test_bench_policy_caps_chunk_content() {
+        let big = "x".repeat(5000);
+        let results = vec![SearchResultItem {
+            chunk_id: "c1".into(),
+            content: big,
+            file_path: "src/big.rs".into(),
+            language: "rust".into(),
+            score: 0.9,
+            source: "vector".into(),
+        }];
+        let mock = MockContextEngine::with_search_results(results);
+        let tool = CodebaseSearchTool::new(Arc::new(mock), PathBuf::from("/repo"));
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = ToolContext::test_context_bench(dir.path());
+
+        let result = tool.execute(json!({"query": "x"}), &ctx).await.unwrap();
+        assert!(!result.is_error);
+        assert!(result.output.contains("…[truncated]"), "content should be capped under bench policy");
+        // The 5000-char chunk must not appear in full.
+        assert!(!result.output.contains(&"x".repeat(5000)));
+    }
+
+    #[tokio::test]
+    async fn test_bench_policy_truncates_result_count() {
+        let results: Vec<SearchResultItem> = (0..25)
+            .map(|i| SearchResultItem {
+                chunk_id: format!("c{i}"),
+                content: "small".into(),
+                file_path: format!("src/f{i}.rs"),
+                language: "rust".into(),
+                score: 0.5,
+                source: "vector".into(),
+            })
+            .collect();
+        let mock = MockContextEngine::with_search_results(results);
+        let tool = CodebaseSearchTool::new(Arc::new(mock), PathBuf::from("/repo"));
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = ToolContext::test_context_bench(dir.path());
+
+        let result = tool.execute(json!({"query": "x"}), &ctx).await.unwrap();
+        assert!(!result.is_error);
+        assert!(result.output.contains("Found 20 results"), "should cap to default limit 20 under bench policy");
+    }
+
+    #[tokio::test]
+    async fn test_default_policy_no_caps() {
+        let big = "y".repeat(5000);
+        let results = vec![SearchResultItem {
+            chunk_id: "c1".into(),
+            content: big.clone(),
+            file_path: "src/big.rs".into(),
+            language: "rust".into(),
+            score: 0.9,
+            source: "vector".into(),
+        }];
+        let mock = MockContextEngine::with_search_results(results);
+        let tool = CodebaseSearchTool::new(Arc::new(mock), PathBuf::from("/repo"));
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = ToolContext::test_context(dir.path());
+
+        let result = tool.execute(json!({"query": "y"}), &ctx).await.unwrap();
+        assert!(!result.is_error);
+        assert!(result.output.contains(&big), "default policy must not cap content");
+        assert!(!result.output.contains("…[truncated]"));
     }
 
     #[tokio::test]

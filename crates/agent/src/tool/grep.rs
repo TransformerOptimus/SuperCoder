@@ -56,12 +56,48 @@ impl Tool for GrepTool {
         };
 
         let include = args.get("include").and_then(|v| v.as_str());
+        let path_arg = args.get("path").and_then(|v| v.as_str());
+
+        // Bench policy: skip build/vendor/coverage dirs unless the model explicitly
+        // targets one via `path` or `include` (the override — no new param). No-op
+        // under the default (app) policy.
+        let ignore_dirs: Vec<&str> = if ctx.policy.search_default_ignores {
+            super::DEFAULT_IGNORE_DIRS
+                .iter()
+                .copied()
+                .filter(|d| !explicitly_targeted(d, path_arg, include))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let ignore_globs: &[&str] = if ctx.policy.search_default_ignores {
+            super::DEFAULT_IGNORE_GLOBS
+        } else {
+            &[]
+        };
 
         // Try rg first, fall back to grep
-        let output = if rg_available() {
-            run_rg(pattern, &search_path, include, &ctx.working_dir).await
-        } else {
-            run_grep(pattern, &search_path, include, &ctx.working_dir).await
+        let run = async {
+            if rg_available() {
+                run_rg(pattern, &search_path, include, &ctx.working_dir, &ignore_dirs, ignore_globs).await
+            } else {
+                run_grep(pattern, &search_path, include, &ctx.working_dir, &ignore_dirs, ignore_globs).await
+            }
+        };
+
+        // Bench policy: bound the search with a wall timeout so a pathological pattern
+        // on a huge tree can't hang the agent. No-op under the default (app) policy.
+        let output = match ctx.policy.search_timeout_ms {
+            Some(ms) => match tokio::time::timeout(std::time::Duration::from_millis(ms), run).await {
+                Ok(o) => o,
+                Err(_) => {
+                    return Ok(ToolResult::error(format!(
+                        "grep timed out after {}s — narrow the pattern or restrict `path`.",
+                        ms / 1000
+                    )));
+                }
+            },
+            None => run.await,
         };
 
         match output {
@@ -91,6 +127,13 @@ impl Tool for GrepTool {
     }
 }
 
+/// True if the model explicitly referenced `dir` in the `path` or `include` glob,
+/// meaning the default ignore-list should NOT exclude it (the override mechanism).
+fn explicitly_targeted(dir: &str, path_arg: Option<&str>, include: Option<&str>) -> bool {
+    path_arg.map(|p| p.contains(dir)).unwrap_or(false)
+        || include.map(|i| i.contains(dir)).unwrap_or(false)
+}
+
 fn rg_available() -> bool {
     let mut cmd = std::process::Command::new("rg");
     cmd.arg("--version");
@@ -103,6 +146,8 @@ async fn run_rg(
     search_path: &std::path::Path,
     include: Option<&str>,
     working_dir: &std::path::Path,
+    ignore_dirs: &[&str],
+    ignore_globs: &[&str],
 ) -> std::io::Result<std::process::Output> {
     let mut cmd = Command::new("rg");
     cmd.arg("-n")
@@ -112,6 +157,14 @@ async fn run_rg(
 
     if let Some(glob) = include {
         cmd.arg("--glob").arg(glob);
+    }
+
+    // Default ignore-list (bench policy): exclude build/vendor/coverage dirs + minified assets.
+    for dir in ignore_dirs {
+        cmd.arg("--glob").arg(format!("!**/{dir}/**"));
+    }
+    for glob in ignore_globs {
+        cmd.arg("--glob").arg(format!("!{glob}"));
     }
 
     cmd.arg(pattern)
@@ -130,6 +183,8 @@ async fn run_grep(
     search_path: &std::path::Path,
     include: Option<&str>,
     working_dir: &std::path::Path,
+    ignore_dirs: &[&str],
+    ignore_globs: &[&str],
 ) -> std::io::Result<std::process::Output> {
     let mut cmd = Command::new("grep");
     cmd.arg("-r")     // recursive
@@ -139,6 +194,15 @@ async fn run_grep(
 
     if let Some(glob) = include {
         cmd.arg("--include").arg(glob);
+    }
+
+    // Default ignore-list (bench policy): grep has no .gitignore awareness, so this
+    // is the only thing keeping build/vendor dirs out of the fallback path.
+    for dir in ignore_dirs {
+        cmd.arg(format!("--exclude-dir={dir}"));
+    }
+    for glob in ignore_globs {
+        cmd.arg(format!("--exclude={glob}"));
     }
 
     cmd.arg(pattern)
@@ -299,6 +363,63 @@ mod tests {
         assert!(result.is_error);
         assert!(result.output.contains("Grep error") || result.output.contains("Invalid")
             || result.output.contains("Unmatched"));
+    }
+
+    #[tokio::test]
+    async fn test_grep_bench_policy_skips_node_modules() {
+        let dir = tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("node_modules/pkg")).unwrap();
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        fs::write(dir.path().join("node_modules/pkg/index.js"), "needle here\n").unwrap();
+        fs::write(dir.path().join("src/app.js"), "needle here\n").unwrap();
+
+        let tool = GrepTool;
+        let ctx = ToolContext::test_context_bench(dir.path());
+        let result = tool.execute(json!({ "pattern": "needle" }), &ctx).await.unwrap();
+
+        assert!(!result.is_error);
+        assert!(result.output.contains("src/app.js"), "should find src match");
+        assert!(!result.output.contains("node_modules"), "must skip node_modules under bench policy");
+    }
+
+    #[tokio::test]
+    async fn test_grep_default_policy_searches_node_modules() {
+        let dir = tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("node_modules/pkg")).unwrap();
+        fs::write(dir.path().join("node_modules/pkg/index.js"), "needle here\n").unwrap();
+
+        let tool = GrepTool;
+        // Default (app) policy + no .git → no ignore-list, node_modules IS searched.
+        let ctx = ToolContext::test_context(dir.path());
+        let result = tool.execute(json!({ "pattern": "needle" }), &ctx).await.unwrap();
+
+        assert!(!result.is_error);
+        assert!(result.output.contains("node_modules"), "default policy must not exclude node_modules");
+    }
+
+    #[tokio::test]
+    async fn test_grep_bench_policy_explicit_override() {
+        let dir = tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("node_modules/pkg")).unwrap();
+        fs::write(dir.path().join("node_modules/pkg/index.js"), "needle here\n").unwrap();
+
+        let tool = GrepTool;
+        let ctx = ToolContext::test_context_bench(dir.path());
+        // Explicitly target node_modules via path → override the ignore-list.
+        let result = tool
+            .execute(json!({ "pattern": "needle", "path": "node_modules" }), &ctx)
+            .await
+            .unwrap();
+
+        assert!(!result.is_error);
+        assert!(result.output.contains("node_modules"), "explicit path must override the ignore-list");
+    }
+
+    #[test]
+    fn test_explicitly_targeted() {
+        assert!(explicitly_targeted("node_modules", Some("node_modules"), None));
+        assert!(explicitly_targeted("target", None, Some("target/**/*.rs")));
+        assert!(!explicitly_targeted("node_modules", Some("src"), Some("*.rs")));
     }
 
     #[test]

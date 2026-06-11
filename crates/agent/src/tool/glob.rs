@@ -44,19 +44,47 @@ impl Tool for GlobTool {
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError("Missing required parameter: pattern".into()))?;
 
-        let base_path = match args.get("path").and_then(|v| v.as_str()) {
+        let path_arg = args.get("path").and_then(|v| v.as_str());
+        let base_path = match path_arg {
             Some(p) => resolve_path(&ctx.working_dir, p),
             None => ctx.working_dir.clone(),
         };
 
-        let pattern = pattern.to_string();
+        // Bench policy: skip build/vendor/coverage dirs at walk time (prevents
+        // descending into node_modules, the latency source) unless the model
+        // explicitly targets one via `pattern` or `path`. No-op under app policy.
+        let ignore_dirs: Vec<String> = if ctx.policy.search_default_ignores {
+            super::DEFAULT_IGNORE_DIRS
+                .iter()
+                .filter(|d| !explicitly_targeted(d, path_arg, pattern))
+                .map(|d| d.to_string())
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let ignore_min_assets = ctx.policy.search_default_ignores;
+
+        let pattern_owned = pattern.to_string();
         let base = base_path.clone();
 
-        let result = tokio::task::spawn_blocking(move || {
-            glob_search(&base, &pattern)
-        })
-        .await
-        .map_err(|e| ToolError(format!("Glob task failed: {e}")))?;
+        let handle = tokio::task::spawn_blocking(move || {
+            glob_search(&base, &pattern_owned, ignore_dirs, ignore_min_assets)
+        });
+
+        // Bench policy: bound the walk with a wall timeout. The blocking thread runs
+        // to completion on its own; we just stop waiting and discard its result.
+        let result = match ctx.policy.search_timeout_ms {
+            Some(ms) => match tokio::time::timeout(std::time::Duration::from_millis(ms), handle).await {
+                Ok(join) => join.map_err(|e| ToolError(format!("Glob task failed: {e}")))?,
+                Err(_) => {
+                    return Ok(ToolResult::error(format!(
+                        "glob timed out after {}s — narrow the pattern or restrict `path`.",
+                        ms / 1000
+                    )));
+                }
+            },
+            None => handle.await.map_err(|e| ToolError(format!("Glob task failed: {e}")))?,
+        };
 
         match result {
             Ok(output) => Ok(ToolResult::success(output)),
@@ -65,7 +93,26 @@ impl Tool for GlobTool {
     }
 }
 
-fn glob_search(base_path: &std::path::Path, pattern: &str) -> Result<String, String> {
+/// True if the model explicitly referenced `dir` in the `path` or the glob `pattern`,
+/// meaning the default ignore-list should NOT exclude it (the override mechanism).
+fn explicitly_targeted(dir: &str, path_arg: Option<&str>, pattern: &str) -> bool {
+    pattern.contains(dir) || path_arg.map(|p| p.contains(dir)).unwrap_or(false)
+}
+
+/// True if `name` is a minified asset excluded by the default ignore-glob list.
+fn is_min_asset(name: &str) -> bool {
+    super::DEFAULT_IGNORE_GLOBS.iter().any(|g| {
+        // DEFAULT_IGNORE_GLOBS are of the form "*.ext" — match by suffix.
+        g.strip_prefix('*').map(|suf| name.ends_with(suf)).unwrap_or(false)
+    })
+}
+
+fn glob_search(
+    base_path: &std::path::Path,
+    pattern: &str,
+    ignore_dirs: Vec<String>,
+    ignore_min_assets: bool,
+) -> Result<String, String> {
     let matcher = globset::GlobBuilder::new(pattern)
         .literal_separator(true) // * doesn't match /, only ** does
         .build()
@@ -75,6 +122,20 @@ fn glob_search(base_path: &std::path::Path, pattern: &str) -> Result<String, Str
     let walker = ignore::WalkBuilder::new(base_path)
         .standard_filters(true)
         .hidden(false) // don't skip hidden files (let .gitignore handle it)
+        .filter_entry(move |entry| {
+            let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
+            if let Some(name) = entry.file_name().to_str() {
+                // Prune blocked directories (stops descent — the latency fix).
+                if is_dir && ignore_dirs.iter().any(|d| d == name) {
+                    return false;
+                }
+                // Prune minified assets.
+                if !is_dir && ignore_min_assets && is_min_asset(name) {
+                    return false;
+                }
+            }
+            true
+        })
         .build();
 
     let mut entries: Vec<(std::path::PathBuf, std::time::SystemTime)> = Vec::new();
@@ -243,6 +304,70 @@ mod tests {
 
         assert!(!result.is_error);
         assert!(result.output.contains("Showing 100 of 110 results"));
+    }
+
+    #[tokio::test]
+    async fn test_glob_bench_policy_skips_node_modules() {
+        let dir = tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("node_modules/pkg")).unwrap();
+        fs::create_dir_all(dir.path().join("src")).unwrap();
+        fs::write(dir.path().join("node_modules/pkg/index.js"), "x").unwrap();
+        fs::write(dir.path().join("src/app.js"), "x").unwrap();
+
+        let tool = GlobTool;
+        let ctx = ToolContext::test_context_bench(dir.path());
+        let result = tool.execute(json!({ "pattern": "**/*.js" }), &ctx).await.unwrap();
+
+        assert!(!result.is_error);
+        assert!(result.output.contains("app.js"));
+        assert!(!result.output.contains("node_modules"), "must prune node_modules under bench policy");
+    }
+
+    #[tokio::test]
+    async fn test_glob_default_policy_includes_node_modules() {
+        let dir = tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("node_modules/pkg")).unwrap();
+        fs::write(dir.path().join("node_modules/pkg/index.js"), "x").unwrap();
+
+        let tool = GlobTool;
+        let ctx = ToolContext::test_context(dir.path());
+        let result = tool.execute(json!({ "pattern": "**/*.js" }), &ctx).await.unwrap();
+
+        assert!(!result.is_error);
+        assert!(result.output.contains("node_modules"), "default policy must not prune node_modules");
+    }
+
+    #[tokio::test]
+    async fn test_glob_bench_policy_explicit_override() {
+        let dir = tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("node_modules/pkg")).unwrap();
+        fs::write(dir.path().join("node_modules/pkg/index.js"), "x").unwrap();
+
+        let tool = GlobTool;
+        let ctx = ToolContext::test_context_bench(dir.path());
+        // Pattern explicitly names node_modules → override the prune.
+        let result = tool
+            .execute(json!({ "pattern": "node_modules/**/*.js" }), &ctx)
+            .await
+            .unwrap();
+
+        assert!(!result.is_error);
+        assert!(result.output.contains("node_modules"), "explicit pattern must override the prune");
+    }
+
+    #[tokio::test]
+    async fn test_glob_bench_policy_skips_min_assets() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("app.js"), "x").unwrap();
+        fs::write(dir.path().join("app.min.js"), "x").unwrap();
+
+        let tool = GlobTool;
+        let ctx = ToolContext::test_context_bench(dir.path());
+        let result = tool.execute(json!({ "pattern": "**/*.js" }), &ctx).await.unwrap();
+
+        assert!(!result.is_error);
+        assert!(result.output.contains("app.js"));
+        assert!(!result.output.contains("app.min.js"), "must skip minified assets under bench policy");
     }
 
     #[tokio::test]

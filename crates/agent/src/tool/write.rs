@@ -96,6 +96,7 @@ mod tests {
             tool_call_id: "tc_1".into(),
             checkpoint_dir: Some(ckpt.path().to_path_buf()),
             checkpoint_turn: 1,
+            policy: crate::tool::ToolPolicy::default(),
         };
 
         // write overwrites the file (backs up "original\n") ...

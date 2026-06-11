@@ -483,6 +483,7 @@ impl AgentLoop {
                 let approval_ref = self.approval_handler.clone();
                 let checkpoint_dir = self.config.checkpoint_dir.clone();
                 let checkpoint_turn = iteration + self.iteration_offset;
+                let tool_policy = self.config.tool_policy.clone();
 
                 join_set.spawn(async move {
                     let result = execute_tool_call_impl(
@@ -497,6 +498,7 @@ impl AgentLoop {
                         approval_ref.as_deref(),
                         checkpoint_dir,
                         checkpoint_turn,
+                        tool_policy,
                     )
                     .await;
                     (idx, tool_call_id, result)
@@ -1037,6 +1039,7 @@ async fn execute_tool_call_impl(
     approval_handler: Option<&dyn ApprovalHandler>,
     checkpoint_dir: Option<std::path::PathBuf>,
     checkpoint_turn: u32,
+    tool_policy: crate::tool::ToolPolicy,
 ) -> ToolResult {
     // Parse arguments first — if this fails, emit a basic ToolStart before the error ToolEnd
     let args: serde_json::Value = match serde_json::from_str(arguments_json) {
@@ -1206,6 +1209,7 @@ async fn execute_tool_call_impl(
         tool_call_id: tool_call_id.to_string(),
         checkpoint_dir,
         checkpoint_turn,
+        policy: tool_policy,
     };
 
     let mut result = match tool.execute(args, &ctx).await {

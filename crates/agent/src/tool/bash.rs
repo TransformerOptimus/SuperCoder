@@ -56,10 +56,17 @@ impl Tool for BashTool {
             .and_then(|v| v.as_str())
             .unwrap_or("Running command");
 
-        let timeout_ms = args
+        let mut timeout_ms = args
             .get("timeout")
             .and_then(|v| v.as_u64())
             .unwrap_or(DEFAULT_TIMEOUT_MS);
+
+        // Bench policy clamps the model-supplied timeout to a hard ceiling so a single
+        // runaway command can't burn the whole per-cell wall. No-op under the default
+        // (app) policy, which keeps the timeout fully model-controlled.
+        if let Some(ceiling) = ctx.policy.bash_timeout_ceiling_ms {
+            timeout_ms = timeout_ms.min(ceiling);
+        }
 
         // Emit status event
         let _ = ctx.event_tx.send(AgentEvent::ToolStatus {
@@ -231,6 +238,7 @@ mod tests {
             tool_call_id: "tc_1".into(),
             checkpoint_dir: None,
             checkpoint_turn: 0,
+            policy: crate::tool::ToolPolicy::default(),
         };
 
         let tool = BashTool;
@@ -252,6 +260,34 @@ mod tests {
 
         assert!(result.is_error);
         assert!(result.output.contains("cancelled"));
+    }
+
+    #[tokio::test]
+    async fn test_bench_policy_clamps_timeout() {
+        // Under bench policy the ceiling is 300s. A command that exceeds a *small*
+        // model-supplied timeout still times out (the clamp is a min(), so the
+        // smaller value wins) — this proves the clamp path doesn't break the
+        // existing timeout behavior.
+        let dir = tempdir().unwrap();
+        let tool = BashTool;
+        let ctx = ToolContext::test_context_bench(dir.path());
+
+        let result = tool
+            .execute(
+                json!({ "command": "sleep 10", "description": "sleep", "timeout": 100 }),
+                &ctx,
+            )
+            .await
+            .unwrap();
+
+        assert!(result.is_error);
+        assert!(result.output.contains("timed out"));
+    }
+
+    #[test]
+    fn test_bench_policy_ceiling_value() {
+        assert_eq!(crate::tool::ToolPolicy::bench().bash_timeout_ceiling_ms, Some(300_000));
+        assert_eq!(crate::tool::ToolPolicy::default().bash_timeout_ceiling_ms, None);
     }
 
     #[tokio::test]

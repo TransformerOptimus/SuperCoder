@@ -7,6 +7,9 @@ use crate::context_engine::ContextEngineApi;
 use crate::error::ToolError;
 use super::{Tool, ToolContext, ToolResult};
 
+/// Max rows rendered per graph section (callers / deps / related) under bench policy.
+const GRAPH_SECTION_CAP: usize = 50;
+
 pub struct CodebaseGraphTool {
     context_engine: Arc<dyn ContextEngineApi>,
 }
@@ -73,7 +76,13 @@ impl Tool for CodebaseGraphTool {
             ));
         }
 
-        let _ = ctx; // ToolContext not needed for graph queries (no working-copy overlay)
+        // Bench policy: cap each rendered section so a high-degree node doesn't dump
+        // hundreds of rows into the context. No-op (unbounded) under the app policy.
+        let section_cap = if ctx.policy.codebase_result_caps {
+            GRAPH_SECTION_CAP
+        } else {
+            usize::MAX
+        };
 
         log::info!(
             "[codebase_graph] query={:?}, function_name={:?}, file_path={:?}, query_type={:?}",
@@ -165,47 +174,44 @@ impl Tool for CodebaseGraphTool {
 
         if show_callers && !callers.is_empty() {
             output.push_str("## Blast Radius (upstream callers)\n\n");
-            for (i, item) in callers.iter().enumerate() {
-                output.push_str(&format!(
-                    "{}. {} ({}, depth: {})\n",
-                    i + 1,
-                    item.name,
-                    item.file_path,
-                    item.depth,
-                ));
-            }
+            render_section(&mut output, &callers, section_cap);
             output.push('\n');
         }
 
         if show_deps && !dependencies.is_empty() {
             output.push_str("## Dependencies (downstream)\n\n");
-            for (i, item) in dependencies.iter().enumerate() {
-                output.push_str(&format!(
-                    "{}. {} ({}, depth: {})\n",
-                    i + 1,
-                    item.name,
-                    item.file_path,
-                    item.depth,
-                ));
-            }
+            render_section(&mut output, &dependencies, section_cap);
             output.push('\n');
         }
 
         if !other.is_empty() && query_type.is_none() {
             output.push_str("## Related\n\n");
-            for (i, item) in other.iter().enumerate() {
-                output.push_str(&format!(
-                    "{}. {} ({}, depth: {})\n",
-                    i + 1,
-                    item.name,
-                    item.file_path,
-                    item.depth,
-                ));
-            }
+            render_section(&mut output, &other, section_cap);
             output.push('\n');
         }
 
         Ok(ToolResult::success(output))
+    }
+}
+
+/// Render up to `cap` graph rows; append a `… and N more` line when the section
+/// is truncated so the model knows results were withheld.
+fn render_section(
+    output: &mut String,
+    items: &[&crate::context_engine::GraphResultItem],
+    cap: usize,
+) {
+    for (i, item) in items.iter().take(cap).enumerate() {
+        output.push_str(&format!(
+            "{}. {} ({}, depth: {})\n",
+            i + 1,
+            item.name,
+            item.file_path,
+            item.depth,
+        ));
+    }
+    if items.len() > cap {
+        output.push_str(&format!("… and {} more\n", items.len() - cap));
     }
 }
 
@@ -403,6 +409,57 @@ mod tests {
 
         assert!(result.is_error);
         assert!(result.output.contains("'query' or 'function_name'"));
+    }
+
+    #[tokio::test]
+    async fn test_bench_policy_caps_section() {
+        let results: Vec<GraphResultItem> = (0..60)
+            .map(|i| GraphResultItem {
+                name: format!("caller_{i}"),
+                file_path: format!("src/f{i}.go"),
+                chunk_id: format!("g{i}"),
+                depth: 1,
+                direction: Some("caller".into()),
+            })
+            .collect();
+        let mock = MockContextEngine::with_graph_results(results);
+        let tool = CodebaseGraphTool::new(Arc::new(mock));
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = ToolContext::test_context_bench(dir.path());
+
+        let result = tool
+            .execute(json!({"function_name": "f", "query_type": "blast_radius"}), &ctx)
+            .await
+            .unwrap();
+        assert!(!result.is_error);
+        assert!(result.output.contains("caller_49"), "row 50 (index 49) should render");
+        assert!(!result.output.contains("caller_50"), "row 51 must be capped under bench policy");
+        assert!(result.output.contains("… and 10 more"));
+    }
+
+    #[tokio::test]
+    async fn test_default_policy_no_section_cap() {
+        let results: Vec<GraphResultItem> = (0..60)
+            .map(|i| GraphResultItem {
+                name: format!("caller_{i}"),
+                file_path: format!("src/f{i}.go"),
+                chunk_id: format!("g{i}"),
+                depth: 1,
+                direction: Some("caller".into()),
+            })
+            .collect();
+        let mock = MockContextEngine::with_graph_results(results);
+        let tool = CodebaseGraphTool::new(Arc::new(mock));
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = ToolContext::test_context(dir.path());
+
+        let result = tool
+            .execute(json!({"function_name": "f", "query_type": "blast_radius"}), &ctx)
+            .await
+            .unwrap();
+        assert!(!result.is_error);
+        assert!(result.output.contains("caller_59"), "default policy must render all rows");
+        assert!(!result.output.contains("more"));
     }
 
     #[tokio::test]

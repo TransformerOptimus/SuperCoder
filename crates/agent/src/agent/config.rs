@@ -52,6 +52,9 @@ pub struct AgentConfig {
     /// before editing it (keyed by `(session_id, turn)`), enabling per-turn undo.
     /// `None` disables checkpoint capture (bench/tests).
     pub checkpoint_dir: Option<PathBuf>,
+    /// Per-binary tool behavior knobs (timeouts, ignore-list, result caps).
+    /// Default = permissive app behavior; `bench-runner` sets `ToolPolicy::bench()`.
+    pub tool_policy: crate::tool::ToolPolicy,
 }
 
 impl AgentConfig {
@@ -71,6 +74,7 @@ impl AgentConfig {
             subagents: None,
             subagent_inheritance: None,
             checkpoint_dir: None,
+            tool_policy: crate::tool::ToolPolicy::default(),
         }
     }
 

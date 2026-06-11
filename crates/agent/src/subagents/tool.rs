@@ -245,6 +245,10 @@ impl Tool for SpawnSubagentTool {
             subagents: None,
             subagent_inheritance: None, // depth-1 enforced
             checkpoint_dir: self.inherit.checkpoint_dir.clone(),
+            // Subagents are only spawned by the desktop app, which runs the permissive
+            // default policy; the headless bench-runner never spawns them. Default keeps
+            // app behavior unchanged.
+            tool_policy: crate::tool::ToolPolicy::default(),
         };
 
         // Child event channel + drain. Per DEC-1 (in docs/subagent-bugs-and-fixes.md),

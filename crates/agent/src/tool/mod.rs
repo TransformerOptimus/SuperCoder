@@ -66,6 +66,66 @@ impl ToolResult {
     }
 }
 
+/// Directories the bench `ToolPolicy` excludes from grep/glob unless the model
+/// explicitly targets them. Build/vendor/coverage output that pollutes results
+/// and inflates search latency on large repos (monorepos, java target/site).
+pub const DEFAULT_IGNORE_DIRS: &[&str] = &[
+    ".git",
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    "__pycache__",
+    ".next",
+    "vendor",
+    "coverage",
+];
+
+/// Minified-asset globs the bench `ToolPolicy` excludes from grep/glob.
+pub const DEFAULT_IGNORE_GLOBS: &[&str] = &["*.min.js", "*.min.css"];
+
+/// Per-binary behavior knobs for tool execution. The default is **permissive**
+/// (byte-identical to the desktop app's historical behavior); `ToolPolicy::bench()`
+/// is the strict variant the headless `bench-runner` opts into so the eval harness
+/// is robust to runaway searches and oversized result payloads. Gating these behind
+/// a policy keeps the shipped app agent unchanged.
+#[derive(Debug, Clone)]
+pub struct ToolPolicy {
+    /// Clamp ceiling (ms) for the bash `timeout` arg. `None` = no ceiling (app default).
+    pub bash_timeout_ceiling_ms: Option<u64>,
+    /// Internal wall timeout (ms) for grep/glob. `None` = no wall (app default).
+    pub search_timeout_ms: Option<u64>,
+    /// Skip the default ignore-dir list in grep/glob. `false` = no extra ignores (app default).
+    pub search_default_ignores: bool,
+    /// Apply codebase_search/graph result + content caps. `false` = no caps (app default).
+    pub codebase_result_caps: bool,
+}
+
+impl Default for ToolPolicy {
+    /// Permissive — preserves the historical desktop-app behavior exactly.
+    fn default() -> Self {
+        Self {
+            bash_timeout_ceiling_ms: None,
+            search_timeout_ms: None,
+            search_default_ignores: false,
+            codebase_result_caps: false,
+        }
+    }
+}
+
+impl ToolPolicy {
+    /// Strict policy for the eval harness: bash clamped to 300s, grep/glob walled at
+    /// 60s and skipping build/vendor dirs, codebase_* results capped.
+    pub fn bench() -> Self {
+        Self {
+            bash_timeout_ceiling_ms: Some(300_000),
+            search_timeout_ms: Some(60_000),
+            search_default_ignores: true,
+            codebase_result_caps: true,
+        }
+    }
+}
+
 /// Context passed to every tool execution.
 pub struct ToolContext {
     pub working_dir: PathBuf,
@@ -79,6 +139,9 @@ pub struct ToolContext {
     pub checkpoint_dir: Option<PathBuf>,
     /// Current turn number, used as the checkpoint key alongside `session_id`.
     pub checkpoint_turn: u32,
+    /// Per-binary behavior knobs (timeouts, ignore-list, result caps). Default =
+    /// permissive app behavior; `bench-runner` sets `ToolPolicy::bench()`.
+    pub policy: ToolPolicy,
 }
 
 impl ToolContext {
@@ -108,6 +171,15 @@ impl ToolContext {
             tool_call_id: "tc_1".into(),
             checkpoint_dir: None,
             checkpoint_turn: 0,
+            policy: ToolPolicy::default(),
+        }
+    }
+
+    /// Like `test_context` but with the strict `ToolPolicy::bench()` applied.
+    pub(crate) fn test_context_bench(dir: &std::path::Path) -> Self {
+        Self {
+            policy: ToolPolicy::bench(),
+            ..Self::test_context(dir)
         }
     }
 }

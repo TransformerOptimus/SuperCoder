@@ -206,6 +206,10 @@ async fn run(cli: &Cli, spec: &TaskSpec) -> RunResult {
     let mut config = AgentConfig::new(llm, spec.working_dir.clone());
     config.mode = ToolMode::Coding;
     config.max_iterations = spec.max_iterations;
+    // Strict tool policy is part of the frozen harness identity: bash timeout ceiling,
+    // grep/glob ignore-list + wall timeout, codebase_* result caps. Always on (the app
+    // keeps the permissive default). See ToolPolicy::bench().
+    config.tool_policy = agent::tool::ToolPolicy::bench();
     // Everything else (system_prompt, checkpoint_dir, skills, subagents, …) stays at the
     // AgentConfig::new defaults of None — headless.
 

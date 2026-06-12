@@ -50,6 +50,49 @@ static SHARED_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .expect("Failed to create HTTP client")
 });
 
+/// Per-binary behavior knobs for the LLM HTTP client. The default is **permissive**
+/// (byte-identical to the desktop app's historical behavior — pooled HTTP/2 via the
+/// shared client); `LlmPolicy::bench()` is the strict variant the headless
+/// `bench-runner` opts into so the eval harness matches opencode's working transport
+/// shape (HTTP/1.1, fresh connection per request, 15s header-arrival timeout). Gating
+/// these behind a policy keeps the shipped app client unchanged.
+#[derive(Debug, Clone)]
+pub struct LlmPolicy {
+    /// Pin the LLM client to HTTP/1.1. `false` = let reqwest negotiate (defaults to h2
+    /// when ALPN offers it).
+    pub http1_only: bool,
+    /// Disable connection pooling — every LLM request opens a fresh TCP+TLS connection.
+    /// `false` = use the shared pooled client.
+    pub no_pool: bool,
+    /// Abort the request if response headers do not arrive within this many ms. `None`
+    /// = no header-arrival timeout (only the per-chunk idle timeout applies once the
+    /// body starts).
+    pub header_timeout_ms: Option<u64>,
+}
+
+impl Default for LlmPolicy {
+    /// Permissive — preserves the historical desktop-app behavior exactly.
+    fn default() -> Self {
+        Self {
+            http1_only: false,
+            no_pool: false,
+            header_timeout_ms: None,
+        }
+    }
+}
+
+impl LlmPolicy {
+    /// Strict policy for the eval harness: matches opencode's working transport shape
+    /// to neutralize router-side mid-stream resets on long Fireworks/Kimi runs.
+    pub fn bench() -> Self {
+        Self {
+            http1_only: true,
+            no_pool: true,
+            header_timeout_ms: Some(15_000),
+        }
+    }
+}
+
 /// Configuration for the LLM HTTP client.
 #[derive(Debug, Clone)]
 pub struct LlmClientConfig {
@@ -75,6 +118,9 @@ pub struct LlmClientConfig {
     pub thinking: Option<serde_json::Value>,
     /// Skip cache_control / prompt_cache_key — set for one-shot calls like compaction where writes never read back.
     pub disable_cache_control: bool,
+    /// Per-binary LLM transport behavior. Default = pooled HTTP/2 (app); `bench()` =
+    /// HTTP/1.1, no pool, 15s header timeout (matches opencode).
+    pub policy: LlmPolicy,
 }
 
 /// HTTP client that speaks either OpenAI chat-completions or the Anthropic
@@ -86,10 +132,24 @@ pub struct LlmClient {
 
 impl LlmClient {
     pub fn new(config: LlmClientConfig) -> Self {
-        Self {
-            config,
-            http: SHARED_HTTP_CLIENT.clone(),
-        }
+        // Build a dedicated client when the policy deviates from default; otherwise
+        // share the pooled process-wide client. Bench-runner takes this path to match
+        // opencode's transport shape (h1.1, no pool) which has zero decode deaths on
+        // the same router that gave us 26.
+        let http = if config.policy.http1_only || config.policy.no_pool {
+            let mut b = reqwest::Client::builder()
+                .connect_timeout(std::time::Duration::from_secs(30));
+            if config.policy.http1_only {
+                b = b.http1_only();
+            }
+            if config.policy.no_pool {
+                b = b.pool_max_idle_per_host(0);
+            }
+            b.build().expect("Failed to build dedicated LLM HTTP client")
+        } else {
+            SHARED_HTTP_CLIENT.clone()
+        };
+        Self { config, http }
     }
 
     /// Send a streaming chat completion request and return the assembled response.
@@ -216,18 +276,12 @@ impl LlmClient {
             }
         }
 
-        let response = match self
-            .http
-            .post(&url)
-            .headers(headers)
-            .json(&request_body)
-            .send()
-            .await
-        {
+        let send_future = self.http.post(&url).headers(headers).json(&request_body).send();
+        let response = match send_with_header_timeout(send_future, self.config.policy.header_timeout_ms).await {
             Ok(resp) => resp,
             Err(e) => {
                 log::error!("[LLM] HTTP request failed: {e}");
-                return Err(e.into());
+                return Err(e);
             }
         };
 
@@ -287,18 +341,12 @@ impl LlmClient {
             }
         }
 
-        let response = match self
-            .http
-            .post(&url)
-            .headers(headers)
-            .json(&request_body)
-            .send()
-            .await
-        {
+        let send_future = self.http.post(&url).headers(headers).json(&request_body).send();
+        let response = match send_with_header_timeout(send_future, self.config.policy.header_timeout_ms).await {
             Ok(resp) => resp,
             Err(e) => {
                 log::error!("[LLM] HTTP request failed: {e}");
-                return Err(e.into());
+                return Err(e);
             }
         };
 
@@ -315,6 +363,23 @@ impl LlmClient {
         log::info!("[LLM] Streaming response started (status {})", status);
         let byte_stream = response.bytes_stream();
         anthropic::parse_anthropic_sse_stream(byte_stream, event_tx, session_id, cancel_token).await
+    }
+}
+
+/// Race the `.send()` future against an optional header-arrival timeout. Bounds the
+/// request-issue + header-receive phase only; once headers arrive the body stream is
+/// returned and bounded separately by `CHUNK_IDLE_TIMEOUT` in the SSE reader. A
+/// `HeaderTimeout` is retryable by `call_llm_with_retry` (same arm as `HttpError`).
+async fn send_with_header_timeout<F>(fut: F, timeout_ms: Option<u64>) -> Result<reqwest::Response, AgentError>
+where
+    F: std::future::Future<Output = Result<reqwest::Response, reqwest::Error>>,
+{
+    match timeout_ms {
+        Some(ms) => match tokio::time::timeout(std::time::Duration::from_millis(ms), fut).await {
+            Ok(res) => res.map_err(AgentError::HttpError),
+            Err(_) => Err(AgentError::HeaderTimeout(ms)),
+        },
+        None => fut.await.map_err(AgentError::HttpError),
     }
 }
 

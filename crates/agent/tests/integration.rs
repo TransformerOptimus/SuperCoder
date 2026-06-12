@@ -137,6 +137,7 @@ fn make_config(api_key: &str, working_dir: PathBuf) -> AgentConfig {
             extra_headers,
             thinking: None,
             disable_cache_control: false,
+            policy: Default::default(),
         },
         working_dir,
         mode: ToolMode::Coding,

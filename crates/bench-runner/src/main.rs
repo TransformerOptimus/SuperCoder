@@ -201,6 +201,11 @@ async fn run(cli: &Cli, spec: &TaskSpec) -> RunResult {
         extra_headers,
         thinking: None,
         disable_cache_control: false,
+        // Strict LLM transport policy: HTTP/1.1, no connection pooling, 15s
+        // header-arrival timeout. Matches opencode's working transport shape (which
+        // has zero decode deaths on the same router that gave bench-runner 26 on
+        // long Kimi runs). Part of the frozen harness identity. See LlmPolicy::bench().
+        policy: agent::llm::LlmPolicy::bench(),
     };
 
     let mut config = AgentConfig::new(llm, spec.working_dir.clone());
@@ -244,10 +249,16 @@ async fn run(cli: &Cli, spec: &TaskSpec) -> RunResult {
     let cancel_token = spawned.cancel_token;
     let mut event_rx = spawned.event_rx;
 
-    // Drain events concurrently until the channel closes.
+    // Drain events concurrently until the channel closes. AgentEvent::Error
+    // (LLM call retries, permanent failures) is mirrored to stderr so the grid's
+    // stderr_tail captures retry attempts — without this the run-result JSON only
+    // records the final outcome, leaving us blind to whether retries fired.
     let collector = tokio::spawn(async move {
         let mut events = Vec::new();
         while let Some(event) = event_rx.recv().await {
+            if let agent::types::AgentEvent::Error { retrying, message, .. } = &event {
+                eprintln!("[bench] llm-error retrying={retrying}: {message}");
+            }
             events.push(event);
         }
         events

@@ -592,6 +592,7 @@ pub fn provider_to_llm_config(p: &ProviderConfig, model: &str) -> LlmClientConfi
         extra_headers: vec![],
         thinking: None,
         disable_cache_control: false,
+        policy: Default::default(),
     }
 }
 

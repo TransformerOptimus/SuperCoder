@@ -1555,6 +1555,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             std::path::PathBuf::from("/tmp"),
         );
@@ -1951,6 +1952,52 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_retry_on_header_timeout() {
+        // HeaderTimeout is the new non-API error class added for bench-runner's
+        // 15s header-arrival timeout. Like ChunkTimeout it must take the
+        // retryable fall-through arm — otherwise a stalled-headers re-send never
+        // fires and the run dies on the first attempt.
+        let mock = MockLlm::new(vec![
+            Err(AgentError::HeaderTimeout(15_000)),
+            Ok(text_response("recovered")),
+        ]);
+        let (mut agent, _rx) = make_agent(mock, ToolRegistry::new(), None);
+        agent.config.retry_config.max_retries = 3;
+
+        let result = agent.run(ChatMessage::user("test")).await.unwrap().unwrap_done();
+        assert_eq!(result, "recovered", "HeaderTimeout must be retryable");
+    }
+
+    #[test]
+    fn test_llm_policy_values() {
+        let app = crate::llm::LlmPolicy::default();
+        assert!(!app.http1_only);
+        assert!(!app.no_pool);
+        assert_eq!(app.header_timeout_ms, None);
+
+        let bench = crate::llm::LlmPolicy::bench();
+        assert!(bench.http1_only);
+        assert!(bench.no_pool);
+        assert_eq!(bench.header_timeout_ms, Some(15_000));
+    }
+
+    #[tokio::test]
+    async fn test_retry_on_chunk_timeout_nonapi_error() {
+        // ChunkTimeout takes the SAME fall-through arm in call_llm_with_retry as
+        // HttpError (mid-stream decode). If this retries, the non-API error path
+        // re-sends; if it doesn't, the decode-bypass bug is in the classification.
+        let mock = MockLlm::new(vec![
+            Err(AgentError::ChunkTimeout(60)),
+            Ok(text_response("recovered")),
+        ]);
+        let (mut agent, _rx) = make_agent(mock, ToolRegistry::new(), None);
+        agent.config.retry_config.max_retries = 3;
+
+        let result = agent.run(ChatMessage::user("test")).await.unwrap().unwrap_done();
+        assert_eq!(result, "recovered", "non-API error (ChunkTimeout) must re-send");
+    }
+
+    #[tokio::test]
     async fn test_no_retry_on_401() {
         let mock = MockLlm::new(vec![Err(AgentError::LlmApiError {
             status: 401,
@@ -2297,6 +2344,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             std::path::PathBuf::from("/tmp"),
         );
@@ -2362,6 +2410,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             std::path::PathBuf::from("/tmp"),
         );
@@ -2427,6 +2476,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             std::path::PathBuf::from("/tmp"),
         );
@@ -2521,6 +2571,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             std::path::PathBuf::from("/tmp"),
         );
@@ -2617,6 +2668,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             std::path::PathBuf::from("/tmp"),
         );
@@ -2699,6 +2751,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             std::path::PathBuf::from("/tmp"),
         );
@@ -2773,6 +2826,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             work_dir.path().to_path_buf(),
         );
@@ -3022,6 +3076,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             tmp.path().to_path_buf(),
         );
@@ -3089,6 +3144,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             tmp.path().to_path_buf(),
         );
@@ -3164,6 +3220,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             tmp.path().to_path_buf(),
         );
@@ -3230,6 +3287,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             tmp.path().to_path_buf(),
         );
@@ -3298,6 +3356,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             tmp.path().to_path_buf(),
         );
@@ -3372,6 +3431,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             tmp.path().to_path_buf(),
         );
@@ -3590,6 +3650,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             tmp.path().to_path_buf(),
         );
@@ -3675,6 +3736,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             tmp.path().to_path_buf(),
         );
@@ -3730,6 +3792,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             tmp.path().to_path_buf(),
         );
@@ -3792,6 +3855,7 @@ mod tests {
                 extra_headers: vec![],
                 thinking: None,
                 disable_cache_control: false,
+                policy: Default::default(),
             },
             std::path::PathBuf::from("/tmp"),
         );

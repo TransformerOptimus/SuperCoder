@@ -581,6 +581,7 @@ mod tests {
             extra_headers: vec![],
             thinking: None,
             disable_cache_control: false,
+            policy: Default::default(),
         }
     }
 

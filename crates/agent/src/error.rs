@@ -12,6 +12,9 @@ pub enum AgentError {
     #[error("SSE chunk timeout: no data received for {0}s")]
     ChunkTimeout(u64),
 
+    #[error("LLM header timeout: response headers did not arrive within {0}ms")]
+    HeaderTimeout(u64),
+
     #[error("HTTP error: {0}")]
     HttpError(#[from] reqwest::Error),
 

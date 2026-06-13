@@ -10,18 +10,13 @@ use crate::context_engine::{ContextEngineApi, SearchResultItem};
 use crate::error::ToolError;
 use super::{Tool, ToolContext, ToolResult};
 
-/// Default result count when the model omits `limit` (bench policy only).
-const DEFAULT_SEARCH_LIMIT: u32 = 20;
-/// Max bytes of chunk content rendered per result (bench policy only).
-const MAX_CHUNK_BYTES: usize = 2048;
-
-/// Truncate a chunk's content to `MAX_CHUNK_BYTES` on a UTF-8 boundary, appending a
+/// Truncate a chunk's content to `max_bytes` on a UTF-8 boundary, appending a
 /// marker when clipped. Keeps oversized index payloads from ballooning the context.
-fn cap_chunk_content(content: &str) -> String {
-    if content.len() <= MAX_CHUNK_BYTES {
+fn cap_chunk_content(content: &str, max_bytes: usize) -> String {
+    if content.len() <= max_bytes {
         return content.to_string();
     }
-    let mut end = MAX_CHUNK_BYTES;
+    let mut end = max_bytes;
     while !content.is_char_boundary(end) {
         end -= 1;
     }
@@ -89,12 +84,15 @@ impl Tool for CodebaseSearchTool {
         let strategy = args.get("strategy").and_then(|v| v.as_str());
         let mut limit = args.get("limit").and_then(|v| v.as_u64().map(|n| n as u32));
 
-        // Bench policy: when the model omits `limit`, default to 20 so the engine
-        // doesn't return a huge result set that balloons the conversation. The model
-        // can still page by raising the existing `limit` param. No-op under app policy.
-        let caps = ctx.policy.codebase_result_caps;
-        if caps && limit.is_none() {
-            limit = Some(DEFAULT_SEARCH_LIMIT);
+        // Bench policy: when the model omits `limit`, default to the policy value so
+        // the engine doesn't return a huge result set that balloons the conversation.
+        // The model can still page by raising the existing `limit` param. No-op under
+        // app policy (codebase_search_limit = None).
+        let policy_limit = ctx.policy.codebase_search_limit;
+        if let Some(l) = policy_limit {
+            if limit.is_none() {
+                limit = Some(l);
+            }
         }
 
         log::info!(
@@ -158,12 +156,12 @@ impl Tool for CodebaseSearchTool {
         // Bench policy: cap result count (defensive — the engine may ignore `limit`)
         // and cap each chunk's content so oversized payloads don't inflate every
         // subsequent turn's context. No-op under the default (app) policy.
-        if caps {
-            if let Some(l) = limit {
-                results.truncate(l as usize);
-            }
+        if let Some(l) = policy_limit {
+            results.truncate(l as usize);
+        }
+        if let Some(max_bytes) = ctx.policy.codebase_search_chunk_bytes {
             for item in results.iter_mut() {
-                item.content = cap_chunk_content(&item.content);
+                item.content = cap_chunk_content(&item.content, max_bytes);
             }
         }
 

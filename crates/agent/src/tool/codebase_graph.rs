@@ -7,9 +7,6 @@ use crate::context_engine::ContextEngineApi;
 use crate::error::ToolError;
 use super::{Tool, ToolContext, ToolResult};
 
-/// Max rows rendered per graph section (callers / deps / related) under bench policy.
-const GRAPH_SECTION_CAP: usize = 50;
-
 pub struct CodebaseGraphTool {
     context_engine: Arc<dyn ContextEngineApi>,
 }
@@ -77,12 +74,9 @@ impl Tool for CodebaseGraphTool {
         }
 
         // Bench policy: cap each rendered section so a high-degree node doesn't dump
-        // hundreds of rows into the context. No-op (unbounded) under the app policy.
-        let section_cap = if ctx.policy.codebase_result_caps {
-            GRAPH_SECTION_CAP
-        } else {
-            usize::MAX
-        };
+        // hundreds of rows into the context. No-op (unbounded) under the app policy
+        // when `codebase_graph_section_cap` is None.
+        let section_cap = ctx.policy.codebase_graph_section_cap.unwrap_or(usize::MAX);
 
         log::info!(
             "[codebase_graph] query={:?}, function_name={:?}, file_path={:?}, query_type={:?}",

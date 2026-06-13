@@ -68,6 +68,43 @@ struct Cli {
     ce_machine_id: String,
     #[arg(long, default_value = "")]
     ce_auth_token: String,
+
+    // ──────────────── LLM transport / retry tunables ────────────────
+    // Defaults match the v0.1.6/v0.1.7 frozen-policy values exactly; overrides are
+    // for tuning the bench binary without rebuilding (e.g. raising the header
+    // timeout for slow Kimi cold starts). Each accepts a CLI flag or env var.
+    /// Header-arrival timeout (ms). 0 disables. Default 15000.
+    #[arg(long, env = "SUPERCODER_LLM_HEADER_TIMEOUT_MS", default_value_t = 15_000)]
+    llm_header_timeout_ms: u64,
+    /// Max LLM retry attempts after the initial call. Default 3.
+    #[arg(long, env = "SUPERCODER_LLM_MAX_RETRIES", default_value_t = 3)]
+    llm_max_retries: u32,
+    /// Initial backoff between LLM retries (ms). Default 1000.
+    #[arg(long, env = "SUPERCODER_LLM_RETRY_INITIAL_MS", default_value_t = 1_000)]
+    llm_retry_initial_ms: u64,
+    /// Backoff multiplier between LLM retries. Default 2.0.
+    #[arg(long, env = "SUPERCODER_LLM_RETRY_MULTIPLIER", default_value_t = 2.0)]
+    llm_retry_multiplier: f64,
+    /// Backoff cap between LLM retries (ms). Default 30000.
+    #[arg(long, env = "SUPERCODER_LLM_RETRY_MAX_MS", default_value_t = 30_000)]
+    llm_retry_max_ms: u64,
+
+    // ──────────────── Tool tunables (bench ToolPolicy overrides) ────
+    /// Bash timeout ceiling (ms). Default 300000 (5 min).
+    #[arg(long, env = "SUPERCODER_BASH_TIMEOUT_MS", default_value_t = 300_000)]
+    bash_timeout_ms: u64,
+    /// grep/glob wall timeout (ms). Default 60000.
+    #[arg(long, env = "SUPERCODER_SEARCH_TIMEOUT_MS", default_value_t = 60_000)]
+    search_timeout_ms: u64,
+    /// Default limit for codebase_search results when the model omits `limit`. Default 20.
+    #[arg(long, env = "SUPERCODER_CODEBASE_SEARCH_LIMIT", default_value_t = 20)]
+    codebase_search_limit: u32,
+    /// Per-chunk content cap for codebase_search results (bytes). Default 2048.
+    #[arg(long, env = "SUPERCODER_CODEBASE_SEARCH_CHUNK_BYTES", default_value_t = 2048)]
+    codebase_search_chunk_bytes: usize,
+    /// Per-section render cap for codebase_graph. Default 50.
+    #[arg(long, env = "SUPERCODER_CODEBASE_GRAPH_SECTION_CAP", default_value_t = 50)]
+    codebase_graph_section_cap: usize,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -202,19 +239,50 @@ async fn run(cli: &Cli, spec: &TaskSpec) -> RunResult {
         thinking: None,
         disable_cache_control: false,
         // Strict LLM transport policy: HTTP/1.1, no connection pooling, 15s
-        // header-arrival timeout. Matches opencode's working transport shape (which
-        // has zero decode deaths on the same router that gave bench-runner 26 on
-        // long Kimi runs). Part of the frozen harness identity. See LlmPolicy::bench().
-        policy: agent::llm::LlmPolicy::bench(),
+        // header-arrival timeout (CLI/env-tunable). Matches opencode's working
+        // transport shape (which has zero decode deaths on the same router that gave
+        // bench-runner 26 on long Kimi runs). http1_only + no_pool stay hardcoded
+        // (they ARE the transport fix); the header timeout is exposed since slow
+        // upstreams may legitimately exceed it.
+        policy: {
+            let mut p = agent::llm::LlmPolicy::bench();
+            p.header_timeout_ms = if cli.llm_header_timeout_ms == 0 {
+                None
+            } else {
+                Some(cli.llm_header_timeout_ms)
+            };
+            p
+        },
     };
 
     let mut config = AgentConfig::new(llm, spec.working_dir.clone());
     config.mode = ToolMode::Coding;
     config.max_iterations = spec.max_iterations;
+
+    // Tune LLM retry behavior (CLI/env). Defaults match RetryConfig::default() (3
+    // retries, 1s→2s→4s, cap 30s) — set --llm-retry-multiplier higher and
+    // --llm-retry-max-ms wider when the upstream needs longer recovery windows
+    // (e.g. proxy circuit-breaker open).
+    config.retry_config = agent::agent::config::RetryConfig {
+        max_retries: cli.llm_max_retries,
+        initial_delay: std::time::Duration::from_millis(cli.llm_retry_initial_ms),
+        multiplier: cli.llm_retry_multiplier,
+        max_delay: std::time::Duration::from_millis(cli.llm_retry_max_ms),
+    };
+
     // Strict tool policy is part of the frozen harness identity: bash timeout ceiling,
-    // grep/glob ignore-list + wall timeout, codebase_* result caps. Always on (the app
-    // keeps the permissive default). See ToolPolicy::bench().
-    config.tool_policy = agent::tool::ToolPolicy::bench();
+    // grep/glob ignore-list + wall timeout, codebase_* result caps. The per-knob
+    // values are CLI/env-tunable; defaults match ToolPolicy::bench() exactly. The
+    // `search_default_ignores` flag stays hardcoded (it's the ignore-list behavior,
+    // not a tuning value).
+    config.tool_policy = agent::tool::ToolPolicy {
+        bash_timeout_ceiling_ms: Some(cli.bash_timeout_ms),
+        search_timeout_ms: Some(cli.search_timeout_ms),
+        search_default_ignores: true,
+        codebase_search_limit: Some(cli.codebase_search_limit),
+        codebase_search_chunk_bytes: Some(cli.codebase_search_chunk_bytes),
+        codebase_graph_section_cap: Some(cli.codebase_graph_section_cap),
+    };
     // Everything else (system_prompt, checkpoint_dir, skills, subagents, …) stays at the
     // AgentConfig::new defaults of None — headless.
 
@@ -403,4 +471,62 @@ async fn extract_patch(working_dir: &PathBuf, base_commit: &str) -> Result<Strin
         .await
         .map_err(|e| e.to_string())?;
     Ok(diff.stdout)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::Parser;
+
+    /// Minimum args required to parse — model is the only required field.
+    fn parse(args: &[&str]) -> Cli {
+        let mut full = vec!["bench-runner", "--model", "test"];
+        full.extend_from_slice(args);
+        Cli::try_parse_from(full).expect("parse")
+    }
+
+    #[test]
+    fn cli_defaults_match_frozen_policy() {
+        // Defaults must NOT change behavior vs the hardcoded v0.1.6 LlmPolicy::bench()
+        // and ToolPolicy::bench() values. If this test fails the eval team's previous
+        // runs are not reproducible.
+        let cli = parse(&[]);
+        assert_eq!(cli.llm_header_timeout_ms, 15_000);
+        assert_eq!(cli.llm_max_retries, 3);
+        assert_eq!(cli.llm_retry_initial_ms, 1_000);
+        assert_eq!(cli.llm_retry_multiplier, 2.0);
+        assert_eq!(cli.llm_retry_max_ms, 30_000);
+        assert_eq!(cli.bash_timeout_ms, 300_000);
+        assert_eq!(cli.search_timeout_ms, 60_000);
+        assert_eq!(cli.codebase_search_limit, 20);
+        assert_eq!(cli.codebase_search_chunk_bytes, 2048);
+        assert_eq!(cli.codebase_graph_section_cap, 50);
+    }
+
+    #[test]
+    fn cli_flag_overrides() {
+        let cli = parse(&[
+            "--llm-header-timeout-ms", "90000",
+            "--llm-retry-multiplier", "3.0",
+            "--llm-retry-max-ms", "60000",
+            "--bash-timeout-ms", "600000",
+            "--codebase-search-limit", "10",
+        ]);
+        assert_eq!(cli.llm_header_timeout_ms, 90_000);
+        assert_eq!(cli.llm_retry_multiplier, 3.0);
+        assert_eq!(cli.llm_retry_max_ms, 60_000);
+        assert_eq!(cli.bash_timeout_ms, 600_000);
+        assert_eq!(cli.codebase_search_limit, 10);
+        // Untouched flags keep their defaults
+        assert_eq!(cli.llm_max_retries, 3);
+        assert_eq!(cli.codebase_search_chunk_bytes, 2048);
+    }
+
+    #[test]
+    fn header_timeout_zero_means_disabled() {
+        // Per the CLI doc: 0 disables the header timeout entirely. The run path
+        // converts this to LlmPolicy::header_timeout_ms = None.
+        let cli = parse(&["--llm-header-timeout-ms", "0"]);
+        assert_eq!(cli.llm_header_timeout_ms, 0);
+    }
 }

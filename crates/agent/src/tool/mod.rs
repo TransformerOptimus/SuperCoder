@@ -97,8 +97,16 @@ pub struct ToolPolicy {
     pub search_timeout_ms: Option<u64>,
     /// Skip the default ignore-dir list in grep/glob. `false` = no extra ignores (app default).
     pub search_default_ignores: bool,
-    /// Apply codebase_search/graph result + content caps. `false` = no caps (app default).
-    pub codebase_result_caps: bool,
+    /// Default `limit` for codebase_search when the model omits it; the same value
+    /// also bounds the final result count. `None` = pass through, no default,
+    /// no truncation (app default).
+    pub codebase_search_limit: Option<u32>,
+    /// Cap per-chunk content bytes in codebase_search results (UTF-8 boundary +
+    /// `…[truncated]` marker). `None` = no cap (app default).
+    pub codebase_search_chunk_bytes: Option<usize>,
+    /// Cap rows rendered per codebase_graph section (callers / deps / related);
+    /// truncated sections append `… and N more`. `None` = no cap (app default).
+    pub codebase_graph_section_cap: Option<usize>,
 }
 
 impl Default for ToolPolicy {
@@ -108,20 +116,25 @@ impl Default for ToolPolicy {
             bash_timeout_ceiling_ms: None,
             search_timeout_ms: None,
             search_default_ignores: false,
-            codebase_result_caps: false,
+            codebase_search_limit: None,
+            codebase_search_chunk_bytes: None,
+            codebase_graph_section_cap: None,
         }
     }
 }
 
 impl ToolPolicy {
     /// Strict policy for the eval harness: bash clamped to 300s, grep/glob walled at
-    /// 60s and skipping build/vendor dirs, codebase_* results capped.
+    /// 60s and skipping build/vendor dirs, codebase_search ≤20 results × ≤2KB/chunk,
+    /// codebase_graph ≤50 rows per section.
     pub fn bench() -> Self {
         Self {
             bash_timeout_ceiling_ms: Some(300_000),
             search_timeout_ms: Some(60_000),
             search_default_ignores: true,
-            codebase_result_caps: true,
+            codebase_search_limit: Some(20),
+            codebase_search_chunk_bytes: Some(2048),
+            codebase_graph_section_cap: Some(50),
         }
     }
 }
